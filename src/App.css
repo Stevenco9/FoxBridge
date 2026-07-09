@@ -1,0 +1,56 @@
+.app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+}
+
+.app__content {
+  text-align: center;
+  max-width: 480px;
+}
+
+.app__title {
+  margin: 0 0 0.5rem;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app__version {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.app__tagline {
+  margin: 0 0 2.5rem;
+  font-size: 1.1rem;
+  color: #4b5563;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.status__indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.status__label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+}

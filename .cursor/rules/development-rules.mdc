@@ -1,0 +1,32 @@
+---
+description: FoxBridge development laws — build, run, commits, data, docs, and UX
+alwaysApply: true
+---
+
+# Our Development Rules
+
+These are our "laws." They'll keep the project healthy.
+
+## Rule 1: The app should always build
+
+Do not leave the project in a broken build state. Fix build errors before finishing work.
+
+## Rule 2: The app should always run
+
+Changes must not break the running app. Verify the app still starts and core flows work.
+
+## Rule 3: Every feature gets committed separately
+
+One feature per commit. Do not bundle unrelated changes into a single commit.
+
+## Rule 4: Never hard-code event data
+
+Load event data from configuration, APIs, or data files — not inline in source code.
+
+## Rule 5: Document every major decision
+
+Record significant architectural and product choices in `docs/`.
+
+## Rule 6: Keep the interface simple
+
+A volunteer should be able to learn the UI in under five minutes. Prefer clarity over complexity.
