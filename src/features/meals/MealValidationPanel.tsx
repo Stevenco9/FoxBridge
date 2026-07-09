@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Attendee } from '../../shared/models'
 import {
+  buildMealValidationKey,
   findAttendeeByQrValue,
   formatAttendeeDisplayName,
   formatDietaryRestriction,
@@ -15,23 +16,73 @@ import './MealValidationPanel.css'
 interface MealValidationPanelProps {
   attendees: Attendee[]
   selectedAttendee: Attendee | null
-  validatedMealKeys: Set<string>
-  onValidateMeal: (attendeeId: string, mealPurchaseId: string) => void
   disabled?: boolean
 }
 
 export default function MealValidationPanel({
   attendees,
   selectedAttendee,
-  validatedMealKeys,
-  onValidateMeal,
   disabled = false,
 }: MealValidationPanelProps) {
   const [qrValue, setQrValue] = useState('')
   const [lookupError, setLookupError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const [lookedUpAttendee, setLookedUpAttendee] = useState<Attendee | null>(null)
+  const [validatedMealKeys, setValidatedMealKeys] = useState<Set<string>>(() => new Set())
+  const [isLoadingValidations, setIsLoadingValidations] = useState(false)
+  const [validatingMealKey, setValidatingMealKey] = useState<string | null>(null)
 
   const displayAttendee = lookedUpAttendee ?? selectedAttendee
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadValidations(): Promise<void> {
+      if (!displayAttendee?.id || !window.electronAPI?.getMealValidationsForAttendee) {
+        setValidatedMealKeys(new Set())
+        return
+      }
+
+      setIsLoadingValidations(true)
+      setValidationError(null)
+
+      try {
+        const validations = await window.electronAPI.getMealValidationsForAttendee(
+          displayAttendee.id,
+        )
+
+        if (!isMounted) {
+          return
+        }
+
+        const keys = new Set(
+          validations.map((validation) =>
+            buildMealValidationKey(displayAttendee.id, validation.mealKey),
+          ),
+        )
+        setValidatedMealKeys(keys)
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        const message =
+          error instanceof Error ? error.message : 'Unable to load meal validation history.'
+        setValidationError(message)
+        setValidatedMealKeys(new Set())
+      } finally {
+        if (isMounted) {
+          setIsLoadingValidations(false)
+        }
+      }
+    }
+
+    void loadValidations()
+
+    return () => {
+      isMounted = false
+    }
+  }, [displayAttendee?.id])
 
   const handleLookup = (): void => {
     const attendee = findAttendeeByQrValue(attendees, qrValue)
@@ -43,11 +94,46 @@ export default function MealValidationPanel({
 
     setLookedUpAttendee(attendee)
     setLookupError(null)
+    setValidationError(null)
   }
 
   const handleSubmit = (event: { preventDefault: () => void }): void => {
     event.preventDefault()
     handleLookup()
+  }
+
+  const handleValidateMeal = async (mealKey: string, mealLabel: string): Promise<void> => {
+    if (!displayAttendee || !window.electronAPI?.validateMeal) {
+      setValidationError('Meal validation is only available in the desktop app.')
+      return
+    }
+
+    setValidatingMealKey(mealKey)
+    setValidationError(null)
+
+    try {
+      const result = await window.electronAPI.validateMeal({
+        attendeeId: displayAttendee.id,
+        mealKey,
+        mealLabel,
+      })
+
+      setValidatedMealKeys((current) => {
+        const next = new Set(current)
+        next.add(buildMealValidationKey(displayAttendee.id, mealKey))
+        return next
+      })
+
+      if (result.status === 'already_exists') {
+        setValidationError(null)
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to record meal validation.'
+      setValidationError(message)
+    } finally {
+      setValidatingMealKey(null)
+    }
   }
 
   const mealPlans = displayAttendee ? getMealPlanPurchases(displayAttendee.purchases) : []
@@ -93,6 +179,12 @@ export default function MealValidationPanel({
         </p>
       )}
 
+      {validationError && (
+        <p className="meal-validation-panel__error" role="alert">
+          {validationError}
+        </p>
+      )}
+
       {displayAttendee && (
         <div className="meal-validation-panel__result">
           <h3 className="meal-validation-panel__name">
@@ -118,7 +210,9 @@ export default function MealValidationPanel({
             <div className="meal-validation-panel__detail">
               <dt>Validatable meals</dt>
               <dd>
-                {validatableMeals.length === 0 ? (
+                {isLoadingValidations ? (
+                  'Loading validation history...'
+                ) : validatableMeals.length === 0 ? (
                   'None available'
                 ) : (
                   <ul className="meal-validation-panel__meal-actions">
@@ -128,6 +222,7 @@ export default function MealValidationPanel({
                         displayAttendee.id,
                         meal.id,
                       )
+                      const isValidating = validatingMealKey === meal.id
 
                       return (
                         <li key={meal.id} className="meal-validation-panel__meal-action">
@@ -152,12 +247,10 @@ export default function MealValidationPanel({
                             <button
                               type="button"
                               className="meal-validation-panel__validate-button"
-                              onClick={() =>
-                                onValidateMeal(displayAttendee.id, meal.id)
-                              }
-                              disabled={disabled}
+                              onClick={() => void handleValidateMeal(meal.id, meal.name)}
+                              disabled={disabled || isValidating}
                             >
-                              Validate meal
+                              {isValidating ? 'Saving...' : 'Validate meal'}
                             </button>
                           )}
                         </li>

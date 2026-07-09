@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeDatabase, getDatabase } from './db/database'
+import { registerMealValidationHandlers } from './mealValidationHandlers'
 import { registerRegFoxHandlers } from './regfoxHandlers'
 import { registerPrintHandlers } from './printHandlers'
 
@@ -34,8 +36,10 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  getDatabase()
   registerRegFoxHandlers()
   registerPrintHandlers()
+  registerMealValidationHandlers()
   createWindow()
 })
 
@@ -47,8 +51,14 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
+    getDatabase()
     registerRegFoxHandlers()
     registerPrintHandlers()
+    registerMealValidationHandlers()
     createWindow()
   }
+})
+
+app.on('will-quit', () => {
+  closeDatabase()
 })

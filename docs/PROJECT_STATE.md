@@ -1,7 +1,7 @@
 # FoxBridge — Project State
 
-Last updated: July 2026  
-Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`, synced with `origin/main`)
+Last updated: July 2026 (Sprint 8)  
+Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
@@ -15,9 +15,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - Attendee search + badge preview
 - Electron badge printing with system print dialog
 - Real QR codes on badges
-- Meal validation MVP (in-memory)
+- Meal validation with **persistent SQLite storage**
 
-**Not yet built:** local database/cache, QR scanner UI, silent/production Brother printing, mobile, persisted meal validation, multi-event support.
+**Not yet built:** local attendee cache, QR scanner UI, silent/production Brother printing, mobile, multi-event support.
 
 ---
 
@@ -34,21 +34,14 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | QR on badge | Encodes stable attendee id (`registrationId` / id); no PII in QR |
 | Meal validation panel | QR paste or list selection; shows plans, validatable meals, meal choice, dietary info |
 | Meal plan expansion | Full/half/bring-your-own plans expand to individual meals via `mealPlanConfig.ts` |
+| **Persistent meal validation** | SQLite `meal_validations` table; survives app restart; UNIQUE per attendee + meal |
 | Group registration names | Attendee name from `fieldData` (`name.first` / `name.last`), not purchaser billing name |
 
 ---
 
 ## Current Git commits / milestones
 
-```
-bb49dc0 Add meal validation, QR badges, and printer memory
-79e87ec Layout Posish
-132b784 Add badge preview printing
-9461791 Implement attendee search and badge preview
-bb01e50 Add RegFox attendee download
-6c0131c Add RegFox connection test
-fcd5717 Initialize FoxBridge project foundation
-```
+Recent milestones include meal validation persistence (Sprint 8), documentation (`PROJECT_STATE`, `PRODUCT_DECISIONS`, `CONFERENCE_CHECKLIST`), and the meal/QR/print feature set. Run `git log --oneline -10` for the latest SHAs.
 
 ---
 
@@ -56,10 +49,14 @@ fcd5717 Initialize FoxBridge project foundation
 
 ```
 FoxBridge/
-├── electron/           # Main process, IPC, printing
+├── electron/           # Main process, IPC, printing, database
 │   ├── main.ts
 │   ├── preload.ts
 │   ├── regfoxHandlers.ts
+│   ├── mealValidationHandlers.ts
+│   ├── db/
+│   │   ├── database.ts                 # SQLite init (foxbridge.db)
+│   │   └── mealValidationRepository.ts
 │   └── printing/       # Badge print + preferred printer store
 ├── src/
 │   ├── features/
@@ -67,16 +64,16 @@ FoxBridge/
 │   │   ├── badge/      # Preview, fields, QR value helper
 │   │   └── meals/      # Validation panel, plan config, helpers
 │   ├── integrations/regfox/  # API service, mapping, meal classification
-│   └── shared/models/        # Attendee, purchases, custom fields
+│   └── shared/models/        # Attendee, MealValidation types
 ├── scripts/
 │   ├── test-regfox.ts        # CLI inspection of attendees + meals
 │   └── test-printer.sh       # Separate macOS `lp` diagnostic (not used by app)
-└── docs/                     # PRODUCT, ARCHITECTURE, DATA_MODEL, this file
+└── docs/                     # PRODUCT, ARCHITECTURE, PROJECT_STATE, etc.
 ```
 
-**Stack:** Electron 36, React 19, Vite 6, TypeScript  
+**Stack:** Electron 36, React 19, Vite 6, TypeScript, **better-sqlite3**  
 **RegFox API:** `https://api.webconnex.com/v2/public` with `apiKey` header  
-**IPC:** `regfox:getAttendees`, `print:badgePreview`  
+**IPC:** `regfox:getAttendees`, `print:badgePreview`, `meals:getValidationsForAttendee`, `meals:validateMeal`  
 **Dev note:** Run with `env -u ELECTRON_RUN_AS_NODE` (Cursor sets this var and breaks Electron)
 
 ---
@@ -89,9 +86,10 @@ FoxBridge/
 4. **QR payload** is a stable id only — no email, phone, meals, or API keys.
 5. **Meal purchase categories:** `mealPlan`, `individualMeal`, `mealChoice` (legacy `meals.*` mapped to `mealPlan`).
 6. **Meal plan expansions** live in one config file (`mealPlanConfig.ts`), derived from RegFox form descriptions.
-7. **Validation state** is in-memory only (`attendeeId:mealPurchaseId` keys).
-8. **No `"type": "module"`** in root `package.json` — main process builds as CJS.
-9. **Platform-independent printing layer** — macOS CUPS capture for remembered printer; Windows stub ready for extension.
+7. **Validation state** persisted in SQLite (`meal_validations`); UNIQUE on `attendee_id + meal_key`.
+8. **Database access in main process only** — renderer uses IPC; no direct SQLite from React.
+9. **No `"type": "module"`** in root `package.json` — main process builds as CJS.
+10. **Platform-independent printing layer** — macOS CUPS capture for remembered printer; Windows stub ready for extension.
 
 ---
 
@@ -142,37 +140,67 @@ FoxBridge/
 | UI | Middle panel: QR lookup + attendee list selection |
 | Displays | Meal plans, validatable meals (with per-meal buttons), meal choice, dietary restriction |
 | Plan expansion | `getValidatableMeals(attendee)` merges à la carte + plan-expanded meals; deduped |
-| Validation | Per `attendeeId + mealPurchaseId`; duplicate blocked with "Already validated" |
-| Persistence | **In-memory only** — lost on app restart |
+| Validation | Per `attendee_id + meal_key`; duplicate blocked with **Already validated** |
+| Persistence | **SQLite** — `meal_validations` table in `userData/foxbridge.db` |
 | Full/half plan-only flow | Plans expand to individual meal buttons; no single "validate whole plan" button |
 | Mobile | **Not built** |
+
+### SQLite table: `meal_validations`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | UUID |
+| `attendee_id` | TEXT NOT NULL | Stable attendee id |
+| `meal_key` | TEXT NOT NULL | e.g. `mealPan.thursdayDinner` |
+| `meal_label` | TEXT NOT NULL | Display name at validation time |
+| `validated_at` | TEXT NOT NULL | ISO 8601 |
+| `validated_by` | TEXT nullable | Volunteer id (unused in UI for now) |
+| `source` | TEXT NOT NULL | Default `'desktop'` |
+| UNIQUE | `(attendee_id, meal_key)` | Prevents duplicate meal use |
 
 ---
 
 ## Known issues
 
-1. **`docs/PRODUCT.md` is partially stale** — lists QR scanning and meal tracking as out of scope, but QR generation and meal validation MVP exist.
+1. **`docs/PRODUCT.md` is partially stale** — lists QR scanning and meal tracking as out of scope, but QR generation and meal validation exist.
 2. **Dual meal schemas** — legacy `meals.session*` and new `mealPan.*` coexist in the same event dataset.
 3. **RegFox typo** — `mealPan.sabbathLuch` (not "Lunch") matches live form field key.
-4. **No local cache** — attendees re-fetched from RegFox on each app launch.
-5. **Meal validation not persisted** — no database or file store yet.
-6. **`gh` CLI not logged in** on dev machine — `git push` works via git credentials; `gh` commands need `gh auth login`.
-7. **`test:printer` (`lp`)** — unreliable for Brother QL labels; Electron print is the intended path.
-8. **Cursor git UI** — can show a spinning sync indicator even after successful terminal commit/push; reload window if stuck.
+4. **No local attendee cache** — attendees re-fetched from RegFox on each app launch.
+5. **`gh` CLI not logged in** on dev machine — `git push` works via git credentials; `gh` commands need `gh auth login`.
+6. **`test:printer` (`lp`)** — unreliable for Brother QL labels; Electron print is the intended path.
+
+---
+
+## How to test meal validation persistence (Sprint 8)
+
+1. Run `npm run dev`.
+2. Select or look up an attendee with validatable meals (e.g. à la carte or full/half plan).
+3. Click **Validate meal** for one meal — button should change to **Already validated**.
+4. Quit and restart the app (`npm run dev` again).
+5. Look up the same attendee — the meal should still show **Already validated**.
+6. Try validating the same meal again — no duplicate row is created.
+
+**Inspect the database (optional):**
+
+```bash
+sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
+  "SELECT attendee_id, meal_key, meal_label, validated_at FROM meal_validations;"
+```
+
+(Path may vary slightly by OS; database lives in Electron `userData`.)
 
 ---
 
 ## Immediate next task
 
-**Persist meal validation state and add a local attendee cache.**
+**Add a local attendee cache synced from RegFox.**
 
 Suggested scope:
-1. SQLite or JSON file store for attendees synced from RegFox.
-2. Persist validated meals (`attendeeId`, `mealPurchaseId`, timestamp).
-3. Refresh cache on app start with RegFox pull (or TTL-based sync).
-4. Keep meal validation UI; wire it to stored state instead of in-memory `Set`.
+1. SQLite `attendees` table (or JSON snapshot) populated on app start / refresh.
+2. Reduce RegFox API calls during search and meal validation.
+3. Optional: badge print history table (operational data in FoxBridge, not RegFox).
 
-Alternative follow-ups: silent Brother printing, QR scanner input, update `PRODUCT.md` to match current scope.
+Alternative follow-ups: silent Brother printing, QR camera scanner input, update `PRODUCT.md` to match current scope.
 
 ---
 
@@ -181,18 +209,18 @@ Alternative follow-ups: silent Brother printing, QR scanner input, update `PRODU
 ```
 I'm continuing work on FoxBridge, a desktop Electron + React + TypeScript app for RegFox event check-in and Brother label badge printing.
 
-Read docs/PROJECT_STATE.md, docs/ARCHITECTURE.md, and docs/PRODUCT.md in the repo.
+Read docs/PROJECT_STATE.md, docs/ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
 
 Current state:
 - RegFox attendee download and search work
 - Badge preview + Electron print (system dialog) work
 - QR codes on badges encode stable attendee ids
-- Meal validation MVP works in-memory with meal plan expansion (mealPan.* + legacy meals.*)
-- Branch main is pushed to GitHub
+- Meal validation persists in SQLite (meal_validations table)
+- Branch main is on GitHub
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: persist meal validation state and add local attendee cache.
+Next task: local attendee cache synced from RegFox.
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

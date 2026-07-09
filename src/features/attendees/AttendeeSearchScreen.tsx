@@ -3,7 +3,6 @@ import type { Attendee } from '../../shared/models'
 import BadgePreviewPanel from '../badge/BadgePreview'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import MealValidationPanel from '../meals/MealValidationPanel'
-import { buildMealValidationKey } from '../meals/mealValidation'
 import { getAttendeeFullName, searchAttendees } from './searchAttendees'
 import './AttendeeSearchScreen.css'
 
@@ -14,7 +13,6 @@ export default function AttendeeSearchScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [badgeLayout, setBadgeLayout] = useState<BadgeLayoutSelection>(DEFAULT_BADGE_LAYOUT)
-  const [validatedMealKeys, setValidatedMealKeys] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     let isMounted = true
@@ -65,14 +63,6 @@ export default function AttendeeSearchScreen() {
     filteredAttendees.find((attendee) => attendee.id === selectedId) ??
     attendees.find((attendee) => attendee.id === selectedId) ??
     null
-
-  const handleValidateMeal = (attendeeId: string, mealPurchaseId: string): void => {
-    setValidatedMealKeys((current) => {
-      const next = new Set(current)
-      next.add(buildMealValidationKey(attendeeId, mealPurchaseId))
-      return next
-    })
-  }
 
   return (
     <div className="attendee-search">
@@ -158,8 +148,6 @@ export default function AttendeeSearchScreen() {
           <MealValidationPanel
             attendees={attendees}
             selectedAttendee={selectedAttendee}
-            validatedMealKeys={validatedMealKeys}
-            onValidateMeal={handleValidateMeal}
           />
         )}
 
