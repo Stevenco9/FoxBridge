@@ -1,0 +1,129 @@
+.attendee-search {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f5f7fa;
+}
+
+.attendee-search__header {
+  padding: 1.25rem 1.5rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.attendee-search__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.attendee-search__subtitle {
+  margin: 0.25rem 0 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.attendee-search__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.attendee-search__main {
+  flex: 1;
+  min-width: 0;
+  padding: 1.25rem 1.5rem;
+  overflow: auto;
+}
+
+.search-box {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.search-box__label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.search-box__input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  background: #ffffff;
+}
+
+.search-box__input:focus {
+  outline: 2px solid #22c55e;
+  outline-offset: 1px;
+  border-color: #22c55e;
+}
+
+.results-count {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.attendee-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.attendee-list__item {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.attendee-list__item:hover {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.attendee-list__item--selected {
+  border-color: #22c55e;
+  background: #ecfdf5;
+  box-shadow: 0 0 0 1px #22c55e;
+}
+
+.attendee-list__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.attendee-list__meta {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.state-message {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+}
+
+.state-message--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}

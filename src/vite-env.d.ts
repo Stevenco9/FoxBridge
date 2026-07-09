@@ -1,6 +1,10 @@
 /// <reference types="vite/client" />
 
-interface ElectronAPI {}
+import type { Attendee } from './shared/models'
+
+interface ElectronAPI {
+  getAttendees: () => Promise<Attendee[]>
+}
 
 declare global {
   interface Window {

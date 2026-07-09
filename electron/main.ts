@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { registerRegFoxHandlers } from './regfoxHandlers'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -8,10 +9,10 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 640,
-    minWidth: 640,
-    minHeight: 480,
+    width: 1100,
+    height: 720,
+    minWidth: 900,
+    minHeight: 600,
     title: 'FoxBridge',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -31,7 +32,10 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  registerRegFoxHandlers()
+  createWindow()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -41,6 +45,7 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
+    registerRegFoxHandlers()
     createWindow()
   }
 })
