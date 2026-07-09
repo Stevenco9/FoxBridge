@@ -5,6 +5,7 @@ import type {
   ValidateMealRequest,
   ValidateMealResult,
 } from '../src/shared/models/MealValidation'
+import type { ScannerServerStatus } from '../src/shared/models/ScannerServer'
 
 const electronAPI = {
   getAttendees: (): Promise<Attendee[]> => ipcRenderer.invoke('regfox:getAttendees'),
@@ -13,6 +14,12 @@ const electronAPI = {
     ipcRenderer.invoke('meals:getValidationsForAttendee', attendeeId),
   validateMeal: (request: ValidateMealRequest): Promise<ValidateMealResult> =>
     ipcRenderer.invoke('meals:validateMeal', request),
+  getScannerServerStatus: (): Promise<ScannerServerStatus> =>
+    ipcRenderer.invoke('scannerServer:getStatus'),
+  startScannerServer: (port?: number): Promise<ScannerServerStatus> =>
+    ipcRenderer.invoke('scannerServer:start', port),
+  stopScannerServer: (): Promise<ScannerServerStatus> =>
+    ipcRenderer.invoke('scannerServer:stop'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

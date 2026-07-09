@@ -6,6 +6,10 @@
 }
 
 .attendee-search__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1.25rem 1.5rem;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;

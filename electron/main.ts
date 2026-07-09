@@ -3,8 +3,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { closeDatabase, getDatabase } from './db/database'
 import { registerMealValidationHandlers } from './mealValidationHandlers'
-import { registerRegFoxHandlers } from './regfoxHandlers'
 import { registerPrintHandlers } from './printHandlers'
+import { registerRegFoxHandlers } from './regfoxHandlers'
+import {
+  maybeAutoStartScannerServer,
+  registerScannerServerHandlers,
+  stopScannerServer,
+} from './scannerServerHandlers'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -35,12 +40,14 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   getDatabase()
   registerRegFoxHandlers()
   registerPrintHandlers()
   registerMealValidationHandlers()
+  registerScannerServerHandlers()
   createWindow()
+  await maybeAutoStartScannerServer()
 })
 
 app.on('window-all-closed', () => {
@@ -55,10 +62,12 @@ app.on('activate', () => {
     registerRegFoxHandlers()
     registerPrintHandlers()
     registerMealValidationHandlers()
+    registerScannerServerHandlers()
     createWindow()
   }
 })
 
 app.on('will-quit', () => {
+  void stopScannerServer()
   closeDatabase()
 })

@@ -3,6 +3,7 @@ import type { Attendee } from '../../shared/models'
 import BadgePreviewPanel from '../badge/BadgePreview'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import MealValidationPanel from '../meals/MealValidationPanel'
+import ScannerServerControls from '../scanner/ScannerServerControls'
 import { getAttendeeFullName, searchAttendees } from './searchAttendees'
 import './AttendeeSearchScreen.css'
 
@@ -71,6 +72,7 @@ export default function AttendeeSearchScreen() {
           <h1 className="attendee-search__title">FoxBridge</h1>
           <p className="attendee-search__subtitle">Find an attendee to check in</p>
         </div>
+        <ScannerServerControls refreshToken={attendees.length} />
       </header>
 
       <div className="attendee-search__body">
