@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import type { Attendee } from '../../shared/models'
 import {
+  type BadgeFieldDefinition,
   type BadgeLayoutSelection,
   getAvailableBadgeFields,
   MAX_FIELDS_PER_SLOT,
   NONE_FIELD_ID,
   normalizeSlotFields,
-  resolveBadgeFieldValues,
+  resolveBadgeFieldValue,
 } from './badgeFields'
 import './BadgePreview.css'
 
@@ -88,37 +89,55 @@ function MultiFieldDropdown({
   )
 }
 
+interface BadgeFieldEntry {
+  fieldId: string
+  value: string
+}
+
 function BadgeFieldBlock({
-  values,
+  entries,
   variant,
 }: {
-  values: string[]
+  entries: BadgeFieldEntry[]
   variant: 'top' | 'middle' | 'bottom'
 }) {
-  if (values.length === 0) {
-    return (
-      <div className={`badge-preview__block badge-preview__block--${variant}`}>
-        <div className={`badge-preview__line badge-preview__line--${variant}`}>
-          {'\u00A0'}
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className={`badge-preview__block badge-preview__block--${variant}`}>
-      {values.map((value, index) => (
+    <div
+      className={`badge-preview__block badge-preview__block--${variant}${
+        entries.length === 0 ? ' badge-preview__block--empty' : ''
+      }`}
+      aria-hidden={entries.length === 0}
+    >
+      {entries.map((entry, index) => (
         <div
-          key={`${variant}-${index}`}
-          className={`badge-preview__line badge-preview__line--${variant}${
-            index === 0 ? ' badge-preview__line--primary' : ''
-          }`}
+          key={`${variant}-${entry.fieldId}-${index}`}
+          className={[
+            'badge-preview__line',
+            `badge-preview__line--${variant}`,
+            index === 0 ? 'badge-preview__line--primary' : '',
+            entry.fieldId === 'full-name' ? 'badge-preview__line--name' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
         >
-          {value}
+          {entry.value}
         </div>
       ))}
     </div>
   )
+}
+
+function resolveBadgeFieldEntries(
+  attendee: Attendee,
+  fieldIds: string[],
+  availableFields: BadgeFieldDefinition[],
+): BadgeFieldEntry[] {
+  return normalizeSlotFields(fieldIds)
+    .map((fieldId) => ({
+      fieldId,
+      value: resolveBadgeFieldValue(attendee, fieldId, availableFields),
+    }))
+    .filter((entry) => entry.value !== '')
 }
 
 export default function BadgePreviewPanel({
@@ -132,9 +151,9 @@ export default function BadgePreviewPanel({
     label: field.label,
   }))
 
-  const topValues = resolveBadgeFieldValues(attendee, layout.top, availableFields)
-  const middleValues = resolveBadgeFieldValues(attendee, layout.middle, availableFields)
-  const bottomValues = resolveBadgeFieldValues(attendee, layout.bottom, availableFields)
+  const topEntries = resolveBadgeFieldEntries(attendee, layout.top, availableFields)
+  const middleEntries = resolveBadgeFieldEntries(attendee, layout.middle, availableFields)
+  const bottomEntries = resolveBadgeFieldEntries(attendee, layout.bottom, availableFields)
 
   const [isPrinting, setIsPrinting] = useState(false)
   const [printError, setPrintError] = useState<string | null>(null)
@@ -194,16 +213,16 @@ export default function BadgePreviewPanel({
       <div className="badge-panel__preview-wrap">
         <div className="badge-preview" id="badge-preview-print-target" aria-label="Badge preview">
           <div className="badge-preview__content">
-            <BadgeFieldBlock values={topValues} variant="top" />
-            <BadgeFieldBlock values={middleValues} variant="middle" />
-            <BadgeFieldBlock values={bottomValues} variant="bottom" />
+            <BadgeFieldBlock entries={topEntries} variant="top" />
+            <BadgeFieldBlock entries={middleEntries} variant="middle" />
+            <BadgeFieldBlock entries={bottomEntries} variant="bottom" />
           </div>
-          <div className="badge-preview__qr" aria-hidden="true">
-            QR
+          <div className="badge-preview__qr" aria-hidden="true" aria-label="QR code placeholder">
+            <span className="badge-preview__qr-label">QR</span>
           </div>
         </div>
         <p className="badge-panel__size-note">
-          3.9&quot; × 2.4&quot; label (horizontal) · up to {MAX_FIELDS_PER_SLOT} fields
+          2.4&quot; × 3.9&quot; label (horizontal) · up to {MAX_FIELDS_PER_SLOT} fields
           per area
         </p>
         <button
@@ -212,7 +231,7 @@ export default function BadgePreviewPanel({
           onClick={() => void handlePrint()}
           disabled={isPrinting}
         >
-          {isPrinting ? 'Opening Print Dialog...' : 'Print Test Badge'}
+          {isPrinting ? 'Opening Print Dialog...' : 'Print Badge'}
         </button>
         {printError && (
           <p className="badge-panel__print-error" role="alert">
