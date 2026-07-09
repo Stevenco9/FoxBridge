@@ -229,3 +229,81 @@
   font-size: 0.8rem;
   color: #6b7280;
 }
+
+.badge-panel__print-button {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #111827;
+  border-radius: 0.5rem;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.badge-panel__print-button:hover:not(:disabled) {
+  background: #374151;
+  border-color: #374151;
+}
+
+.badge-panel__print-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.badge-panel__print-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b91c1c;
+  text-align: center;
+}
+
+@media print {
+  @page {
+    size: 3.9in 2.4in;
+    margin: 0;
+  }
+
+  body {
+    margin: 0;
+    background: #ffffff;
+  }
+
+  .attendee-search__header,
+  .attendee-search__main,
+  .badge-panel__title,
+  .badge-panel__controls,
+  .badge-panel__size-note,
+  .badge-panel__print-button,
+  .badge-panel__print-error {
+    display: none !important;
+  }
+
+  .badge-panel {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    border: none;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    background: #ffffff;
+  }
+
+  .badge-panel__preview-wrap {
+    margin: 0;
+    padding: 0;
+    align-items: flex-start;
+  }
+
+  #badge-preview-print-target,
+  .badge-preview {
+    width: 3.9in;
+    height: 2.4in;
+    border: 1px solid #000000;
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
+}

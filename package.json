@@ -8,7 +8,8 @@
     "dev": "env -u ELECTRON_RUN_AS_NODE vite",
     "build": "tsc --noEmit && vite build",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
-    "test:regfox": "tsx scripts/test-regfox.ts"
+    "test:regfox": "tsx scripts/test-regfox.ts",
+    "test:printer": "bash scripts/test-printer.sh"
   },
   "dependencies": {
     "react": "^19.1.0",

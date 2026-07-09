@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { registerRegFoxHandlers } from './regfoxHandlers'
+import { registerPrintHandlers } from './printHandlers'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -34,6 +35,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   registerRegFoxHandlers()
+  registerPrintHandlers()
   createWindow()
 })
 
@@ -46,6 +48,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     registerRegFoxHandlers()
+    registerPrintHandlers()
     createWindow()
   }
 })

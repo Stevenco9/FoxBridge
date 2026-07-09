@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Attendee } from '../../shared/models'
 import {
   type BadgeLayoutSelection,
@@ -135,11 +136,34 @@ export default function BadgePreviewPanel({
   const middleValues = resolveBadgeFieldValues(attendee, layout.middle, availableFields)
   const bottomValues = resolveBadgeFieldValues(attendee, layout.bottom, availableFields)
 
+  const [isPrinting, setIsPrinting] = useState(false)
+  const [printError, setPrintError] = useState<string | null>(null)
+
   const updateSlot = (slot: BadgeSlot, values: string[]) => {
     onLayoutChange({
       ...layout,
       [slot]: normalizeSlotFields(values),
     })
+  }
+
+  const handlePrint = async (): Promise<void> => {
+    if (!window.electronAPI?.printBadgePreview) {
+      setPrintError('Printing is only available in the desktop app.')
+      return
+    }
+
+    setIsPrinting(true)
+    setPrintError(null)
+
+    try {
+      await window.electronAPI.printBadgePreview()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to open the print dialog.'
+      setPrintError(message)
+    } finally {
+      setIsPrinting(false)
+    }
   }
 
   return (
@@ -168,7 +192,7 @@ export default function BadgePreviewPanel({
       </div>
 
       <div className="badge-panel__preview-wrap">
-        <div className="badge-preview" aria-label="Badge preview">
+        <div className="badge-preview" id="badge-preview-print-target" aria-label="Badge preview">
           <div className="badge-preview__content">
             <BadgeFieldBlock values={topValues} variant="top" />
             <BadgeFieldBlock values={middleValues} variant="middle" />
@@ -182,6 +206,19 @@ export default function BadgePreviewPanel({
           3.9&quot; × 2.4&quot; label (horizontal) · up to {MAX_FIELDS_PER_SLOT} fields
           per area
         </p>
+        <button
+          type="button"
+          className="badge-panel__print-button"
+          onClick={() => void handlePrint()}
+          disabled={isPrinting}
+        >
+          {isPrinting ? 'Opening Print Dialog...' : 'Print Test Badge'}
+        </button>
+        {printError && (
+          <p className="badge-panel__print-error" role="alert">
+            {printError}
+          </p>
+        )}
       </div>
     </aside>
   )

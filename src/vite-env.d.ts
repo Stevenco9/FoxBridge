@@ -4,6 +4,7 @@ import type { Attendee } from './shared/models'
 
 interface ElectronAPI {
   getAttendees: () => Promise<Attendee[]>
+  printBadgePreview: () => Promise<void>
 }
 
 declare global {
