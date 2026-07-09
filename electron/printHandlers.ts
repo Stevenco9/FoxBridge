@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain } from 'electron'
+import { printBadgePreview } from './printing/printBadgePreview'
 
 export function registerPrintHandlers(): void {
   ipcMain.removeHandler('print:badgePreview')
@@ -8,21 +9,6 @@ export function registerPrintHandlers(): void {
       throw new Error('Print is only available in the desktop app window.')
     }
 
-    await new Promise<void>((resolve, reject) => {
-      window.webContents.print(
-        {
-          silent: false,
-          printBackground: true,
-        },
-        (success, failureReason) => {
-          if (success) {
-            resolve()
-            return
-          }
-
-          reject(new Error(failureReason || 'Print failed.'))
-        },
-      )
-    })
+    await printBadgePreview(window.webContents)
   })
 }

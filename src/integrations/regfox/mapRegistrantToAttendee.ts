@@ -1,9 +1,12 @@
 import type { Attendee, AttendeeCustomField, AttendeePurchase } from '../../shared/models'
+import { classifyPurchaseCategory } from './mealPurchaseClassification'
 import type { RegFoxFieldDataItem, RegFoxRegistrant } from './regfoxTypes'
 
 const STANDARD_FIELD_PATHS = new Set([
   'firstname',
+  'first',
   'lastname',
+  'last',
   'email',
   'phone',
   'company',
@@ -23,13 +26,13 @@ export function mapRegistrantToAttendee(
   const now = new Date().toISOString()
 
   const firstName =
+    getFieldValue(fieldData, 'name.first', 'firstName', 'registrants.firstName') ??
     registrant.billing?.firstName ??
-    getFieldValue(fieldData, 'firstName', 'registrants.firstName') ??
     ''
 
   const lastName =
+    getFieldValue(fieldData, 'name.last', 'lastName', 'registrants.lastName') ??
     registrant.billing?.lastName ??
-    getFieldValue(fieldData, 'lastName', 'registrants.lastName') ??
     ''
 
   const email =
@@ -100,7 +103,7 @@ function getFieldValue(
     })
 
     if (match?.value != null && String(match.value).trim() !== '') {
-      return String(match.value)
+      return String(match.value).trim()
     }
   }
 
@@ -135,7 +138,7 @@ function mapPurchases(
       id: field.path,
       name: field.label,
       quantity: 1,
-      category: 'registration',
+      category: classifyPurchaseCategory(field.path),
     })
   }
 

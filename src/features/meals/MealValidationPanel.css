@@ -1,0 +1,212 @@
+.meal-validation-panel {
+  width: 320px;
+  flex-shrink: 0;
+  padding: 1.25rem 1.5rem;
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  overflow: auto;
+}
+
+.meal-validation-panel__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.meal-validation-panel__subtitle {
+  margin: 0.35rem 0 1rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.meal-validation-panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.meal-validation-panel__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.meal-validation-panel__input {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  background: #ffffff;
+}
+
+.meal-validation-panel__input:focus {
+  outline: 2px solid #22c55e;
+  outline-offset: 1px;
+  border-color: #22c55e;
+}
+
+.meal-validation-panel__lookup-button,
+.meal-validation-panel__validate-button {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.meal-validation-panel__lookup-button {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+}
+
+.meal-validation-panel__lookup-button:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.meal-validation-panel__validate-button {
+  border: 1px solid #15803d;
+  background: #16a34a;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.meal-validation-panel__validate-button:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.meal-validation-panel__lookup-button:disabled,
+.meal-validation-panel__validate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.meal-validation-panel__error {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.meal-validation-panel__result {
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+}
+
+.meal-validation-panel__name {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.meal-validation-panel__details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.meal-validation-panel__detail {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.meal-validation-panel__detail dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.meal-validation-panel__detail dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.meal-validation-panel__list,
+.meal-validation-panel__meal-actions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.meal-validation-panel__meal-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #ffffff;
+}
+
+.meal-validation-panel__meal-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.meal-validation-panel__meal-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.meal-validation-panel__meal-source {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.meal-validation-panel__validated-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #166534;
+  white-space: nowrap;
+}
+
+.meal-validation-panel__plan-note {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.meal-validation-panel__validated {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.meal-validation-panel__meta {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}

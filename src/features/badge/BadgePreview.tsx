@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import QRCode from 'react-qr-code'
 import type { Attendee } from '../../shared/models'
 import {
   type BadgeFieldDefinition,
@@ -9,6 +10,7 @@ import {
   normalizeSlotFields,
   resolveBadgeFieldValue,
 } from './badgeFields'
+import { getAttendeeQrValue } from './getAttendeeQrValue'
 import './BadgePreview.css'
 
 interface BadgePreviewPanelProps {
@@ -140,6 +142,24 @@ function resolveBadgeFieldEntries(
     .filter((entry) => entry.value !== '')
 }
 
+function BadgeQrCode({ attendee }: { attendee: Attendee }) {
+  const qrValue = getAttendeeQrValue(attendee)
+
+  return (
+    <div className="badge-preview__qr" aria-label={`Attendee QR code for ${qrValue}`}>
+      <QRCode
+        value={qrValue}
+        className="badge-preview__qr-image"
+        bgColor="#ffffff"
+        fgColor="#000000"
+        level="M"
+        size={256}
+        style={{ height: '100%', width: '100%' }}
+      />
+    </div>
+  )
+}
+
 export default function BadgePreviewPanel({
   attendee,
   layout,
@@ -217,9 +237,7 @@ export default function BadgePreviewPanel({
             <BadgeFieldBlock entries={middleEntries} variant="middle" />
             <BadgeFieldBlock entries={bottomEntries} variant="bottom" />
           </div>
-          <div className="badge-preview__qr" aria-hidden="true" aria-label="QR code placeholder">
-            <span className="badge-preview__qr-label">QR</span>
-          </div>
+          <BadgeQrCode attendee={attendee} />
         </div>
         <p className="badge-panel__size-note">
           2.4&quot; × 3.9&quot; label (horizontal) · up to {MAX_FIELDS_PER_SLOT} fields
