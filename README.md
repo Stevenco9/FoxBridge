@@ -13,6 +13,21 @@ Desktop companion for RegFox event management.
 npm install
 ```
 
+## Environment configuration
+
+Copy the example environment file and add your own values:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set:
+
+- `REGFOX_API_KEY` — your RegFox API key
+- `REGFOX_EVENT_ID` — a test event ID for development
+
+Do not commit `.env`. It is ignored by Git; only `.env.example` (with placeholders) is tracked.
+
 ## Run in development
 
 Starts the Vite dev server and launches the Electron window with hot reload:
