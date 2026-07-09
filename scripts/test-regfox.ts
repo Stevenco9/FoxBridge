@@ -2,15 +2,22 @@ import { createRegFoxServiceFromEnv } from '../src/integrations/regfox'
 
 async function main(): Promise<void> {
   const service = createRegFoxServiceFromEnv()
-  const result = await service.testConnection()
+  const connection = await service.testConnection()
 
-  if (result.success) {
-    console.log('RegFox connection successful')
+  if (!connection.success) {
+    console.log(`RegFox connection failed: ${connection.message ?? 'Unknown error'}`)
+    process.exitCode = 1
     return
   }
 
-  console.log(`RegFox connection failed: ${result.message ?? 'Unknown error'}`)
-  process.exitCode = 1
+  console.log('Connected.')
+
+  const attendees = await service.getAttendees()
+  console.log(`Downloaded ${attendees.length} attendees.`)
+
+  for (const attendee of attendees) {
+    console.log(`${attendee.firstName} ${attendee.lastName}`.trim())
+  }
 }
 
 main().catch((error: unknown) => {
