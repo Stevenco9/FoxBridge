@@ -2,7 +2,17 @@
 
 Volunteer-facing meal scanner. See [`docs/MOBILE_PRODUCT.md`](../../docs/MOBILE_PRODUCT.md).
 
-## Setup
+## Production workflow (AdAgrA)
+
+1. Organizer opens FoxBridge desktop and loads attendees.
+2. Organizer taps **Connect a phone** — desktop shows one HTTPS pairing QR.
+3. Volunteer scans the QR with the phone’s **Camera app** (not a special scanner app).
+4. Hosted PWA opens at `/pair?token=...`, exchanges the token, and navigates to **Ready to scan**.
+5. Volunteer scans attendee badges and validates meals.
+
+**No volunteer account, scanner code, conference selection, or technical setup is required.**
+
+## Setup (developers)
 
 ```bash
 cd apps/mobile
@@ -19,60 +29,69 @@ From repo root:
 npm run dev:mobile
 ```
 
-Opens at `http://localhost:5174`.
+The dev server binds to `0.0.0.0:5174` so phones on the same Wi-Fi can reach it.
 
-**Camera scanning:** Use HTTPS or `localhost`. On a phone, use your machine's LAN IP only if the browser allows camera access on that origin.
+| Where you open it | URL |
+|-------------------|-----|
+| On this computer | `http://localhost:5174` |
+| On a phone (same Wi-Fi) | `http://<your-mac-lan-ip>:5174` |
 
-## Supabase migrations
+**Production pairing requires HTTPS.** Set **Scanner web address** in desktop Settings → Advanced (or `MOBILE_APP_URL` / `FOXBRIDGE_SCANNER_URL` in the root `.env` for packaged defaults).
 
-Run in order in the Supabase SQL editor:
+### Manual sign-in (development only)
 
-1. `supabase/migrations/001_cloud_foundation.sql`
-2. `supabase/migrations/002_mobile_scanner_foundation.sql`
-3. `supabase/migrations/003_mobile_attendee_lookup.sql`
+In `import.meta.env.DEV`, the splash screen routes to `/sign-in` for manual scanner-code testing. This path is **not** part of the production volunteer experience.
 
-Desktop must **Publish attendees** (Sprint 10) so `attendees` and `meal_entitlements` rows exist for lookup.
+## Routes
 
-## Sign-in flows
+| Route | Purpose |
+|-------|---------|
+| `/` | Splash — resumes session or waits for pairing |
+| `/pair?token=...` | One-scan pairing (production) |
+| `/ready` | Scan badges + validate meals |
+| `/sign-in` | Dev fallback — manual scanner code |
+| `/conference` | Dev fallback — conference picker |
 
-**Production (AdAgrA):** Volunteer name + scanner code via `validate_scanner_code` RPC → conference auto-selected.
+## Pairing service
 
-**Development:** Set `VITE_MOBILE_ACCESS_CODE=dev-scanner` in `.env`, sign in with that code, then pick a conference.
+`pairingService.ts` calls Supabase RPC `exchange_scanner_pairing_token`. Migration: `supabase/migrations/005_scanner_pairing_tokens.sql`.
 
-## Screens
+## Meal validation
 
-| Route | Screen |
-|-------|--------|
-| `/` | Splash |
-| `/sign-in` | Sign In |
-| `/conference` | Conference Selection |
-| `/ready` | Scanner — scan badge, manual entry, attendee lookup result |
+Uses `validate_meal` RPC (migration `004_mobile_meal_validation.sql`). Online only — no offline queue yet.
 
-## End-to-end scan test (Sprint 12)
+## Deploy to Vercel
 
-1. **Desktop:** Ensure RegFox attendees load and click **Publish attendees** in Cloud status.
-2. **Supabase:** Confirm `attendees` rows include `qr_identifier` matching badge QR values.
-3. **Mobile:** `npm run dev:mobile` → sign in → reach **Ready to scan**.
-4. **Scan:** Tap **Scan badge**, allow camera, scan a printed badge QR.
-5. **Or manual:** Tap **Enter code manually**, paste the QR value (same as desktop `getAttendeeQrValue`).
-6. **Expect:** Attendee name, registration ID, and validatable meals list. No validate buttons yet.
+Deploy the **`apps/mobile`** directory as a standalone Vite project.
 
-### Troubleshooting
+### Vercel project settings
 
-| Issue | Check |
-|-------|--------|
-| Camera denied | Browser permissions; use manual entry |
-| Attendee not found | Desktop publish completed; same conference selected; `qr_identifier` matches badge |
-| Network unavailable | Supabase URL/key in `.env`; migration 003 applied |
-| Empty meals | Desktop publish included meal entitlements for that attendee |
+| Setting | Value |
+|---------|--------|
+| **Root Directory** | `apps/mobile` |
+| **Framework Preset** | Vite |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `dist` |
+| **Install Command** | `npm install` (default) |
 
-## PWA install
+`vercel.json` in this directory configures SPA fallback so direct links to `/pair`, `/ready`, and other client routes load correctly.
 
-1. Run dev server or `npm run build && npm run preview`.
-2. Chrome → Install app, or iOS Safari → Add to Home Screen.
+### Environment variables
 
-## Not implemented yet
+Add these **public** Vite variables in the Vercel project (**Settings → Environment Variables**). Do not commit real values to the repository.
 
-- Meal validation (write to Supabase)
-- Offline cache / sync queue
-- Admin, settings, or reporting screens
+| Name | Description |
+|------|-------------|
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon (public) key |
+
+The app reads them via `import.meta.env` in `src/lib/supabaseClient.ts`.
+
+After adding or changing environment variables, **redeploy** the project so the build picks up the new values.
+
+### First deploy
+
+1. Import the FoxBridge repository in Vercel.
+2. Set **Root Directory** to `apps/mobile`.
+3. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. Deploy, then use the production URL as the desktop **Scanner web address**.
