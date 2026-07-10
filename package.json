@@ -6,7 +6,9 @@
   "private": true,
   "scripts": {
     "dev": "env -u ELECTRON_RUN_AS_NODE vite",
+    "dev:mobile": "npm run dev --prefix apps/mobile",
     "build": "tsc --noEmit && vite build",
+    "build:mobile": "npm run build --prefix apps/mobile",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
     "test:regfox": "tsx scripts/test-regfox.ts",
     "test:printer": "bash scripts/test-printer.sh"

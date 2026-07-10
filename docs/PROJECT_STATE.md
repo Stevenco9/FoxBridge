@@ -1,12 +1,12 @@
 # FoxBridge — Project State
 
-Last updated: July 2026 (Sprint 10)  
+Last updated: July 2026 (Sprint 11)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
 **Planning:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — mobile scanner cloud design.  
-**Mobile product:** [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md) — volunteer-focused mobile scope and guardrails.  
+**Mobile product:** [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md) — volunteer-focused mobile scope and guardrails (`apps/mobile`).  
 **Vision:** [`VISION.md`](./VISION.md) — long-term product and architecture principles.
 
 ---
@@ -22,8 +22,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - Meal validation with **persistent SQLite storage**
 - **Local scanner HTTP server foundation** (disabled by default; localhost only)
 - **Supabase cloud publish foundation** (optional; desktop unchanged if unset or unavailable)
+- **Mobile PWA foundation** (`apps/mobile`) — sign-in, conference selection, Ready to Scan shell
 
-**Not yet built:** durable local attendee cache, mobile scanner UI, mobile meal validation in cloud, validation pull-down from Supabase, RLS/scanner codes, silent/production Brother printing, multi-event support.
+**Not yet built:** QR scanning on mobile, mobile meal validation, validation pull-down from Supabase, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
 
 ---
 
@@ -43,13 +44,14 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | **Persistent meal validation** | SQLite `meal_validations` table; survives app restart; UNIQUE per attendee + meal |
 | **Scanner server (foundation)** | Local HTTP server in main process; health + attendee lookup endpoints; off by default |
 | **Supabase cloud publish (Sprint 10)** | Main-process client; `cloud:publishAttendees`; Cloud Status panel; optional `.env` config |
+| **Mobile PWA (Sprint 11)** | `apps/mobile` — installable PWA, Supabase anon client, sign-in → conference → Ready to Scan |
 | Group registration names | Attendee name from `fieldData` (`name.first` / `name.last`), not purchaser billing name |
 
 ---
 
 ## Current Git commits / milestones
 
-Recent milestones include Supabase cloud publish foundation (Sprint 10), scanner server, meal validation persistence, and documentation. Run `git log --oneline -10` for the latest SHAs.
+Recent milestones include mobile PWA foundation (Sprint 11), Supabase cloud publish (Sprint 10), scanner server, and meal validation persistence. Run `git log --oneline -10` for the latest SHAs.
 
 ---
 
@@ -57,6 +59,8 @@ Recent milestones include Supabase cloud publish foundation (Sprint 10), scanner
 
 ```
 FoxBridge/
+├── apps/
+│   └── mobile/         # Volunteer PWA (React + Vite + vite-plugin-pwa)
 ├── electron/           # Main process, IPC, printing, database, scanner server, cloud
 │   ├── main.ts
 │   ├── preload.ts
@@ -74,7 +78,7 @@ FoxBridge/
 │   ├── db/
 │   └── printing/
 ├── supabase/
-│   └── migrations/001_cloud_foundation.sql
+│   └── migrations/     # 001 cloud foundation, 002 mobile scanner foundation
 ├── src/
 │   ├── features/
 │   │   ├── attendees/
@@ -238,6 +242,45 @@ Publish state is stored locally in `userData/cloud-publish-state.json`.
 
 ---
 
+## Mobile PWA status (Sprint 11)
+
+| Item | Status |
+|------|--------|
+| Location | `apps/mobile` — standalone React + Vite + TypeScript app |
+| PWA | `vite-plugin-pwa` — installable; manifest + service worker on build |
+| Supabase | Anon key via `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` |
+| Auth | Volunteer name + scanner code (`validate_scanner_code` RPC) or dev access code |
+| Screens | Splash → Sign In → Conference Selection → Ready to Scan |
+| QR scanning | **Not implemented** |
+| Meal validation | **Not implemented** |
+| Schema | `supabase/migrations/002_mobile_scanner_foundation.sql` |
+
+### Setup
+
+```bash
+cd apps/mobile
+cp .env.example .env
+# Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+npm install
+```
+
+From repo root: `npm run dev:mobile` (port **5174**).
+
+Run migration `002_mobile_scanner_foundation.sql` in Supabase for conference list reads and scanner codes.
+
+### How to test mobile PWA
+
+1. Run `npm run dev:mobile` and open `http://localhost:5174` on a phone or emulator.
+2. **Production path:** Insert a `scanner_sessions` row (see migration comments), sign in with name + code → should land on **Ready to Scan** with conference pre-selected.
+3. **Dev path:** Set `VITE_MOBILE_ACCESS_CODE=dev-scanner` in `apps/mobile/.env`, sign in with that code → pick conference from list or enter slug → **Ready to Scan**.
+4. Confirm session persists after refresh (localStorage).
+5. **Install PWA:** Chrome → Install app, or iOS Safari → Add to Home Screen.
+6. Production build: `npm run build:mobile` then `npm run preview --prefix apps/mobile` for install testing.
+
+See [`apps/mobile/README.md`](../apps/mobile/README.md) and [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md).
+
+---
+
 ## Current RegFox test event status
 
 - Credentials: `REGFOX_API_KEY` + `REGFOX_EVENT_ID` in local `.env` (see `.env.example`).
@@ -266,7 +309,7 @@ Publish state is stored locally in `userData/cloud-publish-state.json`.
 | Generation | `react-qr-code` on badge preview |
 | Value | Stable attendee id via `getAttendeeQrValue()` |
 | Desktop scanner input | Manual QR value paste in meal validation panel |
-| Mobile browser scanner | **Not built** — scanner server is the backend foundation |
+| Mobile browser scanner | **Foundation only** — Ready to Scan shell; camera scan not built |
 | PII in QR | None by design |
 
 ---
@@ -307,14 +350,13 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Mobile web scanner (read-only)** or **pull mobile validations into desktop SQLite**, per [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md).
+**Mobile QR scanning and meal validation** on the PWA, per [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md).
 
 Suggested order:
-1. RLS policies + scanner session codes before public mobile URL.
-2. Mobile PWA: scan QR → read Supabase attendees/entitlements.
-3. Mobile meal validation writes to Supabase `meal_validations`.
-4. Desktop pull of cloud validations into local SQLite.
-5. Optional: durable local attendee cache on desktop (reduce RegFox calls).
+1. Camera QR scan on Ready to Scan screen → load attendee from Supabase.
+2. Display entitlements + validate meal (write to Supabase `meal_validations`).
+3. Desktop pull of cloud validations into local SQLite.
+4. Offline cache + validation outbox.
 
 ---
 
@@ -323,20 +365,16 @@ Suggested order:
 ```
 I'm continuing work on FoxBridge, a desktop Electron + React + TypeScript app for RegFox event check-in and Brother label badge printing.
 
-Read docs/PROJECT_STATE.md, docs/SUPABASE_ARCHITECTURE.md, docs/ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
+Read docs/PROJECT_STATE.md, docs/MOBILE_PRODUCT.md, docs/SUPABASE_ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
 
 Current state:
-- RegFox attendee download and search work
-- Badge preview + Electron print (system dialog) work
-- QR codes on badges encode stable attendee ids
-- Meal validation persists in SQLite (meal_validations table)
-- Local scanner HTTP server foundation on localhost (health + attendee lookup)
-- Supabase cloud publish from desktop (cloud:publishAttendees) — optional .env config
+- Desktop: RegFox sync, badges, print, SQLite meal validation, optional Supabase publish
+- Mobile PWA (apps/mobile): sign-in, conference selection, Ready to Scan shell — no QR yet
 - Branch main is on GitHub
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: mobile scanner UI and/or validation sync from Supabase.
+Next task: mobile QR scanning and meal validation.
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

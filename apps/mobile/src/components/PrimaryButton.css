@@ -1,0 +1,29 @@
+.primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.875rem 1rem;
+  border: 2px solid transparent;
+  border-radius: 0.875rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.primary-button--primary {
+  color: #ffffff;
+  background: #111827;
+}
+
+.primary-button--secondary {
+  color: #111827;
+  background: #ffffff;
+  border-color: #d1d5db;
+}
