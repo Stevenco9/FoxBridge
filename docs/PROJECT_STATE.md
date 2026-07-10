@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: July 2026 (Sprint 13B — One-scan phone pairing)  
+Last updated: July 2026 (Sprint 15A — macOS packaging)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -28,6 +28,22 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **One-scan phone pairing** — organizer shows one QR; volunteer scans with Camera app; PWA auto-joins conference (Sprint 13B)
 
 **Not yet built:** mobile offline queue, desktop pull of cloud validations, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
+
+---
+
+## Sprint 15A — Desktop packaging (macOS)
+
+| Item | Status |
+|------|--------|
+| **electron-builder** | Configured in `package.json` (`appId`: `com.foxbridge.desktop`, output: `release/`) |
+| **Unpacked arm64 app** | `npm run pack:mac` → `release/mac-arm64/FoxBridge.app` — smoke tested |
+| **Unsigned arm64 DMG** | `npm run dist:mac` → `release/FoxBridge-0.1.0-mac-arm64.dmg` — built and installed |
+| **better-sqlite3** | Rebuilt via `postinstall`; unpacked from ASAR (`asarUnpack`) in packaged app |
+| **User data** | Persists outside the `.app` at `~/Library/Application Support/foxbridge` |
+| **Icons** | `build/icon.icns`, `build/icon.ico`, `build/icon.png` from `apps/mobile/public/icon.svg` |
+| **Release docs** | [`RELEASING.md`](./RELEASING.md) — manual build and distribution process |
+
+**Current limitations:** unsigned and not notarized (Gatekeeper warnings on first launch); **arm64 only** (no Intel/universal Mac build); **Windows installer not built or tested** (`build/icon.ico` ready). No auto-update or GitHub Releases publishing yet.
 
 ---
 
@@ -101,10 +117,11 @@ FoxBridge/
 │   │   └── cloud/          # Cloud Status panel
 │   ├── integrations/regfox/  # API service, mapping, meal classification
 │   └── shared/models/        # Attendee, MealValidation, ScannerServer types
+├── build/                  # Desktop icon assets (icns, ico, png) for electron-builder
 ├── scripts/
 │   ├── test-regfox.ts        # CLI inspection of attendees + meals
 │   └── test-printer.sh       # Separate macOS `lp` diagnostic (not used by app)
-└── docs/                     # VISION, PRODUCT, ARCHITECTURE, PROJECT_STATE, SUPABASE_ARCHITECTURE, etc.
+└── docs/                     # VISION, PRODUCT, ARCHITECTURE, PROJECT_STATE, RELEASING, SUPABASE_ARCHITECTURE, etc.
 ```
 
 **Stack:** Electron 36, React 19, Vite 6, TypeScript, **better-sqlite3**, **@supabase/supabase-js**  

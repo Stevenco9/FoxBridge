@@ -1,7 +1,8 @@
 {
   "name": "foxbridge",
   "version": "0.1.0",
-  "description": "Desktop companion for RegFox",
+  "description": "Badge printing and attendee management for RegFox events.",
+  "author": "AdAgrA Mexico",
   "main": "dist-electron/main.js",
   "private": true,
   "scripts": {
@@ -9,6 +10,10 @@
     "dev:mobile": "npm run dev --prefix apps/mobile",
     "build": "tsc --noEmit && vite build",
     "build:mobile": "npm run build --prefix apps/mobile",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "pack:mac": "npm run build && electron-builder --mac dir",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
@@ -31,10 +36,49 @@
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.0",
     "electron": "^36.4.0",
+    "electron-builder": "^26.15.3",
     "electron-rebuild": "^3.2.9",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vite": "^6.3.0",
     "vite-plugin-electron": "^0.29.0"
+  },
+  "build": {
+    "appId": "com.foxbridge.desktop",
+    "productName": "FoxBridge",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.business",
+      "icon": "build/icon.icns",
+      "identity": null
+    },
+    "dmg": {
+      "title": "FoxBridge ${version}",
+      "writeUpdateInfo": false
+    },
+    "win": {
+      "icon": "build/icon.ico"
+    }
   }
 }
