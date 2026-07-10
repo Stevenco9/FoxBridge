@@ -1,11 +1,11 @@
 # FoxBridge — Project State
 
-Last updated: July 2026 (Sprint 8+)  
+Last updated: July 2026 (Sprint 10)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
-**Planning:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — future mobile scanner cloud design (not implemented).  
+**Planning:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — mobile scanner cloud design.  
 **Vision:** [`VISION.md`](./VISION.md) — long-term product and architecture principles.
 
 ---
@@ -20,9 +20,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - Real QR codes on badges
 - Meal validation with **persistent SQLite storage**
 - **Local scanner HTTP server foundation** (disabled by default; localhost only)
-- **Supabase mobile scanner architecture** documented (design only — see `docs/SUPABASE_ARCHITECTURE.md`)
+- **Supabase cloud publish foundation** (optional; desktop unchanged if unset or unavailable)
 
-**Not yet built:** durable local attendee cache, Supabase integration code, mobile scanner UI, mobile meal validation API, silent/production Brother printing, multi-event support.
+**Not yet built:** durable local attendee cache, mobile scanner UI, mobile meal validation in cloud, validation pull-down from Supabase, RLS/scanner codes, silent/production Brother printing, multi-event support.
 
 ---
 
@@ -41,14 +41,14 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | Meal plan expansion | Full/half/bring-your-own plans expand to individual meals via `mealPlanConfig.ts` |
 | **Persistent meal validation** | SQLite `meal_validations` table; survives app restart; UNIQUE per attendee + meal |
 | **Scanner server (foundation)** | Local HTTP server in main process; health + attendee lookup endpoints; off by default |
-| **Supabase architecture (planning)** | `docs/SUPABASE_ARCHITECTURE.md` — tables, data flow, offline strategy, security; no code yet |
+| **Supabase cloud publish (Sprint 10)** | Main-process client; `cloud:publishAttendees`; Cloud Status panel; optional `.env` config |
 | Group registration names | Attendee name from `fieldData` (`name.first` / `name.last`), not purchaser billing name |
 
 ---
 
 ## Current Git commits / milestones
 
-Recent milestones include Supabase architecture planning, scanner server foundation, meal validation persistence (Sprint 8), documentation, and the meal/QR/print feature set. Run `git log --oneline -10` for the latest SHAs.
+Recent milestones include Supabase cloud publish foundation (Sprint 10), scanner server, meal validation persistence, and documentation. Run `git log --oneline -10` for the latest SHAs.
 
 ---
 
@@ -56,27 +56,31 @@ Recent milestones include Supabase architecture planning, scanner server foundat
 
 ```
 FoxBridge/
-├── electron/           # Main process, IPC, printing, database, scanner server
+├── electron/           # Main process, IPC, printing, database, scanner server, cloud
 │   ├── main.ts
 │   ├── preload.ts
 │   ├── regfoxHandlers.ts
 │   ├── mealValidationHandlers.ts
 │   ├── scannerServerHandlers.ts
+│   ├── cloudHandlers.ts
+│   ├── cloud/
+│   │   ├── supabaseConfig.ts
+│   │   ├── supabaseClient.ts
+│   │   ├── buildPublishPayload.ts
+│   │   ├── publishAttendeesRepository.ts
+│   │   └── cloudPublishStore.ts
 │   ├── scannerServer/
-│   │   ├── scannerServer.ts          # Node http server + routes
-│   │   ├── attendeeCache.ts          # In-memory cache from RegFox sync
-│   │   ├── buildAttendeeResponse.ts   # Reuses meal classification helpers
-│   │   └── config.ts                 # Port, auto-start flag
 │   ├── db/
-│   │   ├── database.ts                 # SQLite init (foxbridge.db)
-│   │   └── mealValidationRepository.ts
-│   └── printing/       # Badge print + preferred printer store
+│   └── printing/
+├── supabase/
+│   └── migrations/001_cloud_foundation.sql
 ├── src/
 │   ├── features/
-│   │   ├── attendees/  # Search screen (main UI shell)
-│   │   ├── badge/      # Preview, fields, QR value helper
-│   │   ├── meals/      # Validation panel, plan config, helpers
-│   │   └── scanner/    # Desktop start/stop controls (not mobile UI)
+│   │   ├── attendees/
+│   │   ├── badge/
+│   │   ├── meals/
+│   │   ├── scanner/
+│   │   └── cloud/          # Cloud Status panel
 │   ├── integrations/regfox/  # API service, mapping, meal classification
 │   └── shared/models/        # Attendee, MealValidation, ScannerServer types
 ├── scripts/
@@ -85,9 +89,9 @@ FoxBridge/
 └── docs/                     # VISION, PRODUCT, ARCHITECTURE, PROJECT_STATE, SUPABASE_ARCHITECTURE, etc.
 ```
 
-**Stack:** Electron 36, React 19, Vite 6, TypeScript, **better-sqlite3**  
-**RegFox API:** `https://api.webconnex.com/v2/public` with `apiKey` header (main process only — never exposed via scanner server)  
-**IPC:** `regfox:getAttendees`, `print:badgePreview`, `meals:getValidationsForAttendee`, `meals:validateMeal`, `scannerServer:getStatus`, `scannerServer:start`, `scannerServer:stop`  
+**Stack:** Electron 36, React 19, Vite 6, TypeScript, **better-sqlite3**, **@supabase/supabase-js**  
+**RegFox API:** `https://api.webconnex.com/v2/public` with `apiKey` header (main process only)  
+**IPC:** `regfox:getAttendees`, `print:badgePreview`, `meals:getValidationsForAttendee`, `meals:validateMeal`, `scannerServer:*`, `cloud:getStatus`, `cloud:publishAttendees`  
 **Dev note:** Run with `env -u ELECTRON_RUN_AS_NODE` (Cursor sets this var and breaks Electron)
 
 ---
@@ -104,8 +108,9 @@ FoxBridge/
 8. **Database access in main process only** — renderer uses IPC; no direct SQLite from React.
 9. **Scanner server binds to localhost (`127.0.0.1`) only** — no auth yet; LAN binding requires pairing/security next.
 10. **Scanner server is disabled by default** — start via desktop **Start server** button or `SCANNER_SERVER_ENABLED=true`.
-11. **No `"type": "module"`** in root `package.json` — main process builds as CJS.
-12. **Platform-independent printing layer** — macOS CUPS capture for remembered printer; Windows stub ready for extension.
+11. **Supabase is optional** — desktop SQLite and RegFox flows work without cloud config; publish failures do not block desktop.
+12. **No `"type": "module"`** in root `package.json` — main process builds as CJS.
+13. **Platform-independent printing layer** — macOS CUPS capture for remembered printer; Windows stub ready for extension.
 
 ---
 
@@ -192,6 +197,46 @@ curl -s http://127.0.0.1:3847/api/attendees/ATTENDEE_ID | jq .
 
 ---
 
+## Supabase cloud status (Sprint 10)
+
+| Item | Status |
+|------|--------|
+| Supabase client | `@supabase/supabase-js` in Electron **main process only** |
+| Configuration | Optional `.env`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_CONFERENCE_ID` |
+| Publish IPC | `cloud:publishAttendees` — upserts attendees + meal entitlements from RegFox cache |
+| Status IPC | `cloud:getStatus` — configured, connected, conference, last publish |
+| UI | **Cloud status** panel in header with **Publish attendees** button |
+| SQLite / desktop meals | **Unchanged** — cloud is additive; desktop works without Supabase |
+| Schema migration | `supabase/migrations/001_cloud_foundation.sql` (run manually in Supabase) |
+| Mobile scanner | **Not built** |
+| Validation upload to cloud | **Not built** |
+| Pull validations to desktop | **Not built** |
+| RLS / scanner codes | **Not built** |
+
+### Published fields
+
+Per attendee (sanitized upload):
+
+- `attendee_id`, `registration_id`, `display_name`, `email`, `qr_identifier`
+- `meal_entitlements` rows: `meal_key`, `meal_label`, `source`, `source_plan_id`
+
+RegFox API key is never sent to Supabase or the renderer.
+
+### How to test Supabase publish
+
+1. Create a Supabase project and run `supabase/migrations/001_cloud_foundation.sql`.
+2. Insert a `conferences` row and copy its `id` to `SUPABASE_CONFERENCE_ID` in `.env`.
+3. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_ANON_KEY`.
+4. Run `npm run dev` and wait for RegFox attendees to load.
+5. Confirm **Cloud status** shows **Connected** (or **Unavailable** if the conference row is missing — publish may still work for attendees).
+6. Click **Publish attendees** — panel should show last publish time and attendee count.
+7. Verify in Supabase Table Editor: `attendees` and `meal_entitlements` rows for your conference.
+8. Unset Supabase env vars and restart — desktop search, badges, and meal validation should still work.
+
+Publish state is stored locally in `userData/cloud-publish-state.json`.
+
+---
+
 ## Current RegFox test event status
 
 - Credentials: `REGFOX_API_KEY` + `REGFOX_EVENT_ID` in local `.env` (see `.env.example`).
@@ -261,17 +306,14 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Implement local attendee cache on desktop** (SQLite), then begin Supabase integration per [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md).
+**Mobile web scanner (read-only)** or **pull mobile validations into desktop SQLite**, per [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md).
 
 Suggested order:
-1. SQLite attendee cache synced from RegFox on app start (desktop still primary).
-2. Supabase project + table migrations (`conferences`, `attendees`, `meal_entitlements`, `meal_validations`, `scanner_sessions`).
-3. Desktop “Publish to cloud” using sanitized attendee/entitlement upload (service role key in main process only).
-4. RLS + scanner codes before any public mobile URL.
-5. Mobile web PWA (online-first): scan QR → read Supabase → validate meal.
-6. Optional: desktop pull of mobile validations into SQLite; mobile offline queue.
-
-Interim option: LAN pairing on local scanner server if cloud is not ready for AdAgrA.
+1. RLS policies + scanner session codes before public mobile URL.
+2. Mobile PWA: scan QR → read Supabase attendees/entitlements.
+3. Mobile meal validation writes to Supabase `meal_validations`.
+4. Desktop pull of cloud validations into local SQLite.
+5. Optional: durable local attendee cache on desktop (reduce RegFox calls).
 
 ---
 
@@ -288,12 +330,12 @@ Current state:
 - QR codes on badges encode stable attendee ids
 - Meal validation persists in SQLite (meal_validations table)
 - Local scanner HTTP server foundation on localhost (health + attendee lookup)
-- Supabase mobile architecture is planned in docs/SUPABASE_ARCHITECTURE.md (not implemented)
+- Supabase cloud publish from desktop (cloud:publishAttendees) — optional .env config
 - Branch main is on GitHub
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: local attendee cache and/or first Supabase integration step.
+Next task: mobile scanner UI and/or validation sync from Supabase.
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

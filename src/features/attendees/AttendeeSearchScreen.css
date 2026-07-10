@@ -27,6 +27,12 @@
   font-size: 0.95rem;
 }
 
+.attendee-search__header-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .attendee-search__body {
   display: flex;
   flex: 1;

@@ -1,0 +1,95 @@
+.cloud-status-panel {
+  min-width: 14rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+}
+
+.cloud-status-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cloud-status-panel__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cloud-status-panel__badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  background: #e5e7eb;
+}
+
+.cloud-status-panel__badge--connected {
+  color: #1e40af;
+  background: #dbeafe;
+}
+
+.cloud-status-panel__details {
+  margin: 0.65rem 0 0;
+}
+
+.cloud-status-panel__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.2rem 0;
+  font-size: 0.75rem;
+}
+
+.cloud-status-panel__row dt {
+  margin: 0;
+  color: #6b7280;
+}
+
+.cloud-status-panel__row dd {
+  margin: 0;
+  color: #111827;
+  text-align: right;
+}
+
+.cloud-status-panel__actions {
+  margin-top: 0.75rem;
+}
+
+.cloud-status-panel__button {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.cloud-status-panel__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cloud-status-panel__button--primary {
+  color: #ffffff;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.cloud-status-panel__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.cloud-status-panel__error {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: #b91c1c;
+}

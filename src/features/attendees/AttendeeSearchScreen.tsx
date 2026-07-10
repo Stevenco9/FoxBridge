@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Attendee } from '../../shared/models'
 import BadgePreviewPanel from '../badge/BadgePreview'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
+import CloudStatusPanel from '../cloud/CloudStatusPanel'
 import MealValidationPanel from '../meals/MealValidationPanel'
 import ScannerServerControls from '../scanner/ScannerServerControls'
 import { getAttendeeFullName, searchAttendees } from './searchAttendees'
@@ -72,7 +73,10 @@ export default function AttendeeSearchScreen() {
           <h1 className="attendee-search__title">FoxBridge</h1>
           <p className="attendee-search__subtitle">Find an attendee to check in</p>
         </div>
-        <ScannerServerControls refreshToken={attendees.length} />
+        <div className="attendee-search__header-controls">
+          <CloudStatusPanel refreshToken={attendees.length} />
+          <ScannerServerControls refreshToken={attendees.length} />
+        </div>
       </header>
 
       <div className="attendee-search__body">

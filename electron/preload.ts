@@ -5,6 +5,7 @@ import type {
   ValidateMealRequest,
   ValidateMealResult,
 } from '../src/shared/models/MealValidation'
+import type { CloudStatus, PublishAttendeesResult } from '../src/shared/models/CloudStatus'
 import type { ScannerServerStatus } from '../src/shared/models/ScannerServer'
 
 const electronAPI = {
@@ -20,6 +21,9 @@ const electronAPI = {
     ipcRenderer.invoke('scannerServer:start', port),
   stopScannerServer: (): Promise<ScannerServerStatus> =>
     ipcRenderer.invoke('scannerServer:stop'),
+  getCloudStatus: (): Promise<CloudStatus> => ipcRenderer.invoke('cloud:getStatus'),
+  publishAttendees: (): Promise<PublishAttendeesResult> =>
+    ipcRenderer.invoke('cloud:publishAttendees'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

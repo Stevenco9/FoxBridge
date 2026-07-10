@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { closeDatabase, getDatabase } from './db/database'
+import { registerCloudHandlers } from './cloudHandlers'
 import { registerMealValidationHandlers } from './mealValidationHandlers'
 import { registerPrintHandlers } from './printHandlers'
 import { registerRegFoxHandlers } from './regfoxHandlers'
@@ -46,6 +47,7 @@ app.whenReady().then(async () => {
   registerPrintHandlers()
   registerMealValidationHandlers()
   registerScannerServerHandlers()
+  registerCloudHandlers()
   createWindow()
   await maybeAutoStartScannerServer()
 })
@@ -63,6 +65,7 @@ app.on('activate', () => {
     registerPrintHandlers()
     registerMealValidationHandlers()
     registerScannerServerHandlers()
+    registerCloudHandlers()
     createWindow()
   }
 })
