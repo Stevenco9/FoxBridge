@@ -71,12 +71,12 @@ export default function SettingsModal({
     setAdvancedMessage(null)
 
     try {
-      if (serviceUrl.trim() && publicKey.trim() && desktopKey.trim() && conferenceId.trim()) {
+      if (serviceUrl.trim() && publicKey.trim() && desktopKey.trim()) {
         const testResult = await window.electronAPI.testMobileService({
           serviceUrl,
           publicKey,
           desktopConnectionKey: desktopKey,
-          conferenceId,
+          conferenceId: conferenceId.trim() || null,
         })
 
         if (!testResult.success) {
@@ -186,7 +186,7 @@ export default function SettingsModal({
               />
             </label>
             <label className="settings-modal__field">
-              <span>{t('mobile.conferenceId')}</span>
+              <span>{t('mobile.conferenceId')} (optional)</span>
               <input
                 type="text"
                 value={conferenceId}

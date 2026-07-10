@@ -86,8 +86,7 @@ export async function getSetupStatus(printerNames: string[]): Promise<SetupStatu
   const mobileConfigured = Boolean(
     settings.mobileServiceUrl &&
       settings.mobilePublicKey &&
-      secrets.mobileDesktopConnectionKey &&
-      settings.conferenceId,
+      secrets.mobileDesktopConnectionKey,
   )
 
   const attendeeCount = isAttendeeCacheLoaded() ? getAttendeeCache().length : 0
@@ -251,18 +250,18 @@ export async function testMobileService(
   serviceUrl: string,
   publicKey: string,
   desktopConnectionKey: string,
-  conferenceId: string,
+  conferenceId?: string | null,
 ): Promise<MobileServiceTestResult> {
   const trimmedUrl = serviceUrl.trim()
   const trimmedPublic = publicKey.trim()
   const trimmedDesktop = desktopConnectionKey.trim()
-  const trimmedConferenceId = conferenceId.trim()
+  const trimmedConferenceId = conferenceId?.trim() ?? ''
 
-  if (!trimmedUrl || !trimmedPublic || !trimmedDesktop || !trimmedConferenceId) {
+  if (!trimmedUrl || !trimmedPublic || !trimmedDesktop) {
     return {
       success: false,
       conferenceName: null,
-      message: 'Fill in all mobile service fields before continuing.',
+      message: 'Fill in the service URL, public key, and desktop connection key.',
     }
   }
 
@@ -270,7 +269,7 @@ export async function testMobileService(
   await patchPublicSettings({
     mobileServiceUrl: trimmedUrl,
     mobilePublicKey: trimmedPublic,
-    conferenceId: trimmedConferenceId,
+    ...(trimmedConferenceId ? { conferenceId: trimmedConferenceId } : {}),
   })
   resetSupabaseServiceClient()
 
@@ -279,12 +278,13 @@ export async function testMobileService(
     return {
       success: false,
       conferenceName: null,
-      message:
-        'Could not connect to the mobile service. Check the URL, keys, and conference ID.',
+      message: 'Could not connect to the phone scanning service. Check the URL and keys.',
     }
   }
 
-  await patchPublicSettings({ conferenceName: cloudStatus.conferenceName })
+  if (cloudStatus.conferenceName) {
+    await patchPublicSettings({ conferenceName: cloudStatus.conferenceName })
+  }
 
   return {
     success: true,

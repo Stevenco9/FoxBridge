@@ -51,7 +51,7 @@ const electronAPI = {
     serviceUrl: string
     publicKey: string
     desktopConnectionKey: string
-    conferenceId: string
+    conferenceId?: string | null
   }): Promise<MobileServiceTestResult> => ipcRenderer.invoke('cloud:testMobileService', payload),
   setupMobileScanner: (): Promise<MobileScannerSetupResult> =>
     ipcRenderer.invoke('cloud:setupMobileScanner'),

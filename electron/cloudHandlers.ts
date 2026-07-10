@@ -31,7 +31,7 @@ export function registerCloudHandlers(): void {
         serviceUrl: string
         publicKey: string
         desktopConnectionKey: string
-        conferenceId: string
+        conferenceId?: string | null
       },
     ) =>
       testMobileService(

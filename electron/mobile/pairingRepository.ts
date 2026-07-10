@@ -1,8 +1,9 @@
 import crypto from 'node:crypto'
 import type { PairingInfo, PairingStatus } from '../../src/shared/models/PairingInfo'
 import { PAIRING_TOKEN_TTL_MINUTES } from '../config/appDefaults'
+import { ensureConferenceId } from '../cloud/conferenceRepository'
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
-import { loadSupabaseConfig, getScannerWebAddress } from '../cloud/supabaseConfig'
+import { loadSupabaseConnectionConfig, getScannerWebAddress } from '../cloud/supabaseConfig'
 import { getSupabaseServiceClient } from '../cloud/supabaseClient'
 import { isAttendeeCacheLoaded, getAttendeeCache } from '../scannerServer/attendeeCache'
 import { loadRegFoxAttendees } from '../settings/settingsService'
@@ -79,9 +80,23 @@ export async function createScannerPairing(): Promise<PairingInfo> {
     }
   }
 
-  const config = loadSupabaseConfig()
+  const connection = loadSupabaseConnectionConfig()
   const client = getSupabaseServiceClient()
-  if (!config || !client) {
+  if (!connection || !client) {
+    return {
+      ready: false,
+      pairingUrl: null,
+      expiresAt: null,
+      tokenId: null,
+      phoneConnected: false,
+      error: 'Phone scanning is not connected yet. Desktop registration is still available.',
+    }
+  }
+
+  let conferenceId: string
+  try {
+    conferenceId = await ensureConferenceId()
+  } catch {
     return {
       ready: false,
       pairingUrl: null,
@@ -99,7 +114,7 @@ export async function createScannerPairing(): Promise<PairingInfo> {
   const { data, error } = await client
     .from('scanner_pairing_tokens')
     .insert({
-      conference_id: config.conferenceId,
+      conference_id: conferenceId,
       token_hash: tokenHash,
       role: 'meal_scanner',
       expires_at: expiresAt,

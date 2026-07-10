@@ -3,11 +3,14 @@ import path from 'node:path'
 import { app } from 'electron'
 import { DEFAULT_SCANNER_WEB_ADDRESS } from '../config/appDefaults'
 
-export interface SupabaseConfig {
+export interface SupabaseConnectionConfig {
   url: string
   serviceRoleKey: string
   anonKey: string
-  conferenceId: string
+}
+
+export interface SupabaseConfig extends SupabaseConnectionConfig {
+  conferenceId: string | null
 }
 
 function parseEnvFile(rootDir = process.cwd()): Record<string, string> {
@@ -111,13 +114,12 @@ function readDesktopConnectionKeySync(): string | null {
   return null
 }
 
-function loadSupabaseConfigFromEnv(): SupabaseConfig | null {
+function loadSupabaseConnectionConfigFromEnv(): SupabaseConnectionConfig | null {
   const url = getEnvValue('SUPABASE_URL')
   const serviceRoleKey = getEnvValue('SUPABASE_SERVICE_ROLE_KEY')
   const anonKey = getEnvValue('SUPABASE_ANON_KEY')
-  const conferenceId = getEnvValue('SUPABASE_CONFERENCE_ID')
 
-  if (!url || !serviceRoleKey || !anonKey || !conferenceId) {
+  if (!url || !serviceRoleKey || !anonKey) {
     return null
   }
 
@@ -125,34 +127,57 @@ function loadSupabaseConfigFromEnv(): SupabaseConfig | null {
     url,
     serviceRoleKey,
     anonKey,
-    conferenceId,
   }
 }
 
-export function loadSupabaseConfig(): SupabaseConfig | null {
+export function loadSupabaseConnectionConfig(): SupabaseConnectionConfig | null {
   const settings = readPublicSettingsSync()
   const desktopConnectionKey = readDesktopConnectionKeySync()
 
   const url = settings.mobileServiceUrl ?? getEnvValue('SUPABASE_URL')
   const anonKey = settings.mobilePublicKey ?? getEnvValue('SUPABASE_ANON_KEY')
-  const conferenceId = settings.conferenceId ?? getEnvValue('SUPABASE_CONFERENCE_ID')
   const serviceRoleKey =
     desktopConnectionKey ?? getEnvValue('SUPABASE_SERVICE_ROLE_KEY')
 
-  if (!url || !serviceRoleKey || !anonKey || !conferenceId) {
-    return loadSupabaseConfigFromEnv()
+  if (!url || !serviceRoleKey || !anonKey) {
+    return loadSupabaseConnectionConfigFromEnv()
   }
 
   return {
     url,
     serviceRoleKey,
     anonKey,
-    conferenceId,
+  }
+}
+
+function loadSupabaseConfigFromEnv(): SupabaseConfig | null {
+  const connection = loadSupabaseConnectionConfigFromEnv()
+  if (!connection) {
+    return null
+  }
+
+  return {
+    ...connection,
+    conferenceId: getEnvValue('SUPABASE_CONFERENCE_ID') ?? null,
+  }
+}
+
+export function loadSupabaseConfig(): SupabaseConfig | null {
+  const connection = loadSupabaseConnectionConfig()
+  if (!connection) {
+    return loadSupabaseConfigFromEnv()
+  }
+
+  const settings = readPublicSettingsSync()
+
+  return {
+    ...connection,
+    conferenceId: settings.conferenceId ?? getEnvValue('SUPABASE_CONFERENCE_ID') ?? null,
   }
 }
 
 export function isSupabaseConfigured(): boolean {
-  return loadSupabaseConfig() !== null
+  return loadSupabaseConnectionConfig() !== null
 }
 
 export function getMobileAppUrl(): string | null {

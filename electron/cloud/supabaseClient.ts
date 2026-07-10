@@ -1,11 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { loadSupabaseConfig, type SupabaseConfig } from './supabaseConfig'
+import { loadSupabaseConnectionConfig, type SupabaseConnectionConfig } from './supabaseConfig'
 
 let serviceClient: SupabaseClient | null = null
-let activeConfig: SupabaseConfig | null = null
+let activeConfig: SupabaseConnectionConfig | null = null
 
 export function getSupabaseServiceClient(): SupabaseClient | null {
-  const config = loadSupabaseConfig()
+  const config = loadSupabaseConnectionConfig()
   if (!config) {
     serviceClient = null
     activeConfig = null
@@ -16,8 +16,7 @@ export function getSupabaseServiceClient(): SupabaseClient | null {
     serviceClient &&
     activeConfig &&
     activeConfig.url === config.url &&
-    activeConfig.serviceRoleKey === config.serviceRoleKey &&
-    activeConfig.conferenceId === config.conferenceId
+    activeConfig.serviceRoleKey === config.serviceRoleKey
   ) {
     return serviceClient
   }

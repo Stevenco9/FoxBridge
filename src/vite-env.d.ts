@@ -42,7 +42,7 @@ interface ElectronAPI {
     serviceUrl: string
     publicKey: string
     desktopConnectionKey: string
-    conferenceId: string
+    conferenceId?: string | null
   }) => Promise<MobileServiceTestResult>
   setupMobileScanner: () => Promise<MobileScannerSetupResult>
   getConnectPhoneInfo: () => Promise<ConnectPhoneInfo>

@@ -1,4 +1,5 @@
-import { loadSupabaseConfig as loadSupabaseConfigFromSettings } from './supabaseConfig'
+import { ensureConferenceId } from './conferenceRepository'
+import { loadSupabaseConnectionConfig } from './supabaseConfig'
 
 function generateScannerCode(): string {
   const suffix = Math.random().toString(36).slice(2, 6)
@@ -13,8 +14,8 @@ export async function ensureScannerSession(): Promise<{ code: string; label: str
     return info.scannerSessions[0]
   }
 
-  const config = loadSupabaseConfigFromSettings()
-  if (!config) {
+  const connection = loadSupabaseConnectionConfig()
+  if (!connection) {
     throw new Error('Mobile service is not configured.')
   }
 
@@ -24,11 +25,12 @@ export async function ensureScannerSession(): Promise<{ code: string; label: str
     throw new Error('Unable to connect to the mobile service.')
   }
 
+  const conferenceId = await ensureConferenceId()
   const code = generateScannerCode()
   const label = 'Meal scanner 1'
 
   const { error } = await client.from('scanner_sessions').insert({
-    conference_id: config.conferenceId,
+    conference_id: conferenceId,
     code,
     label,
   })

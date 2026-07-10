@@ -1,6 +1,6 @@
 import type { MobileScannerInfo, ScannerSessionCode } from '../../src/shared/models/MobileScannerInfo'
 import { getCloudStatus } from './publishAttendeesRepository'
-import { getMobileScannerUrl, loadSupabaseConfig } from './supabaseConfig'
+import { getMobileScannerUrl } from './supabaseConfig'
 import { getSupabaseServiceClient } from './supabaseClient'
 
 export async function getMobileScannerInfo(): Promise<MobileScannerInfo> {
@@ -19,9 +19,8 @@ export async function getMobileScannerInfo(): Promise<MobileScannerInfo> {
     }
   }
 
-  const config = loadSupabaseConfig()
   const client = getSupabaseServiceClient()
-  if (!config || !client) {
+  if (!client || !cloudStatus.conferenceId) {
     return {
       configured: true,
       connected: false,
@@ -37,7 +36,7 @@ export async function getMobileScannerInfo(): Promise<MobileScannerInfo> {
     const { data, error } = await client
       .from('scanner_sessions')
       .select('code, label')
-      .eq('conference_id', config.conferenceId)
+      .eq('conference_id', cloudStatus.conferenceId)
       .is('revoked_at', null)
       .or('expires_at.is.null,expires_at.gt.now()')
       .order('label')

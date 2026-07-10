@@ -11,7 +11,8 @@ import {
   setCloudPublishError,
   setCloudPublishSuccess,
 } from './cloudPublishStore'
-import { loadSupabaseConfig } from './supabaseConfig'
+import { ensureConferenceId, resolveConferenceId } from './conferenceRepository'
+import { loadSupabaseConnectionConfig } from './supabaseConfig'
 import { getSupabaseServiceClient } from './supabaseClient'
 
 const UPSERT_BATCH_SIZE = 100
@@ -25,10 +26,10 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 export async function getCloudStatus(): Promise<CloudStatus> {
-  const config = loadSupabaseConfig()
+  const connection = loadSupabaseConnectionConfig()
   const publishState = await getCloudPublishState()
 
-  if (!config) {
+  if (!connection) {
     return {
       configured: false,
       connected: false,
@@ -45,7 +46,7 @@ export async function getCloudStatus(): Promise<CloudStatus> {
     return {
       configured: true,
       connected: false,
-      conferenceId: config.conferenceId,
+      conferenceId: null,
       conferenceName: null,
       lastPublishAt: publishState.lastPublishAt,
       lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
@@ -54,17 +55,26 @@ export async function getCloudStatus(): Promise<CloudStatus> {
   }
 
   try {
-    const { data, error } = await client
-      .from('conferences')
-      .select('id, name')
-      .eq('id', config.conferenceId)
-      .maybeSingle()
+    const conference = await resolveConferenceId(false)
 
-    if (error) {
+    if (!conference) {
+      const { error } = await client.from('conferences').select('id').limit(1)
+      if (error) {
+        return {
+          configured: true,
+          connected: false,
+          conferenceId: null,
+          conferenceName: null,
+          lastPublishAt: publishState.lastPublishAt,
+          lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
+          lastPublishError: publishState.lastPublishError,
+        }
+      }
+
       return {
         configured: true,
-        connected: false,
-        conferenceId: config.conferenceId,
+        connected: true,
+        conferenceId: null,
         conferenceName: null,
         lastPublishAt: publishState.lastPublishAt,
         lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
@@ -75,8 +85,8 @@ export async function getCloudStatus(): Promise<CloudStatus> {
     return {
       configured: true,
       connected: true,
-      conferenceId: config.conferenceId,
-      conferenceName: data?.name ?? null,
+      conferenceId: conference.id,
+      conferenceName: conference.name,
       lastPublishAt: publishState.lastPublishAt,
       lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
       lastPublishError: publishState.lastPublishError,
@@ -85,7 +95,7 @@ export async function getCloudStatus(): Promise<CloudStatus> {
     return {
       configured: true,
       connected: false,
-      conferenceId: config.conferenceId,
+      conferenceId: null,
       conferenceName: null,
       lastPublishAt: publishState.lastPublishAt,
       lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
@@ -127,10 +137,10 @@ async function upsertMealEntitlements(rows: PublishMealEntitlementRow[]): Promis
 }
 
 export async function publishAttendees(attendees?: Attendee[]): Promise<PublishAttendeesResult> {
-  const config = loadSupabaseConfig()
-  if (!config) {
+  const connection = loadSupabaseConnectionConfig()
+  if (!connection) {
     const message =
-      'Supabase is not configured. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, and SUPABASE_CONFERENCE_ID in .env.'
+      'Phone scanning is not configured. Add the service URL, public key, and desktop connection key under Settings → Advanced.'
     await setCloudPublishError(message)
     return {
       success: false,
@@ -164,12 +174,29 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
     }
   }
 
+  let conferenceId: string
+  try {
+    conferenceId = await ensureConferenceId()
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Unable to prepare the conference record before publishing.'
+    await setCloudPublishError(message)
+    return {
+      success: false,
+      attendeeCount: 0,
+      publishedAt: null,
+      error: message,
+    }
+  }
+
   const publishedAt = new Date().toISOString()
   const attendeeRows: PublishAttendeeRow[] = []
   const entitlementRows: PublishMealEntitlementRow[] = []
 
   for (const attendee of sourceAttendees) {
-    const payload = buildAttendeePublishPayload(attendee, config.conferenceId, publishedAt)
+    const payload = buildAttendeePublishPayload(attendee, conferenceId, publishedAt)
     attendeeRows.push(payload.attendee)
     entitlementRows.push(...payload.mealEntitlements)
   }
@@ -184,7 +211,7 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
     await client
       .from('conferences')
       .update({ last_desktop_sync_at: publishedAt, updated_at: publishedAt })
-      .eq('id', config.conferenceId)
+      .eq('id', conferenceId)
       .then(({ error }) => {
         if (error) {
           // Conference row may not exist yet; attendee publish still succeeded.
