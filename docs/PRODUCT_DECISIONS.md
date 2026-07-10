@@ -101,5 +101,6 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 | `ARCHITECTURE.md` | System structure and layers |
 | `PROJECT_STATE.md` | Current build status and next tasks |
 | **This file** | Rationale and principles behind design choices |
+| `MOBILE_PRODUCT.md` | Mobile volunteer scope, workflows, and anti-scope-creep guardrails |
 
 When a decision feels ambiguous, return to the principles above: fewer clicks, hidden complexity, RegFox as source of truth, FoxBridge as owner of on-site operations, and defaults that work without a manual.

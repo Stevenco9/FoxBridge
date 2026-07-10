@@ -6,6 +6,7 @@ Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
 **Planning:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — mobile scanner cloud design.  
+**Mobile product:** [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md) — volunteer-focused mobile scope and guardrails.  
 **Vision:** [`VISION.md`](./VISION.md) — long-term product and architecture principles.
 
 ---
