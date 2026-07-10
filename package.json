@@ -10,6 +10,8 @@
     "build": "tsc --noEmit && vite build",
     "build:mobile": "npm run build --prefix apps/mobile",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
     "test:regfox": "tsx scripts/test-regfox.ts",
     "test:printer": "bash scripts/test-printer.sh"
   },
@@ -28,6 +30,7 @@
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.0",
     "electron": "^36.4.0",
+    "electron-rebuild": "^3.2.9",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vite": "^6.3.0",
