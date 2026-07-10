@@ -23,6 +23,7 @@ The central record for a person registered for an event. Attendees are cached lo
 | `firstName`, `lastName`, `email`, `phone` | Contact information |
 | `organization`, `jobTitle`, `department` | Organization details |
 | `purchases` | Registered items (tickets, sessions, add-ons) |
+| `payment` | Normalized RegFox payment snapshot (status + amounts) |
 | `customFields` | Additional form answers |
 | `checkedIn`, `checkedInAt` | Check-in status |
 | `badgePrinted`, `badgePrintedAt` | Badge print status |
@@ -33,6 +34,7 @@ The central record for a person registered for an event. Attendees are cached lo
 
 - Belongs to one **Event** (`eventId`)
 - Has many **Purchases** (embedded)
+- Has one **Payment** snapshot (embedded; sourced from RegFox)
 - Has many **Custom Fields** (embedded)
 - May have one or more **Check-In** records (future; status currently denormalized on Attendee)
 - May have one or more **Badge** print records (future; status currently denormalized on Attendee)
@@ -44,6 +46,41 @@ The central record for a person registered for an event. Attendees are cached lo
 - Volunteer notes and role assignments
 - Separate Check-In and Badge entities instead of denormalized status fields
 - Multi-event attendee linking (post-MVP)
+- On-site payment recording (Sprint 16B) — local operational history, separate from RegFox
+
+---
+
+## Payment
+
+### Purpose
+
+A read-only snapshot of registration payment state mapped from RegFox. FoxBridge displays this for door staff; it does **not** update RegFox payment records in Sprint 16A.
+
+RegFox remains the source of truth for official payment status. The normalized model supports deposits, partial payments, and remaining balances for future events, even when the current event is primarily paid versus unpaid.
+
+### Primary fields
+
+| Field | Description |
+|-------|-------------|
+| `status` | `paid`, `pending` (shown as “Unpaid”), `cancelled`, `refunded`, or `unknown` |
+| `totalAmount` | Registration total when known; otherwise `null` |
+| `amountPaid` | Derived as total − balance when both are known; otherwise `null` |
+| `balanceDue` | Outstanding amount when known; otherwise `null` |
+| `currency` | ISO currency code when known |
+| `upstreamStatus` | Original RegFox status string |
+| `source` | Currently always `regfox` |
+
+### Rules
+
+- Missing monetary values stay `null` — FoxBridge does not invent zeros for absent fields.
+- `fieldData[].amount` line items are not summed into the registration total.
+- Positive `outstandingAmount` is treated as the remaining balance (payment plans / partials).
+- For statuses that still await payment (`pending offline payment`, etc.), when RegFox reports `outstandingAmount` as `0` or omits it, FoxBridge uses `total`/`amount` as balance due — matching the RegFox UI observed on live AdAgrA data.
+- Sprint 16A is display-only; no RegFox payment writes and no local “mark paid” actions.
+
+### Relationships
+
+- Belongs to one **Attendee** (embedded on Attendee)
 
 ---
 
@@ -69,11 +106,11 @@ Represents a line item an attendee registered for—such as a ticket type, sessi
 
 ### Future expansion
 
-- Price and currency
+- Price and currency on individual purchase lines (registration-level payment lives on Attendee.payment)
 - Redemption status (e.g. meal picked up)
 - Session time and location
 - SKU or product code for reporting
-- Refund or transfer status
+- Refund or transfer status on a purchase line
 
 ---
 

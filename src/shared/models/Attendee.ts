@@ -1,3 +1,5 @@
+import type { AttendeePayment } from './AttendeePayment'
+
 /**
  * A line item representing something the attendee purchased or registered for
  * (e.g. ticket type, session, meal, add-on).
@@ -66,6 +68,12 @@ export interface Attendee {
 
   /** Tickets, sessions, meals, add-ons, and other registered items. */
   purchases: AttendeePurchase[]
+
+  /**
+   * Normalized RegFox payment snapshot (read-only in Sprint 16A).
+   * Always present after mapping; monetary fields may be null when unknown.
+   */
+  payment: AttendeePayment
 
   // ---------------------------------------------------------------------------
   // Custom fields

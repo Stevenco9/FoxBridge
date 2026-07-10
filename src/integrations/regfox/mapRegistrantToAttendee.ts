@@ -1,4 +1,5 @@
 import type { Attendee, AttendeeCustomField, AttendeePurchase } from '../../shared/models'
+import { mapRegFoxPaymentFields } from '../../shared/payments/normalizePayment'
 import { resolvePurchaseIdentity } from './mealLabelNormalization'
 import type { RegFoxFieldDataItem, RegFoxRegistrant } from './regfoxTypes'
 
@@ -64,6 +65,13 @@ export function mapRegistrantToAttendee(
     jobTitle,
     department,
     purchases: mapPurchases(registrant, fieldData),
+    payment: mapRegFoxPaymentFields({
+      status: registrant.status,
+      amount: registrant.amount,
+      total: registrant.total,
+      outstandingAmount: registrant.outstandingAmount,
+      currency: registrant.currency,
+    }),
     customFields: mapCustomFields(fieldData),
     checkedIn: registrant.checkedIn ?? false,
     checkedInAt: registrant.dateCheckedIn,

@@ -3,6 +3,9 @@ import type { Attendee } from '../../shared/models'
 import type { AppLanguage, SetupStatus } from '../../shared/models/AppSettings'
 import BadgePreviewPanel from '../badge/BadgePreview'
 import AttendeeCheckInPanel from './AttendeeCheckInPanel'
+import AttendeePaymentPanel, {
+  AttendeePaymentListBadge,
+} from './AttendeePaymentPanel'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import ConnectPhonePanel from '../operations/ConnectPhonePanel'
 import OperationsHome from '../operations/OperationsHome'
@@ -165,6 +168,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
                         <span className="attendee-list__name">
                           {fullName || 'Unnamed attendee'}
                         </span>
+                        <AttendeePaymentListBadge payment={attendee.payment} />
                         {attendee.email && (
                           <span className="attendee-list__meta">{attendee.email}</span>
                         )}
@@ -197,6 +201,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
 
         {selectedAttendee && (
           <section ref={badgeRef} className="attendee-detail">
+            <AttendeePaymentPanel payment={selectedAttendee.payment} />
             <AttendeeCheckInPanel
               attendee={selectedAttendee}
               onCheckedIn={(updated) => {

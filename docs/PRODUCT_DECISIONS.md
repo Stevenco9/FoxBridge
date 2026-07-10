@@ -27,10 +27,13 @@ The first print may require choosing a printer; after that, printing a badge sho
 Badges encode a lookup key, not personal or sensitive data. Meal details, contact information, and credentials never belong in a QR payload.
 
 **RegFox is the source of truth for attendee data.**  
-Registration answers, purchases, and custom fields come from RegFox. FoxBridge reads and presents that data; it does not invent attendee records.
+Registration answers, purchases, custom fields, and official payment status come from RegFox. FoxBridge reads and presents that data; it does not invent attendee records.
 
 **FoxBridge owns operational data.**  
 Meal redemption, badge printing history, check-in actions, and other on-site activity live in FoxBridge. That separation keeps registration data authoritative in RegFox while giving staff a clear record of what happened at the event.
+
+**Payment display is read-only (Sprint 16A).**  
+FoxBridge shows normalized RegFox payment status and amounts for door staff. It does not currently update RegFox payment records. On-site payment recording, if added later, will be an explicit FoxBridge operational record—not a silent rewrite of RegFox finances. The payment model supports partial balances for future events even when the current event is primarily paid versus unpaid.
 
 **Good defaults are better than complicated configuration.**  
 Most events should work out of the box. Advanced options can exist, but volunteers should rarely need them.

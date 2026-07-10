@@ -34,6 +34,23 @@ export interface RegFoxRegistrant {
   dateUpdated?: string
   levelLabel?: string
   levelKey?: string
+  /**
+   * Registrant / payment lifecycle status from RegFox
+   * (e.g. completed, pending, canceled, pending offline payment).
+   * Confirmed present on live /search/registrants responses.
+   */
+  status?: string
+  /**
+   * Registration total. Live responses return this as a string; numbers are
+   * accepted defensively. Prefer `total` when both `total` and `amount` exist.
+   */
+  amount?: string | number
+  /** Registration total (confirmed on live responses; often mirrors `amount`). */
+  total?: string | number
+  /** Unpaid balance / outstanding amount (confirmed on live responses). */
+  outstandingAmount?: string | number
+  /** ISO currency code (confirmed on live responses). */
+  currency?: string
 }
 
 export interface RegFoxListResponse<T> {

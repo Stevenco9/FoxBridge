@@ -1,0 +1,73 @@
+.payment-panel {
+  width: 420px;
+  flex-shrink: 0;
+  padding: 1.25rem 1.5rem;
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.payment-panel__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.payment-panel__details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.payment-panel__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.payment-panel__label {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.payment-panel__value {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  text-align: right;
+}
+
+.payment-panel__source {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.payment-badge {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.payment-badge--paid {
+  color: #047857;
+}
+
+.payment-badge--unpaid {
+  color: #b45309;
+}
+
+.payment-badge--closed {
+  color: #6b7280;
+}
+
+.payment-badge--unknown {
+  color: #6b7280;
+  font-weight: 500;
+}
