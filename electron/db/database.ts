@@ -20,6 +20,13 @@ function initSchema(db: Database.Database): void {
       source TEXT NOT NULL DEFAULT 'desktop',
       UNIQUE(attendee_id, meal_key)
     );
+
+    CREATE TABLE IF NOT EXISTS attendee_check_ins (
+      attendee_id TEXT PRIMARY KEY,
+      registration_id TEXT NOT NULL,
+      checked_in_at TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'desktop'
+    );
   `)
 }
 

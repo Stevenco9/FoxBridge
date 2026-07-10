@@ -10,6 +10,12 @@ export function getAttendeeCache(): Attendee[] {
   return cachedAttendees
 }
 
+export function updateAttendeeInCache(updated: Attendee): void {
+  cachedAttendees = cachedAttendees.map((attendee) =>
+    attendee.id === updated.id ? updated : attendee,
+  )
+}
+
 export function isAttendeeCacheLoaded(): boolean {
   return cachedAttendees.length > 0
 }

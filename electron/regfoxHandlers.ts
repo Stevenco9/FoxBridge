@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { checkInAttendee } from './regfox/checkInAttendee'
 import { createRegFoxServiceFromSettings } from './regfox/regfoxConfig'
 import { getAttendeeCache } from './scannerServer/attendeeCache'
 import {
@@ -17,6 +18,11 @@ export function registerRegFoxHandlers(): void {
 
     return getAttendeeCache()
   })
+
+  ipcMain.removeHandler('regfox:checkInAttendee')
+  ipcMain.handle('regfox:checkInAttendee', async (_event, attendeeId: string) =>
+    checkInAttendee(attendeeId),
+  )
 
   ipcMain.removeHandler('regfox:connect')
   ipcMain.handle(

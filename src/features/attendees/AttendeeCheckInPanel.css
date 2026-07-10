@@ -1,0 +1,80 @@
+.check-in-panel {
+  width: 420px;
+  flex-shrink: 0;
+  padding: 1.25rem 1.5rem;
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.check-in-panel__title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.check-in-panel__button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #111827;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check-in-panel__button:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.check-in-panel__button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.check-in-panel__status {
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+}
+
+.check-in-panel__status--already {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.check-in-panel__status--already .check-in-panel__status-label {
+  color: #92400e;
+}
+
+.check-in-panel__status-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  color: #78350f;
+}
+
+.check-in-panel__status--already .check-in-panel__status-time {
+  color: #92400e;
+}
+
+.check-in-panel__status-label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #047857;
+}
+
+.check-in-panel__status-time {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  color: #065f46;
+}
+
+.check-in-panel__error {
+  margin: 0.75rem 0 0;
+  color: #b91c1c;
+  font-size: 0.95rem;
+}

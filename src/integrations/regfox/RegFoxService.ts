@@ -1,7 +1,22 @@
 import type { Attendee } from '../../shared/models'
 import { mapRegistrantToAttendee } from './mapRegistrantToAttendee'
-import type { RegFoxListResponse, RegFoxRegistrant } from './regfoxTypes'
-import type { ConnectionTestResult, RegFoxServiceConfig } from './types'
+import type {
+  RegFoxCheckInResponseData,
+  RegFoxListResponse,
+  RegFoxMutationResponse,
+  RegFoxRegistrant,
+} from './regfoxTypes'
+import type {
+  ConnectionTestResult,
+  RegFoxCheckInParams,
+  RegFoxCheckInResult,
+  RegFoxServiceConfig,
+} from './types'
+import {
+  isRegFoxAlreadyCheckedInResponse,
+  normalizeRegFoxErrorResponse,
+  readRegFoxResponseBodyOnce,
+} from './regfoxErrorResponse'
 
 const DEFAULT_BASE_URL = 'https://api.webconnex.com/v2/public'
 const REGFOX_PRODUCT = 'regfox.com'
@@ -52,6 +67,67 @@ export class RegFoxService {
     return registrants.map((registrant) =>
       mapRegistrantToAttendee(registrant, this.eventId),
     )
+  }
+
+  /**
+   * Marks a registrant checked in via POST /v2/public/registrant/check-in.
+   *
+   * Identifies the registrant by numeric RegFox id (`registrationId` → `{ id }`).
+   * Falls back to confirmation code / displayId only when registrationId is not numeric.
+   */
+  async checkInRegistrant(params: RegFoxCheckInParams): Promise<RegFoxCheckInResult> {
+    const body = this.buildCheckInBody(params)
+    if (!body) {
+      return {
+        success: false,
+        httpStatus: null,
+        message: 'RegFox registrant id is missing.',
+      }
+    }
+
+    try {
+      const response = await this.postRequest('/registrant/check-in', body)
+      const responseBody = await readRegFoxResponseBodyOnce(response)
+      const parsed = responseBody.parsed as RegFoxMutationResponse<RegFoxCheckInResponseData> | null
+
+      if (response.ok && parsed != null && this.isSuccessfulMutation(parsed)) {
+        return {
+          success: true,
+          registrantId: String(parsed.data?.id ?? params.registrationId),
+          checkedInAt: parsed.data?.date ?? new Date().toISOString(),
+          alreadyCheckedIn: false,
+        }
+      }
+
+      const diagnosis = normalizeRegFoxErrorResponse(response.status, responseBody)
+      const errorMessage =
+        diagnosis.message ?? `RegFox request failed with status ${response.status}.`
+
+      if (isRegFoxAlreadyCheckedInResponse(responseBody.parsed)) {
+        return {
+          success: true,
+          registrantId: params.registrationId,
+          checkedInAt: undefined,
+          alreadyCheckedIn: true,
+        }
+      }
+
+      return {
+        success: false,
+        httpStatus: response.status,
+        message: errorMessage,
+        diagnosis,
+      }
+    } catch (error) {
+      return {
+        success: false,
+        httpStatus: null,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unexpected network error during RegFox check-in.',
+      }
+    }
   }
 
   private async fetchAllRegistrants(): Promise<RegFoxRegistrant[]> {
@@ -111,6 +187,42 @@ export class RegFoxService {
     })
   }
 
+  private async postRequest(path: string, body: Record<string, unknown>): Promise<Response> {
+    return fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        apiKey: this.apiKey,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+  }
+
+  /**
+   * Prefer numeric RegFox registrant id. Use displayId only when registrationId
+   * is missing or not numeric (e.g. legacy cache rows).
+   */
+  private buildCheckInBody(
+    params: RegFoxCheckInParams,
+  ): { id: number } | { displayId: string } | null {
+    const registrationId = params.registrationId.trim()
+    if (registrationId.length > 0 && /^\d+$/.test(registrationId)) {
+      return { id: Number(registrationId) }
+    }
+
+    const confirmationCode = params.confirmationCode?.trim()
+    if (confirmationCode) {
+      return { displayId: confirmationCode }
+    }
+
+    return null
+  }
+
+  private isSuccessfulMutation(body: RegFoxMutationResponse<unknown>): boolean {
+    return body.responseCode == null || body.responseCode === 200
+  }
+
   private async toConnectionResult(response: Response): Promise<ConnectionTestResult> {
     if (response.ok) {
       return { success: true }
@@ -134,7 +246,7 @@ export class RegFoxService {
 
   private async buildErrorMessage(
     response: Response,
-    body?: WebconnexErrorBody | RegFoxListResponse<unknown> | null,
+    body?: WebconnexErrorBody | RegFoxListResponse<unknown> | RegFoxMutationResponse<unknown> | null,
   ): Promise<string> {
     const parsed = body ?? (await this.readErrorBody(response))
 

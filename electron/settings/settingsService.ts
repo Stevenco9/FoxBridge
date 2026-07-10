@@ -26,6 +26,7 @@ import {
   readPublicSettings,
 } from './settingsStore'
 import { createRegFoxServiceFromSettings } from '../regfox/regfoxConfig'
+import { mergeAttendeesWithPersistedCheckIns } from '../regfox/checkInAttendee'
 
 const MOBILE_PUBLISH_WARNING =
   'Phone scanners could not be updated. Desktop registration is still available.'
@@ -161,7 +162,7 @@ export async function connectRegFox(
     regfoxEventId: trimmedEventId,
     lastAttendeeSyncAt: new Date().toISOString(),
   })
-  setAttendeeCache(attendees)
+  setAttendeeCache(mergeAttendeesWithPersistedCheckIns(attendees))
 
   const publishWarning = await publishAttendeesIfConfigured()
   await patchPublicSettings({
@@ -188,7 +189,7 @@ export async function loadRegFoxAttendees(): Promise<RegFoxConnectResult> {
 
   try {
     const attendees = await service.getAttendees()
-    setAttendeeCache(attendees)
+    setAttendeeCache(mergeAttendeesWithPersistedCheckIns(attendees))
     await patchPublicSettings({ lastAttendeeSyncAt: new Date().toISOString() })
 
     const publishWarning = await publishAttendeesIfConfigured()

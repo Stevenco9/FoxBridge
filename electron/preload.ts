@@ -9,6 +9,7 @@ import type {
   SetupStatus,
 } from '../src/shared/models/AppSettings'
 import type { Attendee } from '../src/shared/models'
+import type { AttendeeCheckInResult } from '../src/shared/models/AttendeeCheckIn'
 import type {
   StoredMealValidation,
   ValidateMealRequest,
@@ -26,6 +27,8 @@ const electronAPI = {
     ipcRenderer.invoke('regfox:connect', payload),
   updateRegistrations: (): Promise<RegFoxUpdateResult> =>
     ipcRenderer.invoke('regfox:updateRegistrations'),
+  checkInAttendee: (attendeeId: string): Promise<AttendeeCheckInResult> =>
+    ipcRenderer.invoke('regfox:checkInAttendee', attendeeId),
   printBadgePreview: (): Promise<void> => ipcRenderer.invoke('print:badgePreview'),
   printTestBadge: (): Promise<void> => ipcRenderer.invoke('print:testBadge'),
   listPrinters: (): Promise<PrinterInfoSummary[]> => ipcRenderer.invoke('print:listPrinters'),

@@ -44,3 +44,17 @@ export interface RegFoxListResponse<T> {
     message?: string
   }
 }
+
+export interface RegFoxCheckInResponseData {
+  id?: number
+  date?: string
+  displayId?: string
+}
+
+export interface RegFoxMutationResponse<T> {
+  responseCode?: number
+  data?: T
+  error?: {
+    message?: string
+  }
+}

@@ -10,6 +10,7 @@ import type {
   SetupStatus,
 } from './shared/models/AppSettings'
 import type { Attendee } from './shared/models'
+import type { AttendeeCheckInResult } from './shared/models/AttendeeCheckIn'
 import type {
   StoredMealValidation,
   ValidateMealRequest,
@@ -25,6 +26,7 @@ interface ElectronAPI {
   getAttendees: () => Promise<Attendee[]>
   connectRegFox: (payload: { apiKey: string; eventId: string }) => Promise<RegFoxConnectResult>
   updateRegistrations: () => Promise<RegFoxUpdateResult>
+  checkInAttendee: (attendeeId: string) => Promise<AttendeeCheckInResult>
   printBadgePreview: () => Promise<void>
   printTestBadge: () => Promise<void>
   listPrinters: () => Promise<PrinterInfoSummary[]>

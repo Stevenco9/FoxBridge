@@ -32,6 +32,12 @@
   min-height: 0;
 }
 
+.attendee-detail {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
 .attendee-search__main {
   flex: 1;
   min-width: 0;

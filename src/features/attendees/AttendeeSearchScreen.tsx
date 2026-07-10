@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Attendee } from '../../shared/models'
 import type { AppLanguage, SetupStatus } from '../../shared/models/AppSettings'
 import BadgePreviewPanel from '../badge/BadgePreview'
+import AttendeeCheckInPanel from './AttendeeCheckInPanel'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import ConnectPhonePanel from '../operations/ConnectPhonePanel'
 import OperationsHome from '../operations/OperationsHome'
@@ -195,7 +196,15 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         )}
 
         {selectedAttendee && (
-          <section ref={badgeRef}>
+          <section ref={badgeRef} className="attendee-detail">
+            <AttendeeCheckInPanel
+              attendee={selectedAttendee}
+              onCheckedIn={(updated) => {
+                setAttendees((current) =>
+                  current.map((entry) => (entry.id === updated.id ? updated : entry)),
+                )
+              }}
+            />
             <BadgePreviewPanel
               attendee={selectedAttendee}
               layout={badgeLayout}
