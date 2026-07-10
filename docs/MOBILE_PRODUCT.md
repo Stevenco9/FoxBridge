@@ -1,6 +1,6 @@
 # FoxBridge Mobile — Product Definition
 
-**Status:** Planning — mobile web scanner not built yet  
+**Status:** Implemented (Sprint 11–13B)  
 **Last updated:** July 2026  
 **Audience:** Anyone designing or building the FoxBridge mobile experience
 
@@ -72,6 +72,20 @@ Scan QR → See attendee name + entitlements → Tap meal → Done
 
 **Target path length:** one scan, zero to one taps (if only one meal applies), then ready for the next scan.
 
+### Workflow C — Pair a phone (organizer → volunteer)
+
+```
+Organizer taps Connect a phone → Volunteer scans QR with Camera app → Ready to scan
+```
+
+| Step | Volunteer sees | System does |
+|------|----------------|-------------|
+| 1. Pair | Camera app opens hosted PWA | `/pair?token=` exchanges one-time pairing token for scanner session |
+| 2. Ready | Conference name + Scan attendee badge | Session stored; no sign-in, name, or conference picker |
+| 3. Scan | Same as Workflow A | Lookup + validate meals |
+
+Manual sign-in (`/sign-in`) and conference picker remain **development fallbacks only** (`import.meta.env.DEV`).
+
 ### Workflow B — Manual code entry (fallback)
 
 When the camera fails (damaged badge, glare, forgotten badge):
@@ -81,14 +95,6 @@ Enter code → Same identify + validate screen
 ```
 
 Manual entry is a **fallback**, not the happy path. It must exist but should not dominate the UI.
-
-### Workflow C — Session start (once per shift)
-
-Before Workflow A, the volunteer enters a **scanner code** or conference access credential provided by desktop staff. This is not repeated for every attendee.
-
-```
-Enter scanner code → Confirm station/meal period → Begin scanning
-```
 
 No RegFox API keys, no account creation, no event configuration on mobile.
 

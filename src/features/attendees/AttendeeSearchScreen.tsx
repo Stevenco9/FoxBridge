@@ -1,60 +1,75 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Attendee } from '../../shared/models'
+import type { AppLanguage, SetupStatus } from '../../shared/models/AppSettings'
 import BadgePreviewPanel from '../badge/BadgePreview'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
-import CloudStatusPanel from '../cloud/CloudStatusPanel'
+import ConnectPhonePanel from '../operations/ConnectPhonePanel'
+import OperationsHome from '../operations/OperationsHome'
 import MealValidationPanel from '../meals/MealValidationPanel'
-import ScannerServerControls from '../scanner/ScannerServerControls'
+import SettingsModal from '../settings/SettingsModal'
 import { getAttendeeFullName, searchAttendees } from './searchAttendees'
 import './AttendeeSearchScreen.css'
 
-export default function AttendeeSearchScreen() {
+interface AttendeeSearchScreenProps {
+  onReopenSetup: () => void
+}
+
+export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchScreenProps) {
   const [attendees, setAttendees] = useState<Attendee[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [badgeLayout, setBadgeLayout] = useState<BadgeLayoutSelection>(DEFAULT_BADGE_LAYOUT)
+  const [language, setLanguage] = useState<AppLanguage>('en')
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [connectPhoneOpen, setConnectPhoneOpen] = useState(false)
+  const [connectRefreshToken, setConnectRefreshToken] = useState(0)
+  const [showDesktopMealValidation, setShowDesktopMealValidation] = useState(false)
 
-  useEffect(() => {
-    let isMounted = true
+  const searchRef = useRef<HTMLElement | null>(null)
+  const badgeRef = useRef<HTMLElement | null>(null)
 
-    async function loadAttendees(): Promise<void> {
-      try {
-        if (!window.electronAPI?.getAttendees) {
-          throw new Error('Attendee loading is only available in the desktop app.')
-        }
+  const loadAttendees = useCallback(async (): Promise<void> => {
+    setIsLoading(true)
+    setError(null)
 
-        const data = await window.electronAPI.getAttendees()
-        if (!isMounted) {
-          return
-        }
-
-        setAttendees(data)
-        setError(null)
-      } catch (loadError) {
-        if (!isMounted) {
-          return
-        }
-
-        const message =
-          loadError instanceof Error
-            ? loadError.message
-            : 'Unable to load attendees from RegFox.'
-        setError(message)
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
+    try {
+      if (!window.electronAPI?.getAttendees) {
+        throw new Error('Attendee loading is only available in the desktop app.')
       }
-    }
 
-    void loadAttendees()
-
-    return () => {
-      isMounted = false
+      const data = await window.electronAPI.getAttendees()
+      setAttendees(data)
+      setError(null)
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error ? loadError.message : 'Unable to load attendees from RegFox.'
+      setError(message)
+    } finally {
+      setIsLoading(false)
     }
   }, [])
+
+  const refreshMeta = useCallback(async (): Promise<void> => {
+    if (!window.electronAPI) {
+      return
+    }
+
+    const [settings, status] = await Promise.all([
+      window.electronAPI.getPublicSettings(),
+      window.electronAPI.getSetupStatus(),
+    ])
+    setLanguage(settings.language)
+    setSetupStatus(status)
+    setShowDesktopMealValidation(settings.showDesktopMealValidation)
+  }, [])
+
+  useEffect(() => {
+    void loadAttendees()
+    void refreshMeta()
+  }, [loadAttendees, refreshMeta])
 
   const filteredAttendees = useMemo(
     () => searchAttendees(attendees, query),
@@ -66,21 +81,41 @@ export default function AttendeeSearchScreen() {
     attendees.find((attendee) => attendee.id === selectedId) ??
     null
 
+  const handleReopenSetup = async (): Promise<void> => {
+    if (window.electronAPI?.resetSetup) {
+      await window.electronAPI.resetSetup()
+    }
+    setSettingsOpen(false)
+    onReopenSetup()
+  }
+
+  const handleLanguageChange = async (nextLanguage: AppLanguage): Promise<void> => {
+    if (!window.electronAPI?.savePublicSettings) {
+      return
+    }
+
+    await window.electronAPI.savePublicSettings({ language: nextLanguage })
+    setLanguage(nextLanguage)
+  }
+
   return (
     <div className="attendee-search">
       <header className="attendee-search__header">
         <div>
           <h1 className="attendee-search__title">FoxBridge</h1>
-          <p className="attendee-search__subtitle">Find an attendee to check in</p>
-        </div>
-        <div className="attendee-search__header-controls">
-          <CloudStatusPanel refreshToken={attendees.length} />
-          <ScannerServerControls refreshToken={attendees.length} />
+          <p className="attendee-search__subtitle">Registration check-in and badge printing</p>
         </div>
       </header>
 
+      <OperationsHome
+        language={language}
+        refreshToken={attendees.length}
+        onConnectPhone={() => setConnectPhoneOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
       <div className="attendee-search__body">
-        <section className="attendee-search__main">
+        <section className="attendee-search__main" ref={searchRef}>
           <label className="search-box" htmlFor="attendee-search-input">
             <span className="search-box__label">Search attendees</span>
             <input
@@ -150,21 +185,46 @@ export default function AttendeeSearchScreen() {
           )}
         </section>
 
-        {!isLoading && !error && (
-          <MealValidationPanel
-            attendees={attendees}
-            selectedAttendee={selectedAttendee}
-          />
+        {!isLoading && !error && showDesktopMealValidation && (
+          <section>
+            <MealValidationPanel
+              attendees={attendees}
+              selectedAttendee={selectedAttendee}
+            />
+          </section>
         )}
 
         {selectedAttendee && (
-          <BadgePreviewPanel
-            attendee={selectedAttendee}
-            layout={badgeLayout}
-            onLayoutChange={setBadgeLayout}
-          />
+          <section ref={badgeRef}>
+            <BadgePreviewPanel
+              attendee={selectedAttendee}
+              layout={badgeLayout}
+              onLayoutChange={setBadgeLayout}
+            />
+          </section>
         )}
       </div>
+
+      <ConnectPhonePanel
+        language={language}
+        open={connectPhoneOpen}
+        refreshToken={connectRefreshToken}
+        onClose={() => setConnectPhoneOpen(false)}
+      />
+
+      <SettingsModal
+        language={language}
+        setupStatus={setupStatus}
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onReopenSetup={() => void handleReopenSetup()}
+        onLanguageChange={(nextLanguage) => void handleLanguageChange(nextLanguage)}
+        onSettingsSaved={() => {
+          void refreshMeta()
+          setConnectRefreshToken((token) => token + 1)
+        }}
+        refreshToken={attendees.length}
+      />
     </div>
   )
 }

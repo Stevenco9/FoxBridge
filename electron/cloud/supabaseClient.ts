@@ -16,7 +16,8 @@ export function getSupabaseServiceClient(): SupabaseClient | null {
     serviceClient &&
     activeConfig &&
     activeConfig.url === config.url &&
-    activeConfig.serviceRoleKey === config.serviceRoleKey
+    activeConfig.serviceRoleKey === config.serviceRoleKey &&
+    activeConfig.conferenceId === config.conferenceId
   ) {
     return serviceClient
   }
@@ -30,4 +31,9 @@ export function getSupabaseServiceClient(): SupabaseClient | null {
   activeConfig = config
 
   return serviceClient
+}
+
+export function resetSupabaseServiceClient(): void {
+  serviceClient = null
+  activeConfig = null
 }

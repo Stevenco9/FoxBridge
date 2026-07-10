@@ -126,13 +126,13 @@ export default function CloudStatusPanel({ refreshToken }: CloudStatusPanelProps
           onClick={() => void handlePublish()}
           disabled={isBusy || !status.configured}
         >
-          Publish attendees
+          Send attendees to mobile scanner
         </button>
       </div>
 
       {!status.configured && (
         <p className="cloud-status-panel__hint">
-          Add Supabase settings to `.env` to enable cloud publish.
+          Configure phone scanning service fields above to enable cloud publish.
         </p>
       )}
 

@@ -44,25 +44,76 @@
 }
 
 .meal-entitlement-list__item {
-  min-height: 3rem;
   padding: 0.875rem 1rem;
   border: 2px solid #d1d5db;
   border-radius: 0.875rem;
   background: #ffffff;
 }
 
+.meal-entitlement-list__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .meal-entitlement-list__name {
-  display: block;
+  flex: 1;
   font-size: 1rem;
   font-weight: 700;
   color: #111827;
 }
 
+.meal-entitlement-list__status {
+  flex-shrink: 0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.meal-entitlement-list__status--available {
+  color: #1e40af;
+  background: #dbeafe;
+}
+
+.meal-entitlement-list__status--validating {
+  color: #374151;
+  background: #e5e7eb;
+}
+
+.meal-entitlement-list__status--validated {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.meal-entitlement-list__status--already-validated {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.meal-entitlement-list__status--error {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
 .meal-entitlement-list__meta {
   display: block;
-  margin-top: 0.2rem;
+  margin-top: 0.35rem;
   font-size: 0.85rem;
   color: #6b7280;
+}
+
+.meal-entitlement-list__error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #991b1b;
+}
+
+.meal-entitlement-list__button {
+  margin-top: 0.75rem;
 }
 
 .attendee-result__empty {

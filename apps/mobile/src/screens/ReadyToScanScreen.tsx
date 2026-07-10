@@ -10,8 +10,14 @@ import {
   type AttendeeLookupResult,
   normalizeQrInput,
 } from '../models/attendee'
+import {
+  buildInitialMealRowStates,
+  MealValidationError,
+  type MealRowState,
+} from '../models/mealValidation'
 import { lookupAttendeeByQrIdentifier } from '../services/attendeeService'
-import { clearVolunteerSession, hasCompleteSession, loadVolunteerSession } from '../services/sessionStore'
+import { validateMeal } from '../services/mealValidationService'
+import { hasCompleteSession, loadVolunteerSession } from '../services/sessionStore'
 
 type ScannerMode = 'home' | 'scanning' | 'manual' | 'loading' | 'result'
 
@@ -22,10 +28,11 @@ export default function ReadyToScanScreen() {
   const [manualCode, setManualCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [attendee, setAttendee] = useState<AttendeeLookupResult | null>(null)
+  const [mealStates, setMealStates] = useState<MealRowState[]>([])
 
   useEffect(() => {
     if (!hasCompleteSession(session)) {
-      navigate('/sign-in', { replace: true })
+      navigate('/', { replace: true })
     }
   }, [navigate, session])
 
@@ -34,6 +41,7 @@ export default function ReadyToScanScreen() {
     setManualCode('')
     setError(null)
     setAttendee(null)
+    setMealStates([])
   }, [])
 
   const performLookup = useCallback(
@@ -45,10 +53,14 @@ export default function ReadyToScanScreen() {
       setMode('loading')
       setError(null)
       setAttendee(null)
+      setMealStates([])
 
       try {
         const result = await lookupAttendeeByQrIdentifier(session.conferenceId, rawValue)
         setAttendee(result)
+        setMealStates(
+          buildInitialMealRowStates(result.mealEntitlements, result.existingValidations),
+        )
         setMode('result')
       } catch (lookupError) {
         const message =
@@ -69,6 +81,59 @@ export default function ReadyToScanScreen() {
     [performLookup],
   )
 
+  const handleValidateMeal = useCallback(
+    async (mealKey: string, mealLabel: string): Promise<void> => {
+      if (!session || !attendee) {
+        return
+      }
+
+      setMealStates((current) =>
+        current.map((meal) =>
+          meal.mealKey === mealKey
+            ? { ...meal, status: 'validating', errorMessage: null }
+            : meal,
+        ),
+      )
+
+      try {
+        const result = await validateMeal({
+          conferenceId: session.conferenceId,
+          attendeeId: attendee.qrIdentifier,
+          mealKey,
+          mealLabel,
+          scannerSessionId: session.scannerSessionId,
+        })
+
+        setMealStates((current) =>
+          current.map((meal) =>
+            meal.mealKey === mealKey
+              ? {
+                  ...meal,
+                  status: result.status === 'created' ? 'validated' : 'already_validated',
+                  validatedAt: result.validatedAt,
+                  errorMessage: null,
+                }
+              : meal,
+          ),
+        )
+      } catch (validationError) {
+        const message =
+          validationError instanceof MealValidationError
+            ? validationError.message
+            : 'Unable to validate this meal. Try again.'
+
+        setMealStates((current) =>
+          current.map((meal) =>
+            meal.mealKey === mealKey
+              ? { ...meal, status: 'error', errorMessage: message }
+              : meal,
+          ),
+        )
+      }
+    },
+    [attendee, session],
+  )
+
   const handleScannerError = useCallback((scannerError: AttendeeLookupError): void => {
     setError(scannerError.message)
     setMode('home')
@@ -79,32 +144,27 @@ export default function ReadyToScanScreen() {
     void performLookup(manualCode)
   }
 
-  const handleSignOut = (): void => {
-    clearVolunteerSession()
-    navigate('/sign-in', { replace: true })
-  }
-
   if (!hasCompleteSession(session)) {
     return null
   }
 
   const title =
     mode === 'result'
-      ? 'Attendee found'
+      ? attendee?.displayName || 'Attendee found'
       : mode === 'manual'
         ? 'Enter badge code'
         : mode === 'scanning'
-          ? 'Scan badge'
-          : 'Ready to scan'
+          ? 'Scan attendee badge'
+          : 'Scan attendee badge'
 
   const subtitle =
     mode === 'result'
-      ? 'Confirm this is the person at the meal line.'
+      ? session.conferenceName
       : mode === 'manual'
         ? 'Type the code from the badge if the camera is not working.'
         : mode === 'scanning'
           ? 'Hold the printed badge QR code steady in the frame.'
-          : 'Scan a badge QR code or enter the code manually.'
+          : session.conferenceName
 
   const footer = (() => {
     if (mode === 'loading') {
@@ -138,23 +198,15 @@ export default function ReadyToScanScreen() {
 
     if (mode === 'result') {
       return (
-        <div className="scanner-actions">
-          <PrimaryButton onClick={resetToHome}>Scan another badge</PrimaryButton>
-          <PrimaryButton variant="secondary" onClick={handleSignOut}>
-            Sign out
-          </PrimaryButton>
-        </div>
+        <PrimaryButton onClick={resetToHome}>Scan next attendee</PrimaryButton>
       )
     }
 
     return (
       <div className="scanner-actions">
-        <PrimaryButton onClick={() => setMode('scanning')}>Scan badge</PrimaryButton>
+        <PrimaryButton onClick={() => setMode('scanning')}>Scan attendee badge</PrimaryButton>
         <PrimaryButton variant="secondary" onClick={() => setMode('manual')}>
           Enter code manually
-        </PrimaryButton>
-        <PrimaryButton variant="secondary" onClick={handleSignOut}>
-          Sign out
         </PrimaryButton>
       </div>
     )
@@ -162,20 +214,6 @@ export default function ReadyToScanScreen() {
 
   return (
     <MobileLayout title={title} subtitle={subtitle} footer={footer}>
-      {mode !== 'result' && mode !== 'scanning' && (
-        <>
-          <div className="status-card" style={{ marginBottom: '1rem' }}>
-            <p className="status-card__label">Volunteer</p>
-            <p className="status-card__value">{session.volunteerName}</p>
-          </div>
-
-          <div className="status-card" style={{ marginBottom: '1rem' }}>
-            <p className="status-card__label">Conference</p>
-            <p className="status-card__value">{session.conferenceName}</p>
-          </div>
-        </>
-      )}
-
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -184,9 +222,9 @@ export default function ReadyToScanScreen() {
 
       {mode === 'home' && (
         <div className="scanner-home-card">
-          <p className="scanner-home-card__title">Scanner ready</p>
+          <p className="scanner-home-card__title">{session.conferenceName}</p>
           <p className="scanner-home-card__text">
-            Use the camera to scan a printed badge, or enter the QR value manually.
+            Scan a badge QR code or enter the code manually.
           </p>
         </div>
       )}
@@ -213,7 +251,7 @@ export default function ReadyToScanScreen() {
             <p className="form-field__hint">
               {normalizeQrInput(manualCode)
                 ? 'This should match the value encoded in the badge QR.'
-                : 'Find this on the badge or from desktop staff.'}
+                : 'Find this on the badge or ask desktop staff.'}
             </p>
           </label>
         </form>
@@ -222,11 +260,17 @@ export default function ReadyToScanScreen() {
       {mode === 'loading' && (
         <div className="scanner-home-card" role="status">
           <p className="scanner-home-card__title">Looking up attendee…</p>
-          <p className="scanner-home-card__text">Checking Supabase for this conference.</p>
+          <p className="scanner-home-card__text">Checking registration for this conference.</p>
         </div>
       )}
 
-      {mode === 'result' && attendee && <AttendeeLookupResultView attendee={attendee} />}
+      {mode === 'result' && attendee && (
+        <AttendeeLookupResultView
+          attendee={attendee}
+          mealStates={mealStates}
+          onValidateMeal={(mealKey, mealLabel) => void handleValidateMeal(mealKey, mealLabel)}
+        />
+      )}
     </MobileLayout>
   )
 }

@@ -6,6 +6,7 @@ import {
   isValidQrInput,
   normalizeQrInput,
 } from '../models/attendee'
+import { getMealValidationsForAttendee } from './mealValidationService'
 
 interface AttendeeRow {
   attendee_id: string
@@ -150,11 +151,14 @@ export async function lookupAttendeeByQrIdentifier(
     throw wrapSupabaseError(error)
   }
 
+  const existingValidations = await getMealValidationsForAttendee(conferenceId, entitlementKey)
+
   return {
     attendeeId: attendee.attendee_id,
     registrationId: attendee.registration_id,
     displayName: attendee.display_name,
     qrIdentifier: attendee.qr_identifier,
     mealEntitlements: ((data ?? []) as MealEntitlementRow[]).map(mapEntitlement),
+    existingValidations,
   }
 }

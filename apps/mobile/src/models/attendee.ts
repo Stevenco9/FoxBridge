@@ -11,6 +11,11 @@ export interface AttendeeLookupResult {
   displayName: string
   qrIdentifier: string
   mealEntitlements: MealEntitlement[]
+  existingValidations: Array<{
+    mealKey: string
+    mealLabel: string
+    validatedAt: string
+  }>
 }
 
 export type AttendeeLookupErrorCode =

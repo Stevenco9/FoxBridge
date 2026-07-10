@@ -1,0 +1,50 @@
+.advanced-section {
+  padding: 0 1.5rem 1rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.advanced-section__toggle {
+  width: 100%;
+  padding: 0.75rem 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.advanced-section__toggle-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.advanced-section__toggle-hint {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.advanced-section__content {
+  padding-bottom: 0.5rem;
+}
+
+.advanced-section__note {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.advanced-section__panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.advanced-section__panels .cloud-status-panel,
+.advanced-section__panels .scanner-server-controls {
+  flex: 1 1 14rem;
+}

@@ -11,11 +11,13 @@ Operational checklist for event organizers and volunteers running registration a
 ### RegFox & FoxBridge setup
 
 - [ ] Install and open FoxBridge on the registration laptop
-- [ ] Test RegFox connection (`Connected` message on launch)
-- [ ] Verify **API Key** and **Event ID** are correct for this event
-- [ ] Confirm attendee sync — attendee list loads and count looks reasonable
+- [ ] Complete the **guided setup wizard** (or confirm setup already finished)
+- [ ] On **Connect registration**, enter RegFox API key and page ID — attendees should load automatically
+- [ ] Confirm attendee count looks reasonable after setup
 - [ ] Spot-check a few registrants against RegFox (names, meal choices, registration type)
 - [ ] Test search functionality (name, email, organization)
+- [ ] On **Mobile scanner** step, confirm “Mobile scanner ready” (or configure mobile service fields)
+- [ ] Use **Connect a phone** from the operations home to verify QR, scanner code, and mobile URL
 
 ### Badge printing
 
@@ -62,8 +64,8 @@ Pack and label everything before travel.
 
 Run through this **each morning** before doors open.
 
-- [ ] Open FoxBridge
-- [ ] Test RegFox connection
+- [ ] Open FoxBridge — operations home should show conference name and status
+- [ ] Click **Update registrations** if RegFox changed overnight
 - [ ] Verify internet connection
 - [ ] Print one test badge and confirm layout and QR code
 - [ ] Verify printer is online and has labels loaded
@@ -89,7 +91,7 @@ Run through this **before the first meal line opens**.
 - [ ] Confirm validation works (button confirms the meal)
 - [ ] Test duplicate validation prevention (**Already validated** message)
 - [ ] Confirm dietary restrictions display when applicable
-- [ ] Brief volunteer on: scan → verify name → validate only the meal being served
+- [ ] Brief meal-line volunteers: use **Connect a phone** to open the mobile scanner, or desktop **Validate meal**
 
 > **Note:** Camera-based QR scanning in FoxBridge is planned for a future release. For now, paste the QR value or select the attendee from the list.
 
@@ -136,7 +138,9 @@ Quick workflow for each attendee:
 | **USB fallback** | Connect USB cable → select Brother printer in print dialog → test print |
 | **Wrong badge information** | Confirm correct attendee is selected; check RegFox registration; re-sync by restarting FoxBridge |
 | **QR won't scan** | Ensure QR is not smudged; increase contrast (reprint if needed); verify phone camera focus; paste attendee id manually at meal station |
-| **RegFox connection lost** | Check Wi‑Fi; wait and retry; confirm API Key/Event ID still valid; use backup laptop if needed |
+| **RegFox connection lost** | Check Wi‑Fi; click **Update registrations**; confirm API key/page ID in Settings → Reopen setup if needed |
+| **Mobile scanner not working** | Operations home → **Connect a phone**; confirm scanner code; use **Update registrations** |
+| **Need to change printer or credentials** | Settings (gear) → **Reopen setup wizard** |
 | **Duplicate attendee names** | Use email or organization in search; confirm identity verbally before printing |
 | **Meal validation missing meals** | Confirm attendee’s registration in RegFox includes meal selections; refresh attendee list |
 

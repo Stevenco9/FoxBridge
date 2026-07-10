@@ -6,6 +6,8 @@ import { registerCloudHandlers } from './cloudHandlers'
 import { registerMealValidationHandlers } from './mealValidationHandlers'
 import { registerPrintHandlers } from './printHandlers'
 import { registerRegFoxHandlers } from './regfoxHandlers'
+import { registerSettingsHandlers } from './settingsHandlers'
+import { initializeSettings } from './settings/settingsService'
 import {
   maybeAutoStartScannerServer,
   registerScannerServerHandlers,
@@ -43,6 +45,8 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   getDatabase()
+  await initializeSettings()
+  registerSettingsHandlers()
   registerRegFoxHandlers()
   registerPrintHandlers()
   registerMealValidationHandlers()
@@ -61,6 +65,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     getDatabase()
+    registerSettingsHandlers()
     registerRegFoxHandlers()
     registerPrintHandlers()
     registerMealValidationHandlers()

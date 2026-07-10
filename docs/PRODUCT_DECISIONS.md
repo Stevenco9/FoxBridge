@@ -35,6 +35,15 @@ Meal redemption, badge printing history, check-in actions, and other on-site act
 **Good defaults are better than complicated configuration.**  
 Most events should work out of the box. Advanced options can exist, but volunteers should rarely need them.
 
+**Organizers configure once; volunteers operate all day.**  
+Registration leads run the guided setup wizard (RegFox, printer). Volunteers pair phones by scanning one QR code from the home screen — they should never edit `.env`, enter scanner codes, pick conferences, or understand cloud infrastructure.
+
+**One-scan phone pairing.**  
+A volunteer pairs a phone by scanning one temporary QR code with the phone’s normal camera. No volunteer account, scanner code, conference selection, or technical setup is required.
+
+**Automate steps FoxBridge can perform itself.**  
+Connecting to RegFox should download attendees. Updating registrations should republish to mobile scanners. Setup should not expose separate “load” and “publish” actions to organizers.
+
 ---
 
 ## UX Principles
@@ -102,5 +111,20 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 | `PROJECT_STATE.md` | Current build status and next tasks |
 | **This file** | Rationale and principles behind design choices |
 | `MOBILE_PRODUCT.md` | Mobile volunteer scope, workflows, and anti-scope-creep guardrails |
+| `CONFERENCE_CHECKLIST.md` | Organizer + volunteer operational checklist |
+
+### Sprint 13B — One-scan phone pairing
+
+- **Volunteer pairs by scanning one temporary QR code** with the phone’s normal Camera app. No volunteer account, scanner code, conference selection, or technical setup is required.
+- **Organizer-facing UI is non-technical** — no `.env`, Supabase, RPC, anon key, service role, localhost, or scanner codes in Conference Mode. Technical configuration lives under Settings → Advanced only.
+- **Pairing tokens are short-lived and single-use** — desktop creates token via service role; mobile exchanges via `exchange_scanner_pairing_token`; hash stored in `scanner_pairing_tokens`.
+- **HTTPS scanner web address required for production QR** — packaged default or Settings → Advanced override (“Scanner web address”).
+- **Desktop meal validation hidden by default** — mobile is the primary meal-line tool; desktop column available via Advanced toggle.
+
+### Sprint 13A — Guided setup decisions
+
+- **In-app settings over `.env` for organizers** — RegFox and phone scanning service credentials are saved in Electron `userData` with encrypted secrets. `.env` remains a developer fallback.
+- **Wizard vs operations home** — First-time and reset flows use a step-by-step wizard. Day-of operations use a simplified home screen focused on conference status and Connect a phone.
+- **Advanced holds legacy tools** — Cloud status, manual publish, localhost scanner server, and desktop meal validation stay available but outside the default AdAgrA workflow.
 
 When a decision feels ambiguous, return to the principles above: fewer clicks, hidden complexity, RegFox as source of truth, FoxBridge as owner of on-site operations, and defaults that work without a manual.

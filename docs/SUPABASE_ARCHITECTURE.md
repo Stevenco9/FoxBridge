@@ -1,6 +1,6 @@
 # FoxBridge — Supabase Architecture (Planning)
 
-**Status:** Design only — not implemented  
+**Status:** Implemented (Sprint 10–13B) — migrations in `supabase/migrations/`  
 **Last updated:** July 2026  
 **Audience:** Developers continuing FoxBridge after desktop MVP
 
@@ -236,14 +236,37 @@ Volunteer/device access for a conference. Start with **scanner_sessions** for MV
 | `conference_id` | `uuid` FK | |
 | `code` | `text` | Human-enterable scanner code (hashed at rest) |
 | `label` | `text` | e.g. “Meal line 1 – Friday lunch” |
+| `role` | `text` | e.g. `meal_scanner` (Sprint 13B) |
+| `paired_at` | `timestamptz` nullable | Set when created via one-scan pairing |
 | `expires_at` | `timestamptz` nullable | Auto-revoke after event |
 | `revoked_at` | `timestamptz` nullable | |
 | `created_at` | `timestamptz` | |
 | `last_seen_at` | `timestamptz` nullable | |
 
+### 4.6 `scanner_pairing_tokens` (Sprint 13B)
+
+One-time pairing codes for **Connect a phone**. Desktop creates; mobile exchanges.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` PK | Used by desktop to poll `used_at` |
+| `conference_id` | `uuid` FK | |
+| `token_hash` | `text` UNIQUE | SHA-256 of raw token; raw token only in QR URL |
+| `role` | `text` | Default `meal_scanner` |
+| `expires_at` | `timestamptz` | ~10 minutes |
+| `used_at` | `timestamptz` nullable | Set atomically on exchange |
+| `created_at` | `timestamptz` | |
+
+**RPCs:**
+
+- Desktop (service role): insert into `scanner_pairing_tokens`
+- Mobile (anon): `exchange_scanner_pairing_token(p_token)` — verifies hash, expiration, unused state; marks used; creates `scanner_sessions` row; returns session + conference info
+
+Pairing URL: `https://<scanner-host>/pair?token=<raw-token>`
+
 Alternative: **`scanner_users`** with Supabase Auth email/password for recurring staff — defer until post-AdAgrA.
 
-**MVP recommendation:** Conference admin generates one or more **scanner codes** on desktop (or Supabase dashboard during bootstrap). Mobile app stores session token after code exchange.
+**Production pairing (Sprint 13B):** Organizer shows one HTTPS QR. Volunteer scans with Camera app. No manual scanner code entry.
 
 ---
 
