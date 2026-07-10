@@ -6,6 +6,14 @@ import {
 } from '../../integrations/regfox/mealPurchaseClassification'
 import { getAttendeeFullName } from '../attendees/searchAttendees'
 import {
+  expandCompleteMealPackage,
+  isCompleteElevenMealPackage,
+  isCompleteMealPackageKey,
+  resolveCanonicalMealIdFromLabel,
+  resolveCanonicalMealServiceId,
+  resolveCanonicalPlanIdFromLabel,
+} from '../../integrations/regfox/mealLabelNormalization'
+import {
   MEAL_PLAN_EXPANSIONS,
   getMealDisplayName,
   type ValidatableMeal,
@@ -50,23 +58,59 @@ export function getIndividualMealPurchases(
 /**
  * Returns deduplicated individual meals the attendee may validate, combining
  * explicit à la carte selections and meals included through meal plans.
+ * Complete meal packages are expanded and never returned as validatable meals.
  */
 export function getValidatableMeals(attendee: Attendee): ValidatableMeal[] {
   const byId = new Map<string, ValidatableMeal>()
 
   for (const purchase of getIndividualMealPurchases(attendee.purchases)) {
-    byId.set(purchase.id, {
-      id: purchase.id,
-      name: purchase.name,
+    if (
+      isCompleteMealPackageKey(purchase.id) ||
+      isCompleteElevenMealPackage(purchase.id, purchase.name)
+    ) {
+      // Stale or misclassified package rows must never become validate buttons.
+      const packageExpansion = expandCompleteMealPackage(purchase.id, purchase.name)
+      if (packageExpansion) {
+        for (const mealId of packageExpansion) {
+          if (byId.has(mealId)) {
+            continue
+          }
+          byId.set(mealId, {
+            id: mealId,
+            name: getMealDisplayName(mealId),
+            source: 'mealPlan',
+            sourcePlanId: purchase.id,
+          })
+        }
+      }
+      continue
+    }
+
+    const mealId = resolveCanonicalMealServiceId(
+      resolveCanonicalMealIdFromLabel(purchase.name) ?? purchase.id,
+    )
+    if (isCompleteMealPackageKey(mealId)) {
+      continue
+    }
+
+    byId.set(mealId, {
+      id: mealId,
+      name: getMealDisplayName(mealId),
       source: 'individual',
     })
   }
 
   for (const plan of getMealPlanPurchases(attendee.purchases)) {
-    const expandedMealIds = MEAL_PLAN_EXPANSIONS[plan.id] ?? []
+    const packageExpansion = expandCompleteMealPackage(plan.id, plan.name)
+    const planId = packageExpansion
+      ? plan.id
+      : MEAL_PLAN_EXPANSIONS[plan.id]
+        ? plan.id
+        : (resolveCanonicalPlanIdFromLabel(plan.name) ?? plan.id)
+    const expandedMealIds = packageExpansion ?? MEAL_PLAN_EXPANSIONS[planId] ?? []
 
     for (const mealId of expandedMealIds) {
-      if (byId.has(mealId)) {
+      if (isCompleteMealPackageKey(mealId) || byId.has(mealId)) {
         continue
       }
 
@@ -74,17 +118,19 @@ export function getValidatableMeals(attendee: Attendee): ValidatableMeal[] {
         id: mealId,
         name: getMealDisplayName(mealId),
         source: 'mealPlan',
-        sourcePlanId: plan.id,
+        sourcePlanId: planId,
       })
     }
   }
 
   return sortMealsChronologically(
-    [...byId.values()].map((meal) => ({
-      mealKey: meal.id,
-      mealLabel: meal.name,
-      meal,
-    })),
+    [...byId.values()]
+      .filter((meal) => !isCompleteMealPackageKey(meal.id))
+      .map((meal) => ({
+        mealKey: meal.id,
+        mealLabel: meal.name,
+        meal,
+      })),
   ).map(({ meal }) => meal)
 }
 

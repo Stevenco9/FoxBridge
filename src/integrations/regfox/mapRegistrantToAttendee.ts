@@ -1,5 +1,5 @@
 import type { Attendee, AttendeeCustomField, AttendeePurchase } from '../../shared/models'
-import { classifyPurchaseCategory } from './mealPurchaseClassification'
+import { resolvePurchaseIdentity } from './mealLabelNormalization'
 import type { RegFoxFieldDataItem, RegFoxRegistrant } from './regfoxTypes'
 
 const STANDARD_FIELD_PATHS = new Set([
@@ -134,11 +134,13 @@ function mapPurchases(
       continue
     }
 
+    const identity = resolvePurchaseIdentity(field.path, field.label)
+
     purchases.push({
-      id: field.path,
+      id: identity.id,
       name: field.label,
       quantity: 1,
-      category: classifyPurchaseCategory(field.path),
+      category: identity.category,
     })
   }
 

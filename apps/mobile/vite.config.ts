@@ -1,8 +1,21 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const mobileRoot = path.dirname(fileURLToPath(import.meta.url))
+const buildId = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || String(Date.now())
+
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_MOBILE_BUILD_ID': JSON.stringify(buildId),
+  },
+  resolve: {
+    alias: {
+      '@foxbridge/shared-meals': path.resolve(mobileRoot, '../../src/shared/meals'),
+    },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -33,6 +46,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
       },
     }),

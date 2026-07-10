@@ -118,10 +118,31 @@ async function upsertAttendees(rows: PublishAttendeeRow[]): Promise<void> {
   }
 }
 
-async function upsertMealEntitlements(rows: PublishMealEntitlementRow[]): Promise<void> {
+async function replaceMealEntitlements(
+  conferenceId: string,
+  attendeeIds: string[],
+  rows: PublishMealEntitlementRow[],
+): Promise<void> {
   const client = getSupabaseServiceClient()
   if (!client) {
     throw new Error('Supabase is not configured.')
+  }
+
+  // Full replace per attendee so stale package keys (e.g. multipleChoice.meal1)
+  // from earlier publishes cannot linger as phantom validate buttons.
+  for (const batch of chunk(attendeeIds, UPSERT_BATCH_SIZE)) {
+    const { error: deleteError } = await client
+      .from('meal_entitlements')
+      .delete()
+      .eq('conference_id', conferenceId)
+      .in('attendee_id', batch)
+    if (deleteError) {
+      throw new Error(`meal_entitlements delete failed: ${deleteError.message}`)
+    }
+  }
+
+  if (rows.length === 0) {
+    return
   }
 
   for (const batch of chunk(rows, UPSERT_BATCH_SIZE)) {
@@ -192,19 +213,23 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
   const publishedAt = new Date().toISOString()
   const attendeeRows: PublishAttendeeRow[] = []
   const entitlementRows: PublishMealEntitlementRow[] = []
+  const entitlementAttendeeIds = new Set<string>()
 
   for (const attendee of sourceAttendees) {
     const payload = buildAttendeePublishPayload(attendee, conferenceId, publishedAt)
     attendeeRows.push(payload.attendee)
     entitlementRows.push(...payload.mealEntitlements)
+    entitlementAttendeeIds.add(payload.attendee.qr_identifier)
   }
 
   try {
     await upsertAttendees(attendeeRows)
 
-    if (entitlementRows.length > 0) {
-      await upsertMealEntitlements(entitlementRows)
-    }
+    await replaceMealEntitlements(
+      conferenceId,
+      [...entitlementAttendeeIds],
+      entitlementRows,
+    )
 
     await client
       .from('conferences')

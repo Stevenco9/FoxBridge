@@ -3,6 +3,15 @@
  * Derived from RegFox form descriptions for the AdAgrA-style mealPan field.
  */
 
+import {
+  ADULT_COMPLETE_ELEVEN_MEAL_PACKAGE_PATH,
+  CANONICAL_MEAL_SERVICE_LABELS,
+  CANONICAL_MEAL_SERVICE_ORDER,
+  CHILDREN_COMPLETE_ELEVEN_MEAL_PACKAGE_PATH,
+  COMPLETE_ELEVEN_MEAL_EXPANSION,
+  getCanonicalMealLabel,
+} from '../../shared/meals/canonicalMealOrder'
+
 export interface ValidatableMeal {
   id: string
   name: string
@@ -13,17 +22,16 @@ export interface ValidatableMeal {
 
 /** Canonical individual meal purchase ids and display labels. */
 export const VALIDATABLE_MEAL_DEFINITIONS: Record<string, string> = {
-  'mealPan.thursdayDinner': 'Thursday dinner',
-  'mealPan.fridayBreakfast': 'Friday breakfast',
-  'mealPan.fridayLunch': 'Friday lunch',
-  'mealPan.fridayDinner': 'Friday Dinner',
-  'mealPan.sabbathBreakfast': 'Sabbath breakfast',
-  'mealPan.sabbathLuch': 'Sabbath luch',
-  'mealPan.sabbathDinner': 'Sabbath Dinner',
+  ...CANONICAL_MEAL_SERVICE_LABELS,
+  // English test-page labels retained for mealPan keys when not overridden above.
+  // México Spanish labels from CANONICAL_MEAL_SERVICE_LABELS take precedence for shared keys.
 }
 
 /** Display order for validatable meals on badges and validation UI. */
-export const VALIDATABLE_MEAL_ORDER: readonly string[] = [
+export const VALIDATABLE_MEAL_ORDER: readonly string[] = CANONICAL_MEAL_SERVICE_ORDER
+
+/** English AdAgrA test-page full plan: Thursday dinner through Sabbath dinner. */
+const FULL_MEAL_PLAN_MEALS: readonly string[] = [
   'mealPan.thursdayDinner',
   'mealPan.fridayBreakfast',
   'mealPan.fridayLunch',
@@ -32,8 +40,6 @@ export const VALIDATABLE_MEAL_ORDER: readonly string[] = [
   'mealPan.sabbathLuch',
   'mealPan.sabbathDinner',
 ]
-
-const FULL_MEAL_PLAN_MEALS: readonly string[] = [...VALIDATABLE_MEAL_ORDER]
 
 /** RegFox description: "Thursday Dinner- Friday Dinner" */
 const HALF_MEAL_PLAN_MEALS: readonly string[] = [
@@ -49,6 +55,7 @@ const HALF_MEAL_PLAN_MEALS: readonly string[] = [
  * - Full Meal Plan: "All 7 meals, Thursday Dinner to Sabbath Dinner"
  * - Half Meal plan: "Thursday Dinner- Friday Dinner"
  * - Im bringing my own food: "No meals during the conference"
+ * - México complete packages (adult + children): same 11 meal services
  */
 export const MEAL_PLAN_EXPANSIONS: Record<string, readonly string[]> = {
   'mealPan.fullMealPlan': FULL_MEAL_PLAN_MEALS,
@@ -57,8 +64,10 @@ export const MEAL_PLAN_EXPANSIONS: Record<string, readonly string[]> = {
   'meals.session1': FULL_MEAL_PLAN_MEALS,
   'meals.session2': HALF_MEAL_PLAN_MEALS,
   'meals.session3': [],
+  [ADULT_COMPLETE_ELEVEN_MEAL_PACKAGE_PATH]: COMPLETE_ELEVEN_MEAL_EXPANSION,
+  [CHILDREN_COMPLETE_ELEVEN_MEAL_PACKAGE_PATH]: COMPLETE_ELEVEN_MEAL_EXPANSION,
 }
 
 export function getMealDisplayName(mealId: string): string {
-  return VALIDATABLE_MEAL_DEFINITIONS[mealId] ?? mealId
+  return getCanonicalMealLabel(mealId) || VALIDATABLE_MEAL_DEFINITIONS[mealId] || mealId
 }

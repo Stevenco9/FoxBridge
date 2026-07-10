@@ -1,3 +1,4 @@
+import { isCompleteMealPackageKey } from '../../../../src/shared/meals/canonicalMealOrder.ts'
 import { getSupabaseClient } from '../lib/supabaseClient'
 import {
   AttendeeLookupError,
@@ -7,7 +8,6 @@ import {
   normalizeQrInput,
 } from '../models/attendee'
 import { getMealValidationsForAttendee } from './mealValidationService'
-import { sortMealsChronologically } from '../utils/mealOrder'
 
 interface AttendeeRow {
   attendee_id: string
@@ -104,6 +104,10 @@ async function findAttendeeRow(
   return (byAttendeeId.data as AttendeeRow | null) ?? null
 }
 
+/**
+ * Loads attendee + raw meal entitlement rows from Supabase.
+ * Display ordering happens only in buildMealDisplayModel (not here).
+ */
 export async function lookupAttendeeByQrIdentifier(
   conferenceId: string,
   rawQrValue: string,
@@ -153,9 +157,10 @@ export async function lookupAttendeeByQrIdentifier(
 
   const existingValidations = await getMealValidationsForAttendee(conferenceId, entitlementKey)
 
-  const mealEntitlements = sortMealsChronologically(
-    ((data ?? []) as MealEntitlementRow[]).map(mapEntitlement),
-  )
+  // Keep Supabase row order as-is. Sorting is owned by buildMealDisplayModel.
+  const mealEntitlements = ((data ?? []) as MealEntitlementRow[])
+    .filter((row) => !isCompleteMealPackageKey(row.meal_key))
+    .map(mapEntitlement)
 
   return {
     attendeeId: attendee.attendee_id,

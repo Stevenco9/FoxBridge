@@ -11,7 +11,7 @@ import {
   normalizeQrInput,
 } from '../models/attendee'
 import {
-  buildInitialMealRowStates,
+  buildMealDisplayModel,
   MealValidationError,
   type MealRowState,
 } from '../models/mealValidation'
@@ -58,8 +58,9 @@ export default function ReadyToScanScreen() {
       try {
         const result = await lookupAttendeeByQrIdentifier(session.conferenceId, rawValue)
         setAttendee(result)
+        // Single deterministic display pipeline — do not re-sort afterward.
         setMealStates(
-          buildInitialMealRowStates(result.mealEntitlements, result.existingValidations),
+          buildMealDisplayModel(result.mealEntitlements, result.existingValidations),
         )
         setMode('result')
       } catch (lookupError) {
