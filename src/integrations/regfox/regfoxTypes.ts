@@ -40,6 +40,9 @@ export interface RegFoxListResponse<T> {
   responseCode?: number
   data?: T[]
   hasMore?: boolean
+  totalResults?: number
+  /** Response-envelope cursor for the next page (not necessarily the last row's id). */
+  startingAfter?: number | string
   error?: {
     message?: string
   }

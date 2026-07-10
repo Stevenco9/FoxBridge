@@ -20,7 +20,8 @@ import {
 
 const DEFAULT_BASE_URL = 'https://api.webconnex.com/v2/public'
 const REGFOX_PRODUCT = 'regfox.com'
-const PAGE_LIMIT = '50'
+const PAGE_LIMIT = 50
+const MAX_REGISTRANT_PAGES = 200
 
 interface WebconnexErrorBody {
   responseCode?: number
@@ -132,13 +133,32 @@ export class RegFoxService {
 
   private async fetchAllRegistrants(): Promise<RegFoxRegistrant[]> {
     const registrants: RegFoxRegistrant[] = []
+    const seenIds = new Set<string>()
+    const usedCursors = new Set<string>()
     let startingAfter: string | undefined
+    let pageCount = 0
 
-    do {
+    while (true) {
+      if (pageCount >= MAX_REGISTRANT_PAGES) {
+        throw new Error(
+          `RegFox pagination stopped after ${MAX_REGISTRANT_PAGES} pages (${PAGE_LIMIT} registrants each). The event may still have more attendees.`,
+        )
+      }
+      pageCount += 1
+
+      if (startingAfter !== undefined) {
+        if (usedCursors.has(startingAfter)) {
+          throw new Error(
+            'RegFox pagination stopped: repeated startingAfter cursor (possible API loop).',
+          )
+        }
+        usedCursors.add(startingAfter)
+      }
+
       const params: Record<string, string> = {
         product: REGFOX_PRODUCT,
         formId: this.eventId,
-        limit: PAGE_LIMIT,
+        limit: String(PAGE_LIMIT),
       }
 
       if (startingAfter) {
@@ -153,17 +173,78 @@ export class RegFoxService {
       }
 
       const page = body.data ?? []
-      registrants.push(...page)
+      const totalResults =
+        typeof body.totalResults === 'number' &&
+        Number.isFinite(body.totalResults) &&
+        body.totalResults >= 0
+          ? body.totalResults
+          : null
 
-      if (!body.hasMore || page.length === 0) {
+      // 1. Empty page → stop.
+      if (page.length === 0) {
         break
       }
 
-      const lastId = page[page.length - 1]?.id
-      startingAfter = lastId != null ? String(lastId) : undefined
-    } while (startingAfter)
+      // 2. Append while preserving RegFox order and deduplicating by id.
+      for (const registrant of page) {
+        const idKey = registrant.id != null ? String(registrant.id) : null
+        if (idKey !== null) {
+          if (seenIds.has(idKey)) {
+            continue
+          }
+          seenIds.add(idKey)
+        }
+        registrants.push(registrant)
+      }
+
+      // 3. Reached reported total → stop.
+      if (totalResults !== null && seenIds.size >= totalResults) {
+        break
+      }
+
+      // 4. Partial page → finished.
+      if (page.length < PAGE_LIMIT) {
+        break
+      }
+
+      // 5–7. Full page: use response-envelope startingAfter (not last row id).
+      const responseCursor = this.readResponsePaginationCursor(body)
+      if (!responseCursor) {
+        throw new Error(
+          'RegFox pagination stopped: full page was missing a response startingAfter cursor.',
+        )
+      }
+
+      if (startingAfter !== undefined && responseCursor === startingAfter) {
+        throw new Error(
+          'RegFox pagination stopped: startingAfter cursor did not advance.',
+        )
+      }
+
+      startingAfter = responseCursor
+    }
 
     return registrants
+  }
+
+  /**
+   * Webconnex list responses include a top-level `startingAfter` cursor for the
+   * next page. That value is not interchangeable with the last row's registrant id.
+   */
+  private readResponsePaginationCursor(
+    body: RegFoxListResponse<unknown>,
+  ): string | null {
+    const value = body.startingAfter
+    if (value == null) {
+      return null
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return String(value)
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim()
+    }
+    return null
   }
 
   private async request(
