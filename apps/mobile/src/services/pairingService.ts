@@ -68,10 +68,22 @@ async function performExchange(trimmed: string): Promise<ScannerCodeValidation> 
   })
 
   if (error) {
-    const message = error.message.includes('invalid, expired, or already used')
-      ? 'This pairing code is invalid, expired, or already used.'
-      : 'Unable to connect to the conference. Ask the organizer for a new code.'
-    throw new PairingError(message)
+    const raw = `${error.message} ${error.details ?? ''} ${error.hint ?? ''} ${error.code ?? ''}`
+    const lowered = raw.toLowerCase()
+    if (lowered.includes('invalid, expired, or already used')) {
+      throw new PairingError('This pairing code is invalid, expired, or already used.')
+    }
+    if (lowered.includes('digest') || lowered.includes('42883')) {
+      throw new PairingError(
+        'Phone pairing is not fully set up on the server yet. Ask the organizer to update FoxBridge cloud setup.',
+      )
+    }
+    if (lowered.includes('jwt') || error.code === 'PGRST301' || error.code === 'PGRST303') {
+      throw new PairingError(
+        'Phone scanning could not authenticate. Ask the organizer to check the mobile cloud settings.',
+      )
+    }
+    throw new PairingError('Unable to connect to the conference. Ask the organizer for a new code.')
   }
 
   const row = Array.isArray(data) ? data[0] : data

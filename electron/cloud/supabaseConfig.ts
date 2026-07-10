@@ -198,9 +198,19 @@ export function getMobileScannerUrl(): string | null {
 /** HTTPS scanner PWA address used in pairing QR codes. */
 export function getScannerWebAddress(): string | null {
   const fromSettings = getMobileAppUrl()
-  if (fromSettings) {
-    return fromSettings
+  const raw = fromSettings || DEFAULT_SCANNER_WEB_ADDRESS || null
+  if (!raw) {
+    return null
   }
 
-  return DEFAULT_SCANNER_WEB_ADDRESS || null
+  try {
+    const url = new URL(raw.trim())
+    if (url.protocol !== 'https:') {
+      return null
+    }
+    // Pairing links need a clean origin; strip path/query like ?organizer=1.
+    return url.origin
+  } catch {
+    return null
+  }
 }
