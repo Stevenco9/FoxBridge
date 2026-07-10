@@ -160,3 +160,15 @@
   font-size: 0.9rem;
   color: #9ca3af;
 }
+
+.splash-screen__error {
+  margin: 1.25rem 0 0;
+  max-width: 20rem;
+  color: #fecaca;
+  line-height: 1.45;
+}
+
+.splash-screen__action {
+  margin-top: 1.5rem;
+  min-width: min(100%, 16rem);
+}
