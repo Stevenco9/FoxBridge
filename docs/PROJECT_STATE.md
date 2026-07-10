@@ -5,7 +5,8 @@ Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
-**Planning:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — future mobile scanner cloud design (not implemented).
+**Planning:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — future mobile scanner cloud design (not implemented).  
+**Vision:** [`VISION.md`](./VISION.md) — long-term product and architecture principles.
 
 ---
 
@@ -81,7 +82,7 @@ FoxBridge/
 ├── scripts/
 │   ├── test-regfox.ts        # CLI inspection of attendees + meals
 │   └── test-printer.sh       # Separate macOS `lp` diagnostic (not used by app)
-└── docs/                     # PRODUCT, ARCHITECTURE, PROJECT_STATE, SUPABASE_ARCHITECTURE, etc.
+└── docs/                     # VISION, PRODUCT, ARCHITECTURE, PROJECT_STATE, SUPABASE_ARCHITECTURE, etc.
 ```
 
 **Stack:** Electron 36, React 19, Vite 6, TypeScript, **better-sqlite3**  
