@@ -7,9 +7,15 @@ interface QrScannerViewProps {
   active: boolean
   onScan: (value: string) => void
   onError: (error: AttendeeLookupError) => void
+  hint?: string
 }
 
-export default function QrScannerView({ active, onScan, onError }: QrScannerViewProps) {
+export default function QrScannerView({
+  active,
+  onScan,
+  onError,
+  hint = 'Line up the badge QR code inside the frame.',
+}: QrScannerViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hasReportedScanRef = useRef(false)
 
@@ -72,7 +78,7 @@ export default function QrScannerView({ active, onScan, onError }: QrScannerView
         <video ref={videoRef} className="qr-scanner__video" muted playsInline />
         <div className="qr-scanner__overlay" aria-hidden="true" />
       </div>
-      <p className="qr-scanner__hint">Line up the badge QR code inside the frame.</p>
+      <p className="qr-scanner__hint">{hint}</p>
     </div>
   )
 }

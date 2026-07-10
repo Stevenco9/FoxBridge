@@ -3,7 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import MobileLayout from '../components/MobileLayout'
 import PrimaryButton from '../components/PrimaryButton'
 import { PairingError, exchangePairingToken } from '../services/pairingService'
-import { saveVolunteerSession } from '../services/sessionStore'
+import {
+  hasCompleteSession,
+  loadVolunteerSession,
+  saveVolunteerSession,
+} from '../services/sessionStore'
 
 type PairState = 'connecting' | 'connected' | 'error'
 
@@ -14,6 +18,12 @@ export default function PairScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    const existingSession = loadVolunteerSession()
+    if (hasCompleteSession(existingSession)) {
+      navigate('/ready', { replace: true })
+      return
+    }
+
     const token = searchParams.get('token')
     if (!token) {
       setState('error')
@@ -26,10 +36,9 @@ export default function PairScreen() {
     async function pair(): Promise<void> {
       try {
         const result = await exchangePairingToken(token!)
-        if (!isMounted) {
-          return
-        }
 
+        // Always persist before any unmount check — Strict Mode remounts must not
+        // discard a successful one-time token exchange.
         saveVolunteerSession({
           volunteerName: result.label || 'Volunteer',
           conferenceId: result.conferenceId,
@@ -39,12 +48,23 @@ export default function PairScreen() {
           signedInAt: new Date().toISOString(),
         })
 
+        if (!isMounted) {
+          return
+        }
+
         setState('connected')
         window.setTimeout(() => {
           navigate('/ready', { replace: true })
         }, 900)
       } catch (error) {
         if (!isMounted) {
+          return
+        }
+
+        // Token already used on a prior attempt that saved a session.
+        const sessionAfterFailure = loadVolunteerSession()
+        if (hasCompleteSession(sessionAfterFailure)) {
+          navigate('/ready', { replace: true })
           return
         }
 

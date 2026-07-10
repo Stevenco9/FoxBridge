@@ -172,3 +172,21 @@
   margin-top: 1.5rem;
   min-width: min(100%, 16rem);
 }
+
+.splash-screen__hint {
+  margin: 1rem 0 0;
+  max-width: 22rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #9ca3af;
+}
+
+.splash-screen--scanning {
+  justify-content: flex-start;
+  padding-top: 2.5rem;
+}
+
+.splash-screen__scanner {
+  width: min(100%, 22rem);
+  margin-top: 1.25rem;
+}
