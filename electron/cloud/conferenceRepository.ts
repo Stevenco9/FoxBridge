@@ -1,4 +1,5 @@
 import { getSupabaseServiceClient } from './supabaseClient'
+import { isConferenceUuid } from './supabaseConnectionTest'
 import { patchPublicSettings, readPublicSettings } from '../settings/settingsStore'
 
 function slugFromEventId(eventId: string): string {
@@ -42,7 +43,7 @@ export async function resolveConferenceId(
     return { id: byEvent.id, name: byEvent.name }
   }
 
-  if (settings.conferenceId) {
+  if (isConferenceUuid(settings.conferenceId)) {
     const { data: byId, error: byIdError } = await client
       .from('conferences')
       .select('id, name')

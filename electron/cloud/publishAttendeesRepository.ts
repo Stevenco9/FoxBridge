@@ -54,44 +54,16 @@ export async function getCloudStatus(): Promise<CloudStatus> {
     }
   }
 
-  try {
-    const conference = await resolveConferenceId(false)
-
-    if (!conference) {
-      const { error } = await client.from('conferences').select('id').limit(1)
-      if (error) {
-        return {
-          configured: true,
-          connected: false,
-          conferenceId: null,
-          conferenceName: null,
-          lastPublishAt: publishState.lastPublishAt,
-          lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-          lastPublishError: publishState.lastPublishError,
-        }
-      }
-
-      return {
-        configured: true,
-        connected: true,
-        conferenceId: null,
-        conferenceName: null,
-        lastPublishAt: publishState.lastPublishAt,
-        lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-        lastPublishError: publishState.lastPublishError,
-      }
-    }
-
-    return {
-      configured: true,
-      connected: true,
-      conferenceId: conference.id,
-      conferenceName: conference.name,
-      lastPublishAt: publishState.lastPublishAt,
-      lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-      lastPublishError: publishState.lastPublishError,
-    }
-  } catch {
+  const { error: pingError } = await client.from('conferences').select('id').limit(1)
+  if (pingError) {
+    console.error(
+      '[cloud-status]',
+      JSON.stringify({
+        httpStatus: pingError.code === 'PGRST301' ? 401 : null,
+        code: pingError.code ?? null,
+        message: pingError.message,
+      }),
+    )
     return {
       configured: true,
       connected: false,
@@ -101,6 +73,32 @@ export async function getCloudStatus(): Promise<CloudStatus> {
       lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
       lastPublishError: publishState.lastPublishError,
     }
+  }
+
+  let conferenceId: string | null = null
+  let conferenceName: string | null = null
+
+  try {
+    const conference = await resolveConferenceId(false)
+    if (conference) {
+      conferenceId = conference.id
+      conferenceName = conference.name
+    }
+  } catch (error) {
+    console.error(
+      '[cloud-status] conference lookup failed',
+      error instanceof Error ? error.message : error,
+    )
+  }
+
+  return {
+    configured: true,
+    connected: true,
+    conferenceId,
+    conferenceName,
+    lastPublishAt: publishState.lastPublishAt,
+    lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
+    lastPublishError: publishState.lastPublishError,
   }
 }
 

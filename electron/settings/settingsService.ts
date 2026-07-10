@@ -13,6 +13,10 @@ import { getMobileAppUrl } from '../cloud/supabaseConfig'
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
 import { ensureScannerSession } from '../cloud/scannerSessionRepository'
 import { resetSupabaseServiceClient } from '../cloud/supabaseClient'
+import {
+  isConferenceUuid,
+  testSupabaseConnection,
+} from '../cloud/supabaseConnectionTest'
 import { getPreferredPrinterName } from '../printing/preferredPrinterStore'
 import { getAttendeeCache, isAttendeeCacheLoaded, setAttendeeCache } from '../scannerServer/attendeeCache'
 import { readSecrets, writeSecrets, getSafeStorageStatus } from './secretStore'
@@ -265,23 +269,43 @@ export async function testMobileService(
     }
   }
 
+  if (trimmedConferenceId && !isConferenceUuid(trimmedConferenceId)) {
+    return {
+      success: false,
+      conferenceName: null,
+      message:
+        'Conference ID must be a UUID from the phone scanning service, not a RegFox page ID. Leave it blank to auto-create on first publish.',
+    }
+  }
+
+  const connectionTest = await testSupabaseConnection(trimmedUrl, trimmedPublic, trimmedDesktop)
+  if (!connectionTest.success) {
+    return {
+      success: false,
+      conferenceName: null,
+      message: connectionTest.message,
+    }
+  }
+
+  const conferencePatch: Partial<AppSettingsPublic> = {}
+  if (trimmedConferenceId) {
+    conferencePatch.conferenceId = trimmedConferenceId
+  } else {
+    const current = await readPublicSettings()
+    if (current.conferenceId && !isConferenceUuid(current.conferenceId)) {
+      conferencePatch.conferenceId = null
+    }
+  }
+
   await saveSettingsSecrets({ mobileDesktopConnectionKey: trimmedDesktop })
   await patchPublicSettings({
     mobileServiceUrl: trimmedUrl,
     mobilePublicKey: trimmedPublic,
-    ...(trimmedConferenceId ? { conferenceId: trimmedConferenceId } : {}),
+    ...conferencePatch,
   })
   resetSupabaseServiceClient()
 
   const cloudStatus = await getCloudStatus()
-  if (!cloudStatus.connected) {
-    return {
-      success: false,
-      conferenceName: null,
-      message: 'Could not connect to the phone scanning service. Check the URL and keys.',
-    }
-  }
-
   if (cloudStatus.conferenceName) {
     await patchPublicSettings({ conferenceName: cloudStatus.conferenceName })
   }
