@@ -1,3 +1,5 @@
+import { sortMealsChronologically } from '../utils/mealOrder'
+
 export type MealDisplayStatus =
   | 'available'
   | 'validating'
@@ -52,7 +54,7 @@ export function buildInitialMealRowStates(
     existingValidations.map((validation) => [validation.mealKey, validation]),
   )
 
-  return entitlements.map((meal) => {
+  return sortMealsChronologically(entitlements).map((meal) => {
     const existing = validatedByKey.get(meal.mealKey)
     if (existing) {
       return {

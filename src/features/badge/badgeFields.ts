@@ -30,6 +30,11 @@ const STANDARD_FIELD_CANDIDATES: BadgeFieldDefinition[] = [
     resolve: (attendee) => getAttendeeFullName(attendee),
   },
   {
+    id: 'confirmation-code',
+    label: 'Confirmation Code',
+    resolve: (attendee) => attendee.confirmationCode ?? '',
+  },
+  {
     id: 'first-name',
     label: 'First Name',
     resolve: (attendee) => attendee.firstName,
@@ -63,11 +68,6 @@ const STANDARD_FIELD_CANDIDATES: BadgeFieldDefinition[] = [
     id: 'department',
     label: 'Department',
     resolve: (attendee) => attendee.department ?? '',
-  },
-  {
-    id: 'confirmation-code',
-    label: 'Confirmation Code',
-    resolve: (attendee) => attendee.confirmationCode ?? '',
   },
   {
     id: 'city-state',
@@ -191,8 +191,74 @@ function buildPurchaseFieldDefinition(
   }
 }
 
-function sortFields(fields: BadgeFieldDefinition[]): BadgeFieldDefinition[] {
-  return [...fields].sort((a, b) => a.label.localeCompare(b.label))
+const STANDARD_FIELD_ORDER: string[] = [
+  'full-name',
+  'confirmation-code',
+  'first-name',
+  'last-name',
+  'email',
+  'phone',
+  'organization',
+  'job-title',
+  'department',
+  'city-state',
+  'registration-type',
+]
+
+function orderBadgeFields(
+  fields: BadgeFieldDefinition[],
+  attendee: Attendee,
+): BadgeFieldDefinition[] {
+  const standardRank = new Map(STANDARD_FIELD_ORDER.map((fieldId, index) => [fieldId, index]))
+  const purchaseRank = new Map(
+    attendee.purchases.map((purchase, index) => [purchaseFieldId(purchase.id), index]),
+  )
+  const customRank = new Map(
+    attendee.customFields.map((field, index) => [customFieldId(field.key), index]),
+  )
+
+  return [...fields].sort((left, right) => {
+    const leftRank = getBadgeFieldRank(left, standardRank, purchaseRank, customRank)
+    const rightRank = getBadgeFieldRank(right, standardRank, purchaseRank, customRank)
+
+    if (leftRank.group !== rightRank.group) {
+      return leftRank.group - rightRank.group
+    }
+
+    if (leftRank.index !== rightRank.index) {
+      return leftRank.index - rightRank.index
+    }
+
+    return left.label.localeCompare(right.label, undefined, { sensitivity: 'base' })
+  })
+}
+
+function getBadgeFieldRank(
+  field: BadgeFieldDefinition,
+  standardRank: Map<string, number>,
+  purchaseRank: Map<string, number>,
+  customRank: Map<string, number>,
+): { group: number; index: number } {
+  const standardIndex = standardRank.get(field.id)
+  if (standardIndex != null) {
+    return { group: 0, index: standardIndex }
+  }
+
+  if (field.id.startsWith('purchase:')) {
+    return {
+      group: 1,
+      index: purchaseRank.get(field.id) ?? Number.MAX_SAFE_INTEGER,
+    }
+  }
+
+  if (field.id.startsWith('custom:')) {
+    return {
+      group: 2,
+      index: customRank.get(field.id) ?? Number.MAX_SAFE_INTEGER,
+    }
+  }
+
+  return { group: 3, index: 0 }
 }
 
 /**
@@ -244,7 +310,7 @@ export function getAvailableBadgeFields(attendee: Attendee): BadgeFieldDefinitio
     addField(buildCustomFieldDefinition(customField))
   }
 
-  return sortFields(fields)
+  return orderBadgeFields(fields, attendee)
 }
 
 export function resolveBadgeFieldValue(

@@ -7,10 +7,10 @@ import {
 import { getAttendeeFullName } from '../attendees/searchAttendees'
 import {
   MEAL_PLAN_EXPANSIONS,
-  VALIDATABLE_MEAL_ORDER,
   getMealDisplayName,
   type ValidatableMeal,
 } from './mealPlanConfig'
+import { sortMealsChronologically } from './mealOrder'
 
 export type { ValidatableMeal } from './mealPlanConfig'
 
@@ -79,12 +79,13 @@ export function getValidatableMeals(attendee: Attendee): ValidatableMeal[] {
     }
   }
 
-  const orderedIds = [
-    ...VALIDATABLE_MEAL_ORDER.filter((mealId) => byId.has(mealId)),
-    ...[...byId.keys()].filter((mealId) => !VALIDATABLE_MEAL_ORDER.includes(mealId)),
-  ]
-
-  return orderedIds.map((mealId) => byId.get(mealId)!)
+  return sortMealsChronologically(
+    [...byId.values()].map((meal) => ({
+      mealKey: meal.id,
+      mealLabel: meal.name,
+      meal,
+    })),
+  ).map(({ meal }) => meal)
 }
 
 export function getMealChoicePurchase(

@@ -13,6 +13,7 @@
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
     "test:regfox": "tsx scripts/test-regfox.ts",
+    "test:meal-order": "tsx scripts/test-meal-order.ts",
     "test:printer": "bash scripts/test-printer.sh"
   },
   "dependencies": {

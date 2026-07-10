@@ -7,6 +7,7 @@ import {
   normalizeQrInput,
 } from '../models/attendee'
 import { getMealValidationsForAttendee } from './mealValidationService'
+import { sortMealsChronologically } from '../utils/mealOrder'
 
 interface AttendeeRow {
   attendee_id: string
@@ -145,7 +146,6 @@ export async function lookupAttendeeByQrIdentifier(
     .select('meal_key, meal_label, source, source_plan_id')
     .eq('conference_id', conferenceId)
     .eq('attendee_id', entitlementKey)
-    .order('meal_label')
 
   if (error) {
     throw wrapSupabaseError(error)
@@ -153,12 +153,16 @@ export async function lookupAttendeeByQrIdentifier(
 
   const existingValidations = await getMealValidationsForAttendee(conferenceId, entitlementKey)
 
+  const mealEntitlements = sortMealsChronologically(
+    ((data ?? []) as MealEntitlementRow[]).map(mapEntitlement),
+  )
+
   return {
     attendeeId: attendee.attendee_id,
     registrationId: attendee.registration_id,
     displayName: attendee.display_name,
     qrIdentifier: attendee.qr_identifier,
-    mealEntitlements: ((data ?? []) as MealEntitlementRow[]).map(mapEntitlement),
+    mealEntitlements,
     existingValidations,
   }
 }
