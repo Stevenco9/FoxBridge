@@ -327,6 +327,8 @@
 }
 
 @media print {
+  /* Badge printing uses an isolated print window (electron/printing/printBadgePreview.ts).
+     These rules remain as a safety net if the main window is printed directly. */
   @page {
     size: 3.9in 2.4in;
     margin: 0;
@@ -337,47 +339,25 @@
     print-color-adjust: exact;
   }
 
-  body {
-    margin: 0;
-    background: #ffffff;
-  }
-
-  .attendee-search__header,
-  .attendee-search__main,
-  .badge-panel__title,
-  .badge-panel__controls,
-  .badge-panel__size-note,
-  .badge-panel__print-button,
-  .badge-panel__print-error {
-    display: none !important;
-  }
-
-  .badge-panel {
-    position: fixed;
-    inset: 0;
-    width: auto;
-    border: none;
-    padding: 0;
-    margin: 0;
-    overflow: visible;
-    background: #ffffff;
-  }
-
-  .badge-panel__preview-wrap {
-    margin: 0;
-    padding: 0;
-    align-items: flex-start;
+  body * {
+    visibility: hidden !important;
   }
 
   #badge-preview-print-target,
-  .badge-preview {
-    width: 3.9in;
-    height: 2.4in;
-    border: 1px solid #000000;
-    box-shadow: none;
+  #badge-preview-print-target * {
+    visibility: visible !important;
+  }
+
+  #badge-preview-print-target {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 3.9in !important;
+    height: 2.4in !important;
+    margin: 0 !important;
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+    page-break-after: avoid;
     page-break-inside: avoid;
-    padding: 0.14in 0.16in;
-    gap: 0.12in;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 }
