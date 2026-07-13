@@ -1,6 +1,6 @@
 {
   "name": "foxbridge",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Badge printing and attendee management for RegFox events.",
   "author": "AdAgrA Mexico",
   "main": "dist-electron/main.js",
