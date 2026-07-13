@@ -118,6 +118,64 @@ function getFieldValue(
   return undefined
 }
 
+/**
+ * Parses a purchase quantity from RegFox field values.
+ * Checkbox selections are quantity 1; numeric strings like "1"/"2" are add-on counts.
+ */
+function parsePurchaseQuantity(value: RegFoxFieldDataItem['value']): number | null {
+  if (value === true || value === 'true') {
+    return 1
+  }
+
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value
+  }
+
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    const parsed = Number(value.trim())
+    if (parsed > 0) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+/**
+ * True when a fieldData row should become an AttendeePurchase.
+ * Booleans cover meal/option checkboxes; positive integer quantities cover
+ * add-ons such as “Libro de Consejos sobre Agricultura” (value "1").
+ */
+function isPurchaseField(field: RegFoxFieldDataItem): boolean {
+  if (!field.label || !field.path) {
+    return false
+  }
+
+  const path = field.path.toLowerCase()
+  if (path.endsWith('.variant')) {
+    return false
+  }
+
+  const leaf = path.split('.').pop() ?? path
+  if (STANDARD_FIELD_PATHS.has(leaf) || path.startsWith('address.') || path.startsWith('name.')) {
+    return false
+  }
+
+  const quantity = parsePurchaseQuantity(field.value)
+  if (quantity == null) {
+    return false
+  }
+
+  // Checkbox / boolean options (meals, registration options, etc.)
+  if (field.value === true || field.value === 'true') {
+    return true
+  }
+
+  // Quantity add-ons must be nested product paths (e.g. complementos.libro…),
+  // not parent counters or contact/address numbers.
+  return path.includes('.')
+}
+
 function mapPurchases(
   registrant: RegFoxRegistrant,
   fieldData: RegFoxFieldDataItem[],
@@ -134,20 +192,21 @@ function mapPurchases(
   }
 
   for (const field of fieldData) {
-    if (field.value !== 'true' && field.value !== true) {
+    if (!isPurchaseField(field)) {
       continue
     }
 
-    if (!field.label || !field.path) {
+    const quantity = parsePurchaseQuantity(field.value)
+    if (quantity == null) {
       continue
     }
 
-    const identity = resolvePurchaseIdentity(field.path, field.label)
+    const identity = resolvePurchaseIdentity(field.path!, field.label!)
 
     purchases.push({
       id: identity.id,
-      name: field.label,
-      quantity: 1,
+      name: field.label!,
+      quantity,
       category: identity.category,
     })
   }
@@ -162,7 +221,8 @@ function mapCustomFields(fieldData: RegFoxFieldDataItem[]): AttendeeCustomField[
       const leaf = path.split('.').pop() ?? path
       return field.path && field.label && !STANDARD_FIELD_PATHS.has(leaf)
     })
-    .filter((field) => field.value !== 'true' && field.value !== true)
+    // Purchases (checkboxes + quantity add-ons) are not custom fields.
+    .filter((field) => !isPurchaseField(field))
     .map((field) => ({
       key: field.path!,
       label: field.label!,

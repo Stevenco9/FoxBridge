@@ -6,6 +6,11 @@ import AttendeeCheckInPanel from './AttendeeCheckInPanel'
 import AttendeePaymentPanel, {
   AttendeePaymentListBadge,
 } from './AttendeePaymentPanel'
+import {
+  AttendeeBookListIndicator,
+  AttendeeBookPurchasePanel,
+} from './AttendeeBookIndicator'
+import { hasConsejosSobreAgriculturaPurchase } from './agricultureBookPurchase'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import ConnectPhonePanel from '../operations/ConnectPhonePanel'
 import OperationsHome from '../operations/OperationsHome'
@@ -167,6 +172,9 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
                       >
                         <span className="attendee-list__name">
                           {fullName || 'Unnamed attendee'}
+                          {hasConsejosSobreAgriculturaPurchase(attendee) && (
+                            <AttendeeBookListIndicator />
+                          )}
                         </span>
                         <AttendeePaymentListBadge payment={attendee.payment} />
                         {attendee.email && (
@@ -202,6 +210,9 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         {selectedAttendee && (
           <section ref={badgeRef} className="attendee-detail">
             <AttendeePaymentPanel payment={selectedAttendee.payment} />
+            {hasConsejosSobreAgriculturaPurchase(selectedAttendee) && (
+              <AttendeeBookPurchasePanel />
+            )}
             <AttendeeCheckInPanel
               attendee={selectedAttendee}
               onCheckedIn={(updated) => {

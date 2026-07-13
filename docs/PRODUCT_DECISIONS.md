@@ -35,6 +35,9 @@ Meal redemption, badge printing history, check-in actions, and other on-site act
 **Payment display is read-only (Sprint 16A).**  
 FoxBridge shows normalized RegFox payment status and amounts for door staff. It does not currently update RegFox payment records. On-site payment recording, if added later, will be an explicit FoxBridge operational record—not a silent rewrite of RegFox finances. The payment model supports partial balances for future events even when the current event is primarily paid versus unpaid.
 
+**Quantity add-ons map as purchases (Sprint 17B).**  
+RegFox checkbox options arrive as `true`; quantity add-ons (e.g. *Libro de "Consejos sobre Agricultura" de Ellen White*) arrive as numeric strings like `"1"`. Both become `Attendee.purchases` so door staff can see book indicators without reading raw field paths. Contact and address numbers are excluded.
+
 **Good defaults are better than complicated configuration.**  
 Most events should work out of the box. Advanced options can exist, but volunteers should rarely need them.
 

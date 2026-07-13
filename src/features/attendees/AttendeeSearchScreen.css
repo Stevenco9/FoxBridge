@@ -113,9 +113,19 @@
 }
 
 .attendee-list__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   font-size: 1rem;
   font-weight: 600;
   color: #111827;
+}
+
+.attendee-list__book {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .attendee-list__meta {
