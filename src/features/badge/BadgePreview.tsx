@@ -11,6 +11,11 @@ import {
   resolveBadgeFieldValue,
 } from './badgeFields'
 import { getAttendeeQrValue } from './getAttendeeQrValue'
+import FittedBadgeName from './FittedBadgeName'
+import {
+  BADGE_NAME_MAX_FONT_PT,
+  BADGE_NAME_MIN_FONT_PT,
+} from './fitBadgeName'
 import './BadgePreview.css'
 
 interface BadgePreviewPanelProps {
@@ -110,21 +115,40 @@ function BadgeFieldBlock({
       }`}
       aria-hidden={entries.length === 0}
     >
-      {entries.map((entry, index) => (
-        <div
-          key={`${variant}-${entry.fieldId}-${index}`}
-          className={[
-            'badge-preview__line',
-            `badge-preview__line--${variant}`,
-            index === 0 ? 'badge-preview__line--primary' : '',
-            entry.fieldId === 'full-name' ? 'badge-preview__line--name' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          {entry.value}
-        </div>
-      ))}
+      {entries.map((entry, index) => {
+        const lineClassName = [
+          'badge-preview__line',
+          `badge-preview__line--${variant}`,
+          index === 0 ? 'badge-preview__line--primary' : '',
+          entry.fieldId === 'full-name' ? 'badge-preview__line--name' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+
+        // First zone full-name: auto-fit up to two centered lines.
+        if (variant === 'top' && entry.fieldId === 'full-name') {
+          return (
+            <FittedBadgeName
+              key={`${variant}-${entry.fieldId}-${index}`}
+              name={entry.value}
+              className={lineClassName}
+              maxFontSizePt={
+                index === 0 ? BADGE_NAME_MAX_FONT_PT : 26
+              }
+              minFontSizePt={BADGE_NAME_MIN_FONT_PT}
+            />
+          )
+        }
+
+        return (
+          <div
+            key={`${variant}-${entry.fieldId}-${index}`}
+            className={lineClassName}
+          >
+            {entry.value}
+          </div>
+        )
+      })}
     </div>
   )
 }

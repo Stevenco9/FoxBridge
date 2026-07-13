@@ -21,6 +21,7 @@
     "test:meal-order": "tsx scripts/test-meal-order.ts",
     "test:payment": "tsx scripts/test-payment.ts",
     "test-payment": "tsx scripts/test-payment.ts",
+    "test:badge-name": "tsx scripts/test-badge-name-fit.ts",
     "test:printer": "bash scripts/test-printer.sh"
   },
   "dependencies": {

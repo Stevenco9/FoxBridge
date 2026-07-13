@@ -112,7 +112,7 @@ function buildBadgePrintDocument(badgeMarkup: string): string {
         display: grid;
         grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
         row-gap: 0.08in;
-        align-items: center;
+        align-items: stretch;
         text-align: left;
       }
 
@@ -122,10 +122,13 @@ function buildBadgePrintDocument(badgeMarkup: string): string {
         justify-content: center;
         gap: 0.02in;
         min-height: 0;
+        height: 100%;
+        overflow: hidden;
       }
 
       .badge-preview__block--top {
         gap: 0.008in;
+        align-items: stretch;
       }
 
       .badge-preview__block--empty {
@@ -157,6 +160,32 @@ function buildBadgePrintDocument(badgeMarkup: string): string {
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 2;
         line-clamp: 2;
+      }
+
+      .badge-preview__line--top.badge-preview__line--primary.badge-preview__line--fitted-name {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        width: 100%;
+        min-height: 0;
+        overflow: hidden;
+        -webkit-line-clamp: unset;
+        line-clamp: unset;
+        -webkit-box-orient: unset;
+        word-break: normal;
+        text-overflow: unset;
+      }
+
+      .badge-preview__name-line {
+        display: block;
+        width: 100%;
+        text-align: center;
+        white-space: nowrap;
+        overflow: visible;
+        line-height: inherit;
       }
 
       .badge-preview__line--top:not(.badge-preview__line--primary) {
