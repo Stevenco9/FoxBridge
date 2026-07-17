@@ -242,6 +242,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
 
       <MealDashboardPanel
         open={mealDashboardOpen}
+        attendees={attendees}
         onClose={() => setMealDashboardOpen(false)}
       />
 

@@ -17,7 +17,8 @@ import type {
   ValidateMealResult,
 } from './shared/models/MealValidation'
 import type { CloudStatus, PublishAttendeesResult } from './shared/models/CloudStatus'
-import type { MealDashboardResult } from './shared/models/MealDashboard'
+import type { MealDashboardResult, MealDetailResult } from './shared/models/MealDashboard'
+import type { AttendeeMealValidationsResult } from './shared/models/AttendeeMealStatus'
 import type { ConnectPhoneInfo } from './shared/models/ConnectPhoneInfo'
 import type { PairingInfo, PairingStatus } from './shared/models/PairingInfo'
 import type { MobileScannerInfo } from './shared/models/MobileScannerInfo'
@@ -40,6 +41,8 @@ interface ElectronAPI {
   stopScannerServer: () => Promise<ScannerServerStatus>
   getCloudStatus: () => Promise<CloudStatus>
   getMealDashboard: () => Promise<MealDashboardResult>
+  getMealDashboardDetail: (mealKey: string) => Promise<MealDetailResult>
+  getAttendeeMealValidations: (attendeeIds: string[]) => Promise<AttendeeMealValidationsResult>
   getMobileScannerInfo: () => Promise<MobileScannerInfo>
   publishAttendees: () => Promise<PublishAttendeesResult>
   testMobileService: (payload: {

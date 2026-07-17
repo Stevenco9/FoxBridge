@@ -16,7 +16,8 @@ import type {
   ValidateMealResult,
 } from '../src/shared/models/MealValidation'
 import type { CloudStatus, PublishAttendeesResult } from '../src/shared/models/CloudStatus'
-import type { MealDashboardResult } from '../src/shared/models/MealDashboard'
+import type { MealDashboardResult, MealDetailResult } from '../src/shared/models/MealDashboard'
+import type { AttendeeMealValidationsResult } from '../src/shared/models/AttendeeMealStatus'
 import type { PairingInfo, PairingStatus } from '../src/shared/models/PairingInfo'
 import type { ConnectPhoneInfo } from '../src/shared/models/ConnectPhoneInfo'
 import type { MobileScannerInfo } from '../src/shared/models/MobileScannerInfo'
@@ -49,6 +50,10 @@ const electronAPI = {
   getCloudStatus: (): Promise<CloudStatus> => ipcRenderer.invoke('cloud:getStatus'),
   getMealDashboard: (): Promise<MealDashboardResult> =>
     ipcRenderer.invoke('cloud:getMealDashboard'),
+  getMealDashboardDetail: (mealKey: string): Promise<MealDetailResult> =>
+    ipcRenderer.invoke('cloud:getMealDashboardDetail', mealKey),
+  getAttendeeMealValidations: (attendeeIds: string[]): Promise<AttendeeMealValidationsResult> =>
+    ipcRenderer.invoke('cloud:getAttendeeMealValidations', attendeeIds),
   getMobileScannerInfo: (): Promise<MobileScannerInfo> =>
     ipcRenderer.invoke('cloud:getMobileScannerInfo'),
   publishAttendees: (): Promise<PublishAttendeesResult> =>

@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: July 2026 (Sprint 18A — Meal Dashboard)  
+Last updated: July 2026 (Meal Dashboard — By attendee view)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -26,7 +26,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Guided conference setup** — wizard for RegFox, printer, and optional phone scanning (Sprint 13A–13B)
 - **Operations home** — conference status, Connect a phone, refresh registrations (Sprint 13B)
 - **One-scan phone pairing** — organizer shows one QR; volunteer scans with Camera app; PWA auto-joins conference (Sprint 13B)
-- **Meal Dashboard (Sprint 18A)** — read-only Supabase meal validation reporting on desktop
+- **Meal Dashboard (Sprint 18A–18B)** — read-only meal validation reporting; open a meal for the entitled / served detail report
 
 **Not yet built:** mobile offline queue, desktop pull of cloud validations into local SQLite, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
 
@@ -447,6 +447,72 @@ Suggested order:
 1. Desktop sync job: pull Supabase `meal_validations` into local SQLite.
 2. Mobile offline cache + validation outbox.
 3. RLS hardening / scanner session scoping beyond anon read policies.
+
+---
+
+## Sprint 18A / 18B — Meal Dashboard + Meal Detail
+
+Read-only desktop reporting over Supabase meal validations for the active conference. Does **not** change mobile scanning, validation writes, schema, RegFox sync, entitlement generation, or canonical meal order.
+
+### Sprint 18A — summary dashboard
+
+- Entry: Operations Home → **Meal Dashboard**
+- IPC: `cloud:getMealDashboard` → `loadMealDashboard()` (main-process service-role client)
+- Summary cards, per-meal table, recent 25 scans
+- **Entitled counts** prefer live RegFox attendee cache via `getValidatableMeals` / `buildLiveMealEntitlements`; fall back to Supabase `meal_entitlements` when the cache is empty
+- Canonical meal display names from existing meal-order helpers
+
+### Sprint 18B — meal detail report
+
+- Selecting a meal opens a nested detail view in the same panel (Back restores the summary **without** refetching dashboard aggregates)
+- Detail Refresh reloads only that meal (`cloud:getMealDashboardDetail`)
+- Header: meal name, entitled, served, not served, % served, most recent validation
+- One row per entitled attendee: name, Served / Not Served, validation time, scanner label
+- Filters: All / Served / Not Served; attendee-name search; sort A–Z, Z–A, served newest, served oldest (unserved after served for time sorts)
+- No email, phone, confirmation code, payment, or registration answers
+
+### Data joining rules
+
+| Store | Identity column | Join to name |
+|-------|-----------------|--------------|
+| `meal_entitlements.attendee_id` | QR identifier | `attendees.qr_identifier` (also try `attendees.attendee_id`) |
+| `meal_validations.attendee_id` | QR identifier | same |
+| `scanner_sessions` | `meal_validations.scanner_session_id` → `scanner_sessions.id` | `label` |
+
+Queries are scoped to `conference_id` and the selected meal’s canonical key plus known child-path aliases (`mealKeysMatchingCanonical`).
+
+### Duplicate validation rule
+
+- One list row per entitled attendee
+- Any validation for that attendee + meal ⇒ **Served**
+- Displayed “served at” time = **earliest** `validated_at` among duplicates; scanner label comes from that earliest row
+- Header “most recent” uses the **latest** validation among entitled served attendees
+- Raw duplicate count is kept only in memory for diagnostics (`rawValidationCount`); not shown as separate people
+
+### Tests
+
+- `npm run test:meal-dashboard`
+- `npm run test:meal-detail`
+- `npm run test:meal-order`
+
+### Remaining live-test requirements
+
+- Confirm meal detail against a live conference with real phone validations
+- Confirm RegFox-cache entitled list matches on-floor expectations when registrations have just refreshed
+- Confirm child-path vs canonical `meal_key` rows both appear under one meal detail
+- Confirm scanner labels resolve when `scanner_session_id` is present
+- Confirm Back keeps summary data without an unnecessary full dashboard refetch
+
+### Attendee meal status (person-first)
+
+Lives only in **Meal Dashboard → By attendee** (not on the main registration/check-in screen):
+
+- Name search over loaded RegFox attendees
+- Open a person → purchased meals with **Validated** / **Not validated**, time, and scanner label
+- Summary: `X of Y validated`
+- Validations: Supabase phone history (by QR identifier) merged with local desktop SQLite
+- **By meal** tab keeps the existing meal summary + meal detail drill-down
+- Does not change mobile scanning or meal validation writes
 
 ---
 

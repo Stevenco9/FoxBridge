@@ -1,0 +1,56 @@
+.attendee-meal-status {
+  margin-top: 0.25rem;
+}
+
+.attendee-meal-status__summary {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.attendee-meal-status__error {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.attendee-meal-status__empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.attendee-meal-status__meal-name {
+  font-weight: 600;
+  color: #111827;
+}
+
+.attendee-meal-status__meal-source {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.attendee-meal-status__badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.attendee-meal-status__badge--served {
+  color: #047857;
+}
+
+.attendee-meal-status__badge--not_served {
+  color: #b45309;
+}
+
+.attendee-meal-status__note {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}

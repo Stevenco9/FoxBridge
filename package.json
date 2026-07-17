@@ -24,6 +24,8 @@
     "test:badge-name": "tsx scripts/test-badge-name-fit.ts",
     "test:agriculture-book": "tsx scripts/test-agriculture-book.ts",
     "test:meal-dashboard": "tsx scripts/test-meal-dashboard.ts",
+    "test:meal-detail": "tsx scripts/test-meal-detail.ts",
+    "test:attendee-meal-status": "tsx scripts/test-attendee-meal-status.ts",
     "test:printer": "bash scripts/test-printer.sh"
   },
   "dependencies": {
