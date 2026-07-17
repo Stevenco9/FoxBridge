@@ -59,6 +59,7 @@ export type MessageKey =
   | 'home.action.print'
   | 'home.action.validate'
   | 'home.action.connectPhone'
+  | 'home.action.mealDashboard'
   | 'home.action.update'
   | 'home.updating'
   | 'connect.title'
@@ -171,6 +172,7 @@ const en: Record<MessageKey, string> = {
   'home.action.print': 'Print badge',
   'home.action.validate': 'Validate meal',
   'home.action.connectPhone': 'Connect a phone',
+  'home.action.mealDashboard': 'Meal Dashboard',
   'home.action.update': 'Update registrations',
   'home.updating': 'Updating…',
   'connect.title': 'Connect a phone',
@@ -281,6 +283,7 @@ const es: Record<MessageKey, string> = {
   'home.action.print': 'Imprimir credencial',
   'home.action.validate': 'Validar comida',
   'home.action.connectPhone': 'Conectar un teléfono',
+  'home.action.mealDashboard': 'Panel de comidas',
   'home.action.update': 'Actualizar registros',
   'home.updating': 'Actualizando…',
   'connect.title': 'Conectar un teléfono',

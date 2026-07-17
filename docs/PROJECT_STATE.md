@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: July 2026 (Sprint 15A — macOS packaging)  
+Last updated: July 2026 (Sprint 18A — Meal Dashboard)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -26,8 +26,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Guided conference setup** — wizard for RegFox, printer, and optional phone scanning (Sprint 13A–13B)
 - **Operations home** — conference status, Connect a phone, refresh registrations (Sprint 13B)
 - **One-scan phone pairing** — organizer shows one QR; volunteer scans with Camera app; PWA auto-joins conference (Sprint 13B)
+- **Meal Dashboard (Sprint 18A)** — read-only Supabase meal validation reporting on desktop
 
-**Not yet built:** mobile offline queue, desktop pull of cloud validations, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
+**Not yet built:** mobile offline queue, desktop pull of cloud validations into local SQLite, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
 
 ---
 

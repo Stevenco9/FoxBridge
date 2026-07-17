@@ -14,6 +14,7 @@ import { hasConsejosSobreAgriculturaPurchase } from './agricultureBookPurchase'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import ConnectPhonePanel from '../operations/ConnectPhonePanel'
 import OperationsHome from '../operations/OperationsHome'
+import MealDashboardPanel from '../meals/MealDashboardPanel'
 import MealValidationPanel from '../meals/MealValidationPanel'
 import SettingsModal from '../settings/SettingsModal'
 import { getAttendeeFullName, searchAttendees } from './searchAttendees'
@@ -34,6 +35,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [connectPhoneOpen, setConnectPhoneOpen] = useState(false)
+  const [mealDashboardOpen, setMealDashboardOpen] = useState(false)
   const [connectRefreshToken, setConnectRefreshToken] = useState(0)
   const [showDesktopMealValidation, setShowDesktopMealValidation] = useState(false)
 
@@ -120,6 +122,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         language={language}
         refreshToken={attendees.length}
         onConnectPhone={() => setConnectPhoneOpen(true)}
+        onOpenMealDashboard={() => setMealDashboardOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -235,6 +238,11 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         open={connectPhoneOpen}
         refreshToken={connectRefreshToken}
         onClose={() => setConnectPhoneOpen(false)}
+      />
+
+      <MealDashboardPanel
+        open={mealDashboardOpen}
+        onClose={() => setMealDashboardOpen(false)}
       />
 
       <SettingsModal

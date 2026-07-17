@@ -6,6 +6,7 @@ import './OperationsHome.css'
 interface OperationsHomeProps {
   language: AppLanguage
   onConnectPhone: () => void
+  onOpenMealDashboard: () => void
   onOpenSettings: () => void
   refreshToken?: number | string
 }
@@ -21,6 +22,7 @@ function formatTimestamp(value: string | null): string {
 export default function OperationsHome({
   language,
   onConnectPhone,
+  onOpenMealDashboard,
   onOpenSettings,
   refreshToken,
 }: OperationsHomeProps) {
@@ -115,6 +117,13 @@ export default function OperationsHome({
       <div className="operations-home__actions">
         <button type="button" className="operations-home__action" onClick={onConnectPhone}>
           {t('home.action.connectPhone')}
+        </button>
+        <button
+          type="button"
+          className="operations-home__action operations-home__action--secondary"
+          onClick={onOpenMealDashboard}
+        >
+          {t('home.action.mealDashboard')}
         </button>
       </div>
 

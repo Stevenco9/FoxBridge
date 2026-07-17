@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import type { Attendee } from '../src/shared/models'
 import { getMobileScannerInfo } from './cloud/mobileScannerInfoRepository'
+import { loadMealDashboard } from './cloud/mealDashboardRepository'
 import { getCloudStatus, publishAttendees } from './cloud/publishAttendeesRepository'
 import { getConnectPhoneInfo } from './mobile/connectPhoneRepository'
 import { createScannerPairing, getPairingStatus } from './mobile/pairingRepository'
@@ -16,6 +17,9 @@ export function registerCloudHandlers(): void {
 
   ipcMain.removeHandler('cloud:getMobileScannerInfo')
   ipcMain.handle('cloud:getMobileScannerInfo', async () => getMobileScannerInfo())
+
+  ipcMain.removeHandler('cloud:getMealDashboard')
+  ipcMain.handle('cloud:getMealDashboard', async () => loadMealDashboard())
 
   ipcMain.removeHandler('cloud:publishAttendees')
   ipcMain.handle('cloud:publishAttendees', async (_event, attendees?: Attendee[]) => {

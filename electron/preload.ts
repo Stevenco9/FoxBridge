@@ -16,6 +16,7 @@ import type {
   ValidateMealResult,
 } from '../src/shared/models/MealValidation'
 import type { CloudStatus, PublishAttendeesResult } from '../src/shared/models/CloudStatus'
+import type { MealDashboardResult } from '../src/shared/models/MealDashboard'
 import type { PairingInfo, PairingStatus } from '../src/shared/models/PairingInfo'
 import type { ConnectPhoneInfo } from '../src/shared/models/ConnectPhoneInfo'
 import type { MobileScannerInfo } from '../src/shared/models/MobileScannerInfo'
@@ -46,6 +47,8 @@ const electronAPI = {
   stopScannerServer: (): Promise<ScannerServerStatus> =>
     ipcRenderer.invoke('scannerServer:stop'),
   getCloudStatus: (): Promise<CloudStatus> => ipcRenderer.invoke('cloud:getStatus'),
+  getMealDashboard: (): Promise<MealDashboardResult> =>
+    ipcRenderer.invoke('cloud:getMealDashboard'),
   getMobileScannerInfo: (): Promise<MobileScannerInfo> =>
     ipcRenderer.invoke('cloud:getMobileScannerInfo'),
   publishAttendees: (): Promise<PublishAttendeesResult> =>
