@@ -12,8 +12,9 @@
     "build:mobile": "npm run build --prefix apps/mobile",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:win": "npm run build && electron-builder --win nsis --x64",
     "pack:mac": "npm run build && electron-builder --mac dir",
+    "pack:win": "npm run build && electron-builder --win dir --x64",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
@@ -94,7 +95,19 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FoxBridge",
+      "uninstallDisplayName": "FoxBridge",
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
     }
   }
 }

@@ -10,6 +10,11 @@ export interface PrintCompletionContext {
 /**
  * Best-effort detection of the printer used for the last completed print job.
  * Platform adapters can be extended without changing badge print orchestration.
+ *
+ * macOS: inspects recent CUPS jobs via `lpstat`.
+ * Windows/Linux: no CUPS capture — callers fall back to the requested Electron
+ * `deviceName` from the print dialog (see return of `requestedDeviceName` below).
+ * Do not invoke `lp` / `lpstat` outside `darwin`.
  */
 export async function captureSelectedPrinterName(
   context: PrintCompletionContext,

@@ -2,7 +2,7 @@
 
 This guide explains how maintainers build and distribute FoxBridge installers. It is written for someone comfortable with basic command-line steps but not necessarily an expert in Electron packaging.
 
-**Volunteers and event staff who only install FoxBridge do not need Node.js, Git, or any developer tools.** They receive a `.dmg` (Mac) or installer (Windows, when available) and follow the installation steps below.
+**Volunteers and event staff who only install FoxBridge do not need Node.js, Git, or any developer tools.** They receive a `.dmg` (Mac) or `.exe` installer (Windows) and follow the installation steps below.
 
 ---
 
@@ -12,9 +12,10 @@ This guide explains how maintainers build and distribute FoxBridge installers. I
 
 | Requirement | Notes |
 |-------------|--------|
-| **Node.js** | **v20.x** is currently used in this project (e.g. v20.19.2). Use a current Node 20 LTS release. |
+| **Node.js** | **v20.x** is currently used in this project (e.g. v20.19.2). Use a current Node 20 LTS release. GitHub Actions Windows builds also use Node 20. |
 | **npm** | Comes with Node.js. Run `npm install` from the repository root after cloning or pulling changes. |
-| **Apple Silicon Mac** | The current Mac DMG is **arm64 only**. Build it on an Apple Silicon Mac (M1/M2/M3/M4 or later). |
+| **macOS (for Mac DMGs)** | Build on a Mac. The current Mac target is a **universal** DMG (Apple Silicon + Intel). |
+| **Windows builds** | Prefer GitHub Actions (`windows-latest`) or a Windows PC. Cross-compiling NSIS from macOS requires Wine and is **not** set up on typical Macs. |
 | **Xcode Command Line Tools** | Required on macOS for native module rebuilds (`better-sqlite3`) and for `iconutil` when regenerating icons. |
 
 After `npm install`, the `postinstall` script rebuilds `better-sqlite3` for Electron automatically. If you see `NODE_MODULE_VERSION` errors, run:
@@ -30,14 +31,21 @@ Desktop icons live in `build/`. They were generated from `apps/mobile/public/ico
 - **ImageMagick** (`magick`) — rasterize SVG to PNG and build `.ico`
 - **iconutil** (macOS) — bundle `.icns` from a `.iconset` folder
 
+Existing files:
+
+- `build/icon.icns` — macOS
+- `build/icon.ico` — Windows (multiple sizes; do not replace lightly)
+- `build/icon.png` — high-resolution source raster
+
 Do not modify the mobile icon in `apps/mobile/public/` when updating desktop icons unless the product team intentionally changes branding.
 
 ### For end users who install FoxBridge
 
 | Requirement | Notes |
 |-------------|--------|
-| **macOS** | Apple Silicon Mac for the current `arm64` build. Intel Macs are not supported by this installer yet. |
-| **Brother label printer** | Install the Brother driver for your model on each computer that will print badges. FoxBridge uses the system print dialog; the driver must be available to macOS. |
+| **macOS** | Universal DMG supports Apple Silicon and Intel Macs. |
+| **Windows** | 64-bit Windows (`x64`). Install the NSIS `.exe` (no Node.js required). |
+| **Brother label printer** | Install the Brother driver for your model on **each** computer that will print badges. FoxBridge uses the system print dialog / installed printer names. |
 | **Network** | Internet access for RegFox sync and optional mobile cloud features. |
 
 End users do **not** need Node.js, npm, Git, Cursor, or a development server.
@@ -52,10 +60,11 @@ FoxBridge follows [semantic versioning](https://semver.org/) in `package.json`:
 |---------|---------|
 | **0.1.0** | Initial downloadable release |
 | **0.1.1** | Bug fix (backward compatible) |
+| **0.1.2** | Sprint 17 badge/book updates |
 | **0.2.0** | New backward-compatible feature |
 | **1.0.0** | Stable release |
 
-**Before building a new public release**, update the `"version"` field in `package.json`. The installer filename and in-app version both come from this value.
+**Before building a new public release**, update the `"version"` field in **both** `package.json` and `package-lock.json`. The installer filename and in-app version both come from this value.
 
 Do not change the version for internal test builds unless you intend to distribute that build outside the team.
 
@@ -63,7 +72,7 @@ Do not change the version for internal test builds unless you intend to distribu
 
 ## Building the Mac installer
 
-From the repository root:
+From the repository root on a Mac:
 
 ```bash
 npm install
@@ -75,22 +84,20 @@ npm run dist:mac
 
 1. **`npm install`** — Installs dependencies and rebuilds native modules for Electron.
 2. **`npm run build`** — Type-checks TypeScript and builds the renderer (`dist/`) and Electron bundles (`dist-electron/`).
-3. **`npm run dist:mac`** — Runs the build again, then packages with **electron-builder** into a signed-ready but currently **unsigned** `.dmg`.
+3. **`npm run dist:mac`** — Runs the build again, then packages with **electron-builder** into a signed-ready but currently **unsigned** universal `.dmg`.
 
 ### Expected output
 
 Installers are written to `release/` (this folder is gitignored).
 
-Naming pattern:
-
 ```text
-release/FoxBridge-<version>-mac-<arch>.dmg
+release/FoxBridge-<version>-mac-universal.dmg
 ```
 
-Example for version `0.1.0` on Apple Silicon:
+Example:
 
 ```text
-release/FoxBridge-0.1.0-mac-arm64.dmg
+release/FoxBridge-0.1.2-mac-universal.dmg
 ```
 
 An unpacked `.app` for local smoke testing can be produced with:
@@ -99,15 +106,92 @@ An unpacked `.app` for local smoke testing can be produced with:
 npm run pack:mac
 ```
 
-Output: `release/mac-arm64/FoxBridge.app`
+---
 
-**Current limitation:** Mac builds target **arm64 only**. Universal or Intel (`x64`) builds are not configured yet.
+## Building the Windows installer
+
+### Option A — GitHub Actions (recommended from a Mac)
+
+1. Push your changes to GitHub (or run the workflow on the branch you care about).
+2. Open the repository on GitHub → **Actions** → **Build Windows Installer**.
+3. Choose **Run workflow** (`workflow_dispatch`), or push a `v*` tag.
+4. When the job finishes, download the artifact named like:
+
+```text
+FoxBridge-<version>-win-x64
+```
+
+5. Extract the NSIS installer, typically named:
+
+```text
+FoxBridge-<version>-win-x64.exe
+```
+
+The workflow runs `npm ci`, the desktop build, meal/payment/badge/book tests, then `npm run dist:win`. It uploads the `.exe` as an **artifact only** — it does **not** create a GitHub Release or require code-signing secrets.
+
+### Option B — Local Windows machine
+
+```bash
+npm install
+npm run build
+npm run dist:win
+```
+
+Expected output:
+
+```text
+release/FoxBridge-<version>-win-x64.exe
+```
+
+### Cross-compiling from macOS
+
+Current **electron-builder** can often produce the Windows NSIS `.exe` on a Mac by downloading portable NSIS tooling (Wine is not always required). If packaging fails on your Mac, use GitHub Actions (`windows-latest`) or a Windows PC instead of installing Wine system-wide.
+
+Still **smoke-test the installer on a real Windows computer** before distributing it to volunteers. A `.exe` produced on macOS is a packaging artifact, not a substitute for Windows runtime verification.
+
+### Windows installer behavior
+
+| Item | Behavior |
+|------|----------|
+| Format | NSIS `.exe` |
+| Arch | `x64` only |
+| Shortcuts | Desktop + Start Menu (“FoxBridge”) |
+| Uninstall | Available through Windows Apps & features / the NSIS uninstaller |
+| Signing | Currently **unsigned** |
+| Secrets | Same as Mac: RegFox / Supabase credentials entered in Settings / wizard and stored under Electron `userData` via `safeStorage` (or a local fallback). No API keys are baked into the installer. |
+
+### Microsoft Defender SmartScreen
+
+The first launch of an **unsigned** Windows build may show a SmartScreen warning (“Windows protected your PC”). That is expected until Authenticode signing is configured. Users who trust the build can choose **More info** → **Run anyway**. Only install FoxBridge from a known organizational source.
+
+### Brother printing on Windows (verification status)
+
+| Verified | Not verified |
+|----------|--------------|
+| App opens without a printer installed | Physical Brother QL-820NWB badge print quality on Windows |
+| Printer list uses Electron / Windows printer names | Exact media sizes / tape cut options vs macOS CUPS |
+| `webContents.print()` path is used (same as Mac AirPrint path) | Silent/production Brother driver options |
+
+**Install Brother’s Windows driver separately** on each PC before expecting label output. FoxBridge does **not** bundle Brother drivers. Do not treat Windows badge printing as production-ready until a Brother print has been smoke-tested on a real Windows computer.
+
+macOS-only CUPS helpers (`lpstat` for remembering the last queue) are **not** run on Windows; Windows falls back to the selected Electron printer name.
+
+---
+
+## Where installers are produced
+
+| Platform | Local output folder | Typical filename |
+|----------|---------------------|------------------|
+| macOS | `release/` | `FoxBridge-<version>-mac-universal.dmg` |
+| Windows | `release/` | `FoxBridge-<version>-win-x64.exe` |
+
+`release/` is gitignored. **Never commit** `.dmg`, `.exe`, `.app`, SQLite databases, `.env`, or attendee dumps.
 
 ---
 
 ## Testing before distribution
 
-Run through this checklist on a Mac **without** Cursor or `npm run dev` running. Test the **installed** app from `/Applications/FoxBridge.app` (or the unpacked `.app`), not only the development server.
+Run through this checklist on a clean machine **without** Cursor or `npm run dev` running. Test the **installed** app, not only the development server.
 
 - [ ] Application launches
 - [ ] Setup wizard appears on first run, or existing configuration loads on upgrade
@@ -117,17 +201,18 @@ Run through this checklist on a Mac **without** Cursor or `npm run dev` running.
 - [ ] QR code displays on the badge
 - [ ] RegFox check-in works (including “already checked in” handling)
 - [ ] Meal validation works
-- [ ] Print dialog opens
-- [ ] Physical Brother label prints acceptably (layout issues are a known area to watch)
+- [ ] Payment status display works
+- [ ] Print dialog opens (when a printer is present)
+- [ ] Physical Brother label prints acceptably (**Mac verified historically; Windows TBD**)
 - [ ] Quit and reopen — state persists
 - [ ] Settings and local database persist across restart
 - [ ] App runs with Cursor and development servers closed
 
-Record any failures before sending the DMG to volunteers.
+Record any failures before sending the installer to volunteers.
 
 ---
 
-## Installing an update
+## Installing an update (macOS)
 
 Users can upgrade by replacing the application bundle. Their data is stored separately and should remain intact.
 
@@ -140,6 +225,18 @@ Users can upgrade by replacing the application bundle. Their data is stored sepa
 Settings, secrets, and the local SQLite database live under Electron **userData**, not inside the `.app` bundle. Replacing the app should **not** delete conference configuration or validation history.
 
 **Important:** Before a high-stakes event, back up the userData folder (see [Data locations](#data-locations)). Do not delete userData during an update.
+
+---
+
+## Installing on Windows
+
+1. Double-click `FoxBridge-<version>-win-x64.exe`.
+2. Follow the NSIS prompts (optional install directory).
+3. Finish the installer (desktop and Start Menu shortcuts are created).
+4. Open **FoxBridge** from the Start Menu or desktop shortcut.
+5. If SmartScreen blocks the first open, use **More info** → **Run anyway** only for a trusted build.
+
+To uninstall: Windows **Settings → Apps** → FoxBridge → Uninstall (or the uninstaller from the install folder).
 
 ---
 
@@ -167,10 +264,16 @@ Only open FoxBridge from a source you trust (your organization’s build maintai
 
 ## Data locations
 
-On macOS, FoxBridge stores persistent data at:
+### macOS
 
 ```text
 ~/Library/Application Support/foxbridge
+```
+
+### Windows
+
+```text
+%APPDATA%\foxbridge
 ```
 
 Typical contents (no secret values listed here):
@@ -191,25 +294,15 @@ To back up before an event, copy the entire `foxbridge` folder to safe storage.
 
 ## Rollback
 
-If a new release causes problems, you can reinstall an **older** DMG while keeping user data:
+If a new release causes problems, you can reinstall an **older** installer while keeping user data:
 
 1. Quit FoxBridge.
-2. Mount the older `.dmg` and drag FoxBridge to Applications, replacing the current version.
+2. Install the older package (Mac: replace the `.app` from an older DMG; Windows: run the older NSIS installer or reinstall after uninstall).
 3. Reopen FoxBridge.
 
-User data in `~/Library/Application Support/foxbridge` is left in place unless you delete it manually.
+User data under `userData` is left in place unless you delete it manually.
 
 **Warning:** Rollback is safe only while database schema changes remain backward compatible. A future release that runs **irreversible SQLite migrations** may make downgrading unsafe without restoring a database backup from before the upgrade.
-
----
-
-## Windows status
-
-- The **Windows installer has not yet been built or tested** in this project.
-- **`build/icon.ico`** is prepared for future Windows packaging.
-- Windows packaging, Brother printing, and driver behavior must be verified on a real Windows PC before distribution.
-
-The `npm run dist:win` script exists for maintainers but should not be treated as production-ready until tested.
 
 ---
 
@@ -217,12 +310,10 @@ The `npm run dist:win` script exists for maintainers but should not be treated a
 
 Planned but **not implemented** yet:
 
-- Apple code signing
-- Apple notarization
-- GitHub Releases publishing
+- Apple code signing and notarization
+- Windows Authenticode signing
+- GitHub Releases publishing (workflow currently uploads artifacts only)
 - Automatic in-app updates
-- Windows CI builds
-- Universal macOS builds (arm64 + x64)
 
 ---
 
@@ -231,9 +322,10 @@ Planned but **not implemented** yet:
 | Script | Purpose |
 |--------|---------|
 | `npm run build` | Type-check and compile app assets (no installer) |
-| `npm run pack:mac` | Unpacked `FoxBridge.app` for quick Mac smoke tests |
+| `npm run pack:mac` | Unpacked macOS app for quick Mac smoke tests |
+| `npm run pack:win` | Unpacked Windows `dir` target (local Windows / CI tooling) |
 | `npm run dist` | Build installers for all configured platforms |
-| `npm run dist:mac` | Build the macOS `.dmg` |
-| `npm run dist:win` | Build Windows installer (not yet validated) |
+| `npm run dist:mac` | Build the macOS universal `.dmg` |
+| `npm run dist:win` | Build the Windows x64 NSIS `.exe` |
 
 See also [`PROJECT_STATE.md`](./PROJECT_STATE.md) for overall product status.

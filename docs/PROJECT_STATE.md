@@ -32,19 +32,20 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 
 ---
 
-## Sprint 15A — Desktop packaging (macOS)
+## Sprint 15A / packaging — Desktop installers
 
 | Item | Status |
 |------|--------|
 | **electron-builder** | Configured in `package.json` (`appId`: `com.foxbridge.desktop`, output: `release/`) |
-| **Unpacked arm64 app** | `npm run pack:mac` → `release/mac-arm64/FoxBridge.app` — smoke tested |
-| **Unsigned arm64 DMG** | `npm run dist:mac` → `release/FoxBridge-0.1.0-mac-arm64.dmg` — built and installed |
+| **macOS universal DMG** | `npm run dist:mac` → `release/FoxBridge-<version>-mac-universal.dmg` |
+| **Windows NSIS x64** | `npm run dist:win` → `release/FoxBridge-<version>-win-x64.exe` (build on Windows or via Actions) |
+| **Windows CI** | `.github/workflows/build-windows.yml` — tests + NSIS artifact upload (no auto Release) |
 | **better-sqlite3** | Rebuilt via `postinstall`; unpacked from ASAR (`asarUnpack`) in packaged app |
-| **User data** | Persists outside the `.app` at `~/Library/Application Support/foxbridge` |
+| **User data** | Electron `userData` (macOS `~/Library/Application Support/foxbridge`; Windows `%APPDATA%\foxbridge`) |
 | **Icons** | `build/icon.icns`, `build/icon.ico`, `build/icon.png` from `apps/mobile/public/icon.svg` |
-| **Release docs** | [`RELEASING.md`](./RELEASING.md) — manual build and distribution process |
+| **Release docs** | [`RELEASING.md`](./RELEASING.md) — Mac + Windows build and install |
 
-**Current limitations:** unsigned and not notarized (Gatekeeper warnings on first launch); **arm64 only** (no Intel/universal Mac build); **Windows installer not built or tested** (`build/icon.ico` ready). No auto-update or GitHub Releases publishing yet.
+**Current limitations:** Mac and Windows builds are **unsigned** (Gatekeeper / SmartScreen warnings on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** No auto-update or automatic GitHub Releases publishing yet.
 
 ---
 
