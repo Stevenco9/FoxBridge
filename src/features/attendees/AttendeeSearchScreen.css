@@ -62,6 +62,14 @@
   align-self: stretch;
 }
 
+.meal-validation-column {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
 .search-box {
   display: block;
   margin-bottom: 1rem;

@@ -202,7 +202,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         </section>
 
         {!isLoading && !error && showDesktopMealValidation && (
-          <section>
+          <section className="meal-validation-column">
             <MealValidationPanel
               attendees={attendees}
               selectedAttendee={selectedAttendee}

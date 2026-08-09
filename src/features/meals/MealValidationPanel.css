@@ -1,10 +1,11 @@
 .meal-validation-panel {
   width: 320px;
   flex-shrink: 0;
+  flex: 1 0 auto;
+  min-height: 0;
   padding: 1.25rem 1.5rem;
   background: #ffffff;
   border-left: 1px solid #e5e7eb;
-  overflow: auto;
 }
 
 .meal-validation-panel__title {
