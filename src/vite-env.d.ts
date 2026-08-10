@@ -19,6 +19,7 @@ import type {
 import type { CloudStatus, PublishAttendeesResult } from './shared/models/CloudStatus'
 import type { MealDashboardResult, MealDetailResult } from './shared/models/MealDashboard'
 import type { AttendeeMealValidationsResult } from './shared/models/AttendeeMealStatus'
+import type { BadgePrintStatus } from './shared/models/BadgePrintLog'
 import type { ConnectPhoneInfo } from './shared/models/ConnectPhoneInfo'
 import type { PairingInfo, PairingStatus } from './shared/models/PairingInfo'
 import type { MobileScannerInfo } from './shared/models/MobileScannerInfo'
@@ -29,8 +30,9 @@ interface ElectronAPI {
   connectRegFox: (payload: { apiKey: string; eventId: string }) => Promise<RegFoxConnectResult>
   updateRegistrations: () => Promise<RegFoxUpdateResult>
   checkInAttendee: (attendeeId: string) => Promise<AttendeeCheckInResult>
-  printBadgePreview: () => Promise<void>
+  printBadgePreview: (attendeeId: string) => Promise<void>
   printTestBadge: () => Promise<void>
+  getBadgePrintStatus: (attendeeId: string) => Promise<BadgePrintStatus>
   listPrinters: () => Promise<PrinterInfoSummary[]>
   getPreferredPrinter: () => Promise<string | null>
   setPreferredPrinter: (printerName: string) => Promise<string | null>

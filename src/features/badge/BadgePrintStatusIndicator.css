@@ -1,0 +1,66 @@
+.badge-print-status {
+  display: block;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.badge-print-status:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.badge-print-status:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.badge-print-status--printed {
+  border-color: #bbf7d0;
+  background: #ecfdf5;
+}
+
+.badge-print-status--printed:hover {
+  background: #d1fae5;
+  border-color: #86efac;
+}
+
+.badge-print-status__primary {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.badge-print-status--printed .badge-print-status__primary {
+  color: #047857;
+}
+
+.badge-print-status__marker {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.badge-print-status__secondary {
+  display: block;
+  margin: 0.25rem 0 0 1.15rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.badge-print-status--printed .badge-print-status__secondary {
+  color: #065f46;
+}

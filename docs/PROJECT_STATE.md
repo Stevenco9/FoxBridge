@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: July 2026 (Meal Dashboard — By attendee view)  
+Last updated: August 2026 (Sprint 19.5 — Badge print history dialog)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -27,6 +27,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Operations home** — conference status, Connect a phone, refresh registrations (Sprint 13B)
 - **One-scan phone pairing** — organizer shows one QR; volunteer scans with Camera app; PWA auto-joins conference (Sprint 13B)
 - **Meal Dashboard (Sprint 18A–18B)** — read-only meal validation reporting; open a meal for the entitled / served detail report
+- **Badge print history (Sprint 19.1–19.5)** — local SQLite logs; status under Badge Preview; click opens print history dialog
 
 **Not yet built:** mobile offline queue, desktop pull of cloud validations into local SQLite, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
 
@@ -514,6 +515,53 @@ Lives only in **Meal Dashboard → By attendee** (not on the main registration/c
 - Validations: Supabase phone history (by QR identifier) merged with local desktop SQLite
 - **By meal** tab keeps the existing meal summary + meal detail drill-down
 - Does not change mobile scanning or meal validation writes
+
+---
+
+## Sprint 19.1 — Badge print history infrastructure
+
+Local desktop SQLite foundation for recording badge reprints.
+
+| Item | Detail |
+|------|--------|
+| **Model** | `src/shared/models/BadgePrintLog.ts` — `BadgePrintLog`, `RecordBadgePrintInput`, `BadgePrintStatus` |
+| **Table** | `badge_print_logs` created in `electron/db/database.ts` `initSchema()` via `CREATE TABLE IF NOT EXISTS` (same pattern as `meal_validations` / `attendee_check_ins`) |
+| **Indexes** | `attendee_id`; `(attendee_id, printed_at)` |
+| **Repository** | `electron/db/badgePrintLogRepository.ts` |
+| **API** | `recordBadgePrint`, `getBadgePrintHistory`, `getBadgePrintCount`, `getLastBadgePrint`, `getBadgePrintStatus` |
+| **Columns** | `id`, `attendee_id`, `printed_at`, `printer_name`, `workstation`, `operator`, `notes` (last four nullable) |
+
+Schema is applied automatically the next time the main process opens `foxbridge.db` (`getDatabase()` → `initSchema()`). Existing databases pick up the new table without a separate migration script.
+
+### Sprint 19.2 — Record successful badge prints
+
+After `webContents.print` reports success in `electron/printing/printBadgePreview.ts`, the main process calls `recordBadgePrint` with:
+
+- `attendeeId` passed from `BadgePreview` via `print:badgePreview` IPC
+- `printedAt` assigned by the repository (current ISO timestamp)
+- `printerName` from existing `captureSelectedPrinterName` (nullable)
+- `workstation` / `operator` left null (not available in the current print path)
+
+Failed prints (dialog cancel / print error) reject before logging. Test badge printing is unchanged and does not write history. Logging errors are swallowed so they cannot fail a successful print.
+
+### Sprint 19.3 — Expose badge print status via IPC
+
+Read-only single IPC for the renderer (no UI):
+
+- Channel: `print:getBadgePrintStatus`
+- Preload: `window.electronAPI.getBadgePrintStatus(attendeeId)`
+- Handler: `electron/badgePrintHandlers.ts` → `getBadgePrintStatus()`
+- Returns `{ count, lastPrintedAt, history }` (`history` newest-first; empty attendee id → empty status)
+
+### Sprint 19.4 — Badge print status indicator
+
+Compact status under the **Badge Preview** title (not full history, no modal):
+
+- Loads via `getBadgePrintStatus(attendeeId)` when the selected attendee changes
+- Refresh token bumps after a successful `printBadgePreview` so the indicator updates without leaving the person
+- Copy: `Never Printed` / `Printed 1 time` / `Printed X times`, plus `Last: …` when printed
+- Sprint 19.4.1: indicator is a button with hover/focus styling and required `onClick` (parent-supplied; history dialog not implemented yet)
+- Sprint 19.5: click opens `BadgePrintHistoryDialog` — summary + date/time list via `getBadgePrintStatus`; Close or backdrop dismisses; no edit/delete/export
 
 ---
 

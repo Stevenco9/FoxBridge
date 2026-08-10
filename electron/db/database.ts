@@ -27,6 +27,22 @@ function initSchema(db: Database.Database): void {
       checked_in_at TEXT NOT NULL,
       source TEXT NOT NULL DEFAULT 'desktop'
     );
+
+    CREATE TABLE IF NOT EXISTS badge_print_logs (
+      id TEXT PRIMARY KEY,
+      attendee_id TEXT NOT NULL,
+      printed_at TEXT NOT NULL,
+      printer_name TEXT,
+      workstation TEXT,
+      operator TEXT,
+      notes TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_badge_print_logs_attendee_id
+      ON badge_print_logs(attendee_id);
+
+    CREATE INDEX IF NOT EXISTS idx_badge_print_logs_attendee_printed_at
+      ON badge_print_logs(attendee_id, printed_at);
   `)
 }
 

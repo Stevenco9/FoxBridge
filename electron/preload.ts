@@ -18,6 +18,9 @@ import type {
 import type { CloudStatus, PublishAttendeesResult } from '../src/shared/models/CloudStatus'
 import type { MealDashboardResult, MealDetailResult } from '../src/shared/models/MealDashboard'
 import type { AttendeeMealValidationsResult } from '../src/shared/models/AttendeeMealStatus'
+import type {
+  BadgePrintStatus,
+} from '../src/shared/models/BadgePrintLog'
 import type { PairingInfo, PairingStatus } from '../src/shared/models/PairingInfo'
 import type { ConnectPhoneInfo } from '../src/shared/models/ConnectPhoneInfo'
 import type { MobileScannerInfo } from '../src/shared/models/MobileScannerInfo'
@@ -31,8 +34,11 @@ const electronAPI = {
     ipcRenderer.invoke('regfox:updateRegistrations'),
   checkInAttendee: (attendeeId: string): Promise<AttendeeCheckInResult> =>
     ipcRenderer.invoke('regfox:checkInAttendee', attendeeId),
-  printBadgePreview: (): Promise<void> => ipcRenderer.invoke('print:badgePreview'),
+  printBadgePreview: (attendeeId: string): Promise<void> =>
+    ipcRenderer.invoke('print:badgePreview', attendeeId),
   printTestBadge: (): Promise<void> => ipcRenderer.invoke('print:testBadge'),
+  getBadgePrintStatus: (attendeeId: string): Promise<BadgePrintStatus> =>
+    ipcRenderer.invoke('print:getBadgePrintStatus', attendeeId),
   listPrinters: (): Promise<PrinterInfoSummary[]> => ipcRenderer.invoke('print:listPrinters'),
   getPreferredPrinter: (): Promise<string | null> => ipcRenderer.invoke('print:getPreferredPrinter'),
   setPreferredPrinter: (printerName: string): Promise<string | null> =>

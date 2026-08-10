@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import type { PrinterInfo, WebContents } from 'electron'
+import { recordBadgePrint } from '../db/badgePrintLogRepository'
 import { captureSelectedPrinterName } from './captureSelectedPrinter'
 import {
   getPreferredPrinterName,
@@ -268,9 +269,13 @@ function buildBadgePrintDocument(badgeMarkup: string): string {
 </html>`
 }
 
-export async function printBadgePreview(webContents: WebContents): Promise<void> {
+export async function printBadgePreview(
+  webContents: WebContents,
+  attendeeId: string,
+): Promise<void> {
   const badgeMarkup = await readBadgeMarkup(webContents)
   const preferredPrinterName = await getPreferredPrinterName()
+  const normalizedAttendeeId = attendeeId.trim()
 
   const printWindow = new BrowserWindow({
     show: false,
@@ -318,6 +323,26 @@ export async function printBadgePreview(webContents: WebContents): Promise<void>
           }
 
           void rememberSuccessfulPrinter(printWindow.webContents, deviceName)
+            .then(async () => {
+              if (!normalizedAttendeeId) {
+                return
+              }
+
+              try {
+                const printerName = await captureSelectedPrinterName({
+                  requestedDeviceName: deviceName,
+                })
+                recordBadgePrint({
+                  attendeeId: normalizedAttendeeId,
+                  printerName,
+                })
+              } catch (error) {
+                console.error(
+                  '[badge-print-log] unable to record successful print',
+                  error instanceof Error ? error.message : error,
+                )
+              }
+            })
             .then(() => resolve())
             .catch(() => resolve())
         },

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'react-qr-code'
 import type { Attendee } from '../../shared/models'
+import { getAttendeeFullName } from '../attendees/searchAttendees'
 import {
   type BadgeFieldDefinition,
   type BadgeLayoutSelection,
@@ -12,6 +13,8 @@ import {
 } from './badgeFields'
 import { getAttendeeQrValue } from './getAttendeeQrValue'
 import FittedBadgeName from './FittedBadgeName'
+import BadgePrintStatusIndicator from './BadgePrintStatusIndicator'
+import BadgePrintHistoryDialog from './BadgePrintHistoryDialog'
 import {
   BADGE_NAME_MAX_FONT_PT,
   BADGE_NAME_MIN_FONT_PT,
@@ -201,6 +204,12 @@ export default function BadgePreviewPanel({
 
   const [isPrinting, setIsPrinting] = useState(false)
   const [printError, setPrintError] = useState<string | null>(null)
+  const [printStatusRefreshToken, setPrintStatusRefreshToken] = useState(0)
+  const [historyOpen, setHistoryOpen] = useState(false)
+
+  useEffect(() => {
+    setHistoryOpen(false)
+  }, [attendee.id])
 
   const updateSlot = (slot: BadgeSlot, values: string[]) => {
     onLayoutChange({
@@ -219,7 +228,8 @@ export default function BadgePreviewPanel({
     setPrintError(null)
 
     try {
-      await window.electronAPI.printBadgePreview()
+      await window.electronAPI.printBadgePreview(attendee.id)
+      setPrintStatusRefreshToken((token) => token + 1)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to open the print dialog.'
@@ -232,6 +242,19 @@ export default function BadgePreviewPanel({
   return (
     <aside className="badge-panel">
       <h2 className="badge-panel__title">Badge Preview</h2>
+
+      <BadgePrintStatusIndicator
+        attendeeId={attendee.id}
+        refreshToken={printStatusRefreshToken}
+        onClick={() => setHistoryOpen(true)}
+      />
+
+      <BadgePrintHistoryDialog
+        open={historyOpen}
+        attendeeId={attendee.id}
+        attendeeName={getAttendeeFullName(attendee) || undefined}
+        onClose={() => setHistoryOpen(false)}
+      />
 
       <div className="badge-panel__controls">
         <MultiFieldDropdown
