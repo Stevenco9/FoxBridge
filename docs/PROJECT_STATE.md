@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 19.5 — Badge print history dialog)  
+Last updated: August 2026 (Sprint 20.5 — UX polish and validation)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -28,8 +28,13 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **One-scan phone pairing** — organizer shows one QR; volunteer scans with Camera app; PWA auto-joins conference (Sprint 13B)
 - **Meal Dashboard (Sprint 18A–18B)** — read-only meal validation reporting; open a meal for the entitled / served detail report
 - **Badge print history (Sprint 19.1–19.5)** — local SQLite logs; status under Badge Preview; click opens print history dialog
+- **Available attendee fields catalog (Sprint 20.1)** — pure shared discovery service for future configurable highlight fields (no UI/IPC yet)
+- **Event settings persistence (Sprint 20.2)** — `event-settings.json` + generic get/patch IPC for per-event prefs (`attendeeDisplay`); no UI yet
+- **Event Settings UI (Sprint 20.3)** — Operations Home → Event Settings; Attendee Display ordered field list (add/remove/change, autosave); attendee details screen unchanged
+- **Attendee Quick Info (Sprint 20.4)** — details panel renders configured `attendeeDisplay` fields; hardcoded AdAgrA book UI removed
+- **Sprint 20.5 polish** — Event Settings / Quick Info spacing, long-label handling, scroll for long lists, clearer stale keys
 
-**Not yet built:** mobile offline queue, desktop pull of cloud validations into local SQLite, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
+**Not yet built:** reorder controls for display items, IPC for available-field catalog discovery, mobile offline queue, desktop pull of cloud validations into local SQLite, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
 
 ---
 
@@ -60,6 +65,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | Badge preview | 3.9" × 2.4" horizontal label; Inter font; top/middle/bottom configurable zones (up to 3 fields each) |
 | Badge printing | **Print Badge** button → Electron `webContents.print({ silent: false })`; print CSS hides non-badge UI |
 | Preferred printer memory | Remembers last successful printer in `userData/preferred-printer.json`; pre-selects if still available |
+| Event settings | Per-event prefs in `userData/event-settings.json` via `getEventSettings` / `patchEventSettings` (`attendeeDisplay.fieldKeys` today) |
 | QR on badge | Encodes stable attendee id (`registrationId` / id); no PII in QR |
 | Meal validation panel | QR paste or list selection; shows plans, validatable meals, meal choice, dietary info |
 | Meal plan expansion | Full/half/bring-your-own plans expand to individual meals via `mealPlanConfig.ts` |
@@ -95,9 +101,11 @@ FoxBridge/
 │   ├── scannerServerHandlers.ts
 │   ├── cloudHandlers.ts
 │   ├── settingsHandlers.ts
+│   ├── eventSettingsHandlers.ts
 │   ├── settings/
 │   │   ├── settingsService.ts
 │   │   ├── settingsStore.ts
+│   │   ├── eventSettingsStore.ts
 │   │   └── secretStore.ts
 │   ├── cloud/
 │   │   ├── supabaseConfig.ts
@@ -115,6 +123,7 @@ FoxBridge/
 │   ├── features/
 │   │   ├── attendees/
 │   │   ├── badge/
+│   │   ├── eventSettings/
 │   │   ├── meals/
 │   │   ├── scanner/
 │   │   └── cloud/          # Cloud Status panel
@@ -562,6 +571,105 @@ Compact status under the **Badge Preview** title (not full history, no modal):
 - Copy: `Never Printed` / `Printed 1 time` / `Printed X times`, plus `Last: …` when printed
 - Sprint 19.4.1: indicator is a button with hover/focus styling and required `onClick` (parent-supplied; history dialog not implemented yet)
 - Sprint 19.5: click opens `BadgePrintHistoryDialog` — summary + date/time list via `getBadgePrintStatus`; Close or backdrop dismisses; no edit/delete/export
+
+---
+
+## Sprint 20.1 — Discover available registration fields
+
+Pure shared service that builds a catalog of every meaningful `Attendee` attribute organizers may later choose to display in the attendee details panel. **No UI, no IPC, no import changes.**
+
+| Item | Detail |
+|------|--------|
+| **Service** | `src/shared/attendees/discoverAvailableAttendeeFields.ts` |
+| **API** | `discoverAvailableAttendeeFields({ attendees })` → `AvailableAttendeeField[]` |
+| **Shape** | `{ key, label, dataType, source, category? }` — JSON-serializable for a future IPC wrapper |
+| **Static fields** | Built-in Attendee props, derived (`fullName`, `cityState`, `registrationType`), payment snapshot |
+| **Event-specific** | Union of `customFields` (`custom:<path>`) and `purchases` (`purchase:<id>`) across imported attendees |
+| **Test** | `npm run test:available-attendee-fields` |
+
+Keys for custom/purchase entries align with badge field ID prefixes (`custom:`, `purchase:`) so later resolution can share conventions with `badgeFields.ts`.
+
+---
+
+## Sprint 20.2 — Event settings persistence
+
+Per-event organizer preferences in Electron `userData`, separate from global `AppSettingsPublic` and SQLite ops data. **No UI.**
+
+| Item | Detail |
+|------|--------|
+| **File** | `{userData}/event-settings.json` |
+| **Shape** | `{ version: 1, events: { [regfoxEventId]: EventSettingsEntry } }` |
+| **Model** | `src/shared/models/EventSettings.ts` |
+| **Normalize** | `src/shared/settings/normalizeEventSettings.ts` (pure) |
+| **Store** | `electron/settings/eventSettingsStore.ts` |
+| **IPC** | `eventSettings:get` / `eventSettings:patch` (generic entry get/merge) |
+| **Preload** | `getEventSettings(eventId)`, `patchEventSettings(eventId, patch)` |
+| **Current section** | `attendeeDisplay.fieldKeys` — stable Sprint 20.1 catalog keys |
+| **Extensibility** | Add sections on `EventSettingsEntry` / `EventSettingsPatch` (e.g. badgeLayout, meals) without new channels |
+| **Test** | `npm run test:event-settings` |
+
+Example on-disk fragment:
+
+```json
+{
+  "version": 1,
+  "events": {
+    "12345": {
+      "attendeeDisplay": {
+        "fieldKeys": ["fullName", "custom:address.city", "purchase:mealPan.fullMealPlan"]
+      }
+    }
+  }
+}
+```
+
+---
+
+## Sprint 20.3 — Event Settings UI (Attendee Display)
+
+Organizer UI to configure which fields will appear on the attendee details screen. **Does not yet render those fields on the details panel.**
+
+| Item | Detail |
+|------|--------|
+| **Entry** | Operations Home → **Event Settings** (secondary action beside Meal Dashboard) |
+| **Shell** | `src/features/eventSettings/EventSettingsPanel.tsx` — modal overlay; sections container for future badge/meal prefs |
+| **Section** | `AttendeeDisplaySettingsSection.tsx` — dynamic ordered list of selectors |
+| **Catalog** | Renderer calls `discoverAvailableAttendeeFields({ attendees })` (Sprint 20.1); grouped Built-in / Derived / Payment / Purchases / Custom Registration |
+| **Persist** | Autosave via `getEventSettings` / `patchEventSettings` → `attendeeDisplay.fieldKeys` |
+| **Actions** | Add, remove, change item; reorder deferred |
+| **Duplicates** | Options already used in other rows are disabled in each `<select>` |
+| **Test** | `npm run test:attendee-display-catalog` |
+
+---
+
+## Sprint 20.4 — Render Attendee Quick Info
+
+Configured Event Settings fields now appear on the selected attendee details panel.
+
+| Item | Detail |
+|------|--------|
+| **Panel** | `AttendeeQuickInfoPanel` — after Payment, before Check-in / Badge |
+| **Load** | `getPublicSettings` → `regfoxEventId` → `getEventSettings` → `attendeeDisplay.fieldKeys` |
+| **Resolve** | `resolveAttendeeDisplayItems` / `resolveAttendeeDisplayValue` (shared pure) |
+| **Labels** | From `discoverAvailableAttendeeFields` catalog |
+| **Hide empty** | null / empty string / empty array / false / purchase qty ≤ 0 |
+| **Format** | true → `✓ Yes`; qty 1 → `Purchased`; qty >1 → `N Purchased`; arrays multiline |
+| **Removed** | Hardcoded AdAgrA book detail panel + list emoji (`AttendeeBookIndicator`) |
+| **Test** | `npm run test:resolve-attendee-display` |
+
+Organizers who want book status on details configure the matching purchase field under Event Settings → Attendee Display.
+
+---
+
+## Sprint 20.5 — UX polish and validation
+
+No new features. Polish + validation of Sprint 20 Event Settings / Quick Info:
+
+- Fixed Event Settings header; body scrolls for long Attendee Display lists
+- Attendee Display section card styling; select ellipsis + stale-key highlight
+- Quick Info max-height scroll; wrapping for long labels/values
+- Clearer unavailable labels; Saved status auto-clears
+- Validated duplicates-after-edit, stale labels, large lists, disk persistence path (`userData/event-settings.json`)
 
 ---
 

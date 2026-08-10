@@ -7,6 +7,7 @@ interface OperationsHomeProps {
   language: AppLanguage
   onConnectPhone: () => void
   onOpenMealDashboard: () => void
+  onOpenEventSettings: () => void
   onOpenSettings: () => void
   refreshToken?: number | string
 }
@@ -23,6 +24,7 @@ export default function OperationsHome({
   language,
   onConnectPhone,
   onOpenMealDashboard,
+  onOpenEventSettings,
   onOpenSettings,
   refreshToken,
 }: OperationsHomeProps) {
@@ -124,6 +126,13 @@ export default function OperationsHome({
           onClick={onOpenMealDashboard}
         >
           {t('home.action.mealDashboard')}
+        </button>
+        <button
+          type="button"
+          className="operations-home__action operations-home__action--secondary"
+          onClick={onOpenEventSettings}
+        >
+          {t('home.action.eventSettings')}
         </button>
       </div>
 

@@ -24,6 +24,10 @@ import type { ConnectPhoneInfo } from './shared/models/ConnectPhoneInfo'
 import type { PairingInfo, PairingStatus } from './shared/models/PairingInfo'
 import type { MobileScannerInfo } from './shared/models/MobileScannerInfo'
 import type { ScannerServerStatus } from './shared/models/ScannerServer'
+import type {
+  EventSettingsEntry,
+  EventSettingsPatch,
+} from './shared/models/EventSettings'
 
 interface ElectronAPI {
   getAttendees: () => Promise<Attendee[]>
@@ -67,6 +71,11 @@ interface ElectronAPI {
   getSetupStatus: () => Promise<SetupStatus>
   completeSetup: () => Promise<AppSettingsPublic>
   resetSetup: () => Promise<AppSettingsPublic>
+  getEventSettings: (eventId: string) => Promise<EventSettingsEntry>
+  patchEventSettings: (
+    eventId: string,
+    patch: EventSettingsPatch,
+  ) => Promise<EventSettingsEntry>
 }
 
 declare global {

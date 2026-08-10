@@ -6,14 +6,11 @@ import AttendeeCheckInPanel from './AttendeeCheckInPanel'
 import AttendeePaymentPanel, {
   AttendeePaymentListBadge,
 } from './AttendeePaymentPanel'
-import {
-  AttendeeBookListIndicator,
-  AttendeeBookPurchasePanel,
-} from './AttendeeBookIndicator'
-import { hasConsejosSobreAgriculturaPurchase } from './agricultureBookPurchase'
+import AttendeeQuickInfoPanel from './AttendeeQuickInfoPanel'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import ConnectPhonePanel from '../operations/ConnectPhonePanel'
 import OperationsHome from '../operations/OperationsHome'
+import EventSettingsPanel from '../eventSettings/EventSettingsPanel'
 import MealDashboardPanel from '../meals/MealDashboardPanel'
 import MealValidationPanel from '../meals/MealValidationPanel'
 import SettingsModal from '../settings/SettingsModal'
@@ -36,7 +33,9 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [connectPhoneOpen, setConnectPhoneOpen] = useState(false)
   const [mealDashboardOpen, setMealDashboardOpen] = useState(false)
+  const [eventSettingsOpen, setEventSettingsOpen] = useState(false)
   const [connectRefreshToken, setConnectRefreshToken] = useState(0)
+  const [quickInfoRefreshToken, setQuickInfoRefreshToken] = useState(0)
   const [showDesktopMealValidation, setShowDesktopMealValidation] = useState(false)
 
   const searchRef = useRef<HTMLElement | null>(null)
@@ -123,6 +122,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         refreshToken={attendees.length}
         onConnectPhone={() => setConnectPhoneOpen(true)}
         onOpenMealDashboard={() => setMealDashboardOpen(true)}
+        onOpenEventSettings={() => setEventSettingsOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -175,9 +175,6 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
                       >
                         <span className="attendee-list__name">
                           {fullName || 'Unnamed attendee'}
-                          {hasConsejosSobreAgriculturaPurchase(attendee) && (
-                            <AttendeeBookListIndicator />
-                          )}
                         </span>
                         <AttendeePaymentListBadge payment={attendee.payment} />
                         {attendee.email && (
@@ -213,9 +210,11 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         {selectedAttendee && (
           <section ref={badgeRef} className="attendee-detail">
             <AttendeePaymentPanel payment={selectedAttendee.payment} />
-            {hasConsejosSobreAgriculturaPurchase(selectedAttendee) && (
-              <AttendeeBookPurchasePanel />
-            )}
+            <AttendeeQuickInfoPanel
+              attendee={selectedAttendee}
+              attendees={attendees}
+              refreshToken={quickInfoRefreshToken}
+            />
             <AttendeeCheckInPanel
               attendee={selectedAttendee}
               onCheckedIn={(updated) => {
@@ -244,6 +243,15 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         open={mealDashboardOpen}
         attendees={attendees}
         onClose={() => setMealDashboardOpen(false)}
+      />
+
+      <EventSettingsPanel
+        open={eventSettingsOpen}
+        attendees={attendees}
+        onClose={() => {
+          setEventSettingsOpen(false)
+          setQuickInfoRefreshToken((token) => token + 1)
+        }}
       />
 
       <SettingsModal

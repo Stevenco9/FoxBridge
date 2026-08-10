@@ -39,6 +39,40 @@ The central record for a person registered for an event. Attendees are cached lo
 - May have one or more **Check-In** records (future; status currently denormalized on Attendee)
 - May have one or more **Badge** print records (future; status currently denormalized on Attendee)
 
+### Available field catalog (Sprint 20.1)
+
+Organizers will eventually configure which attributes appear as highlights on the attendee details panel. Field discovery is a pure shared service (`discoverAvailableAttendeeFields`) over imported `Attendee` records:
+
+| Source | Keys | How discovered |
+|--------|------|----------------|
+| Built-in | e.g. `firstName`, `email`, `checkedIn` | Fixed catalog from the Attendee model |
+| Derived | `fullName`, `cityState`, `registrationType` | Fixed composites (resolved later from other fields) |
+| Payment | `payment.status`, amounts, currency | Fixed nested payment snapshot |
+| Custom | `custom:<path>` | Union of `customFields` across attendees |
+| Purchase | `purchase:<id>` | Union of `purchases` (tickets, meals, add-ons, etc.) |
+
+Discovery does not call RegFox and does not change import storage.
+
+### Event settings file (Sprint 20.2)
+
+Organizer preferences that differ by RegFox event live in Electron `userData/event-settings.json` (not `AppSettingsPublic`, not SQLite):
+
+```json
+{
+  "version": 1,
+  "events": {
+    "<regfoxEventId>": {
+      "attendeeDisplay": { "fieldKeys": ["fullName", "custom:…"] }
+    }
+  }
+}
+```
+
+- Keyed by RegFox event id
+- `attendeeDisplay.fieldKeys` stores stable catalog keys from Sprint 20.1
+- Additional sections (badge layout, meals, …) can be added under each event later
+- IPC: `getEventSettings` / `patchEventSettings`
+
 ### Future expansion
 
 - Meal redemption flags and timestamps
@@ -47,6 +81,9 @@ The central record for a person registered for an event. Attendees are cached lo
 - Separate Check-In and Badge entities instead of denormalized status fields
 - Multi-event attendee linking (post-MVP)
 - On-site payment recording (Sprint 16B) — local operational history, separate from RegFox
+- Configurable highlight-field selection UI over the Sprint 20.1 catalog + 20.2 persistence (**Sprint 20.3:** organizer UI; **Sprint 20.4:** Quick Info rendering on details panel)
+- Persist badge layout under the same event-settings document
+- Reorder controls for Attendee Display items
 
 ---
 

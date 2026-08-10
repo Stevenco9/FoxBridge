@@ -27,6 +27,10 @@
     "test:meal-dashboard": "tsx scripts/test-meal-dashboard.ts",
     "test:meal-detail": "tsx scripts/test-meal-detail.ts",
     "test:attendee-meal-status": "tsx scripts/test-attendee-meal-status.ts",
+    "test:available-attendee-fields": "tsx scripts/test-available-attendee-fields.ts",
+    "test:event-settings": "tsx scripts/test-event-settings.ts",
+    "test:attendee-display-catalog": "tsx scripts/test-attendee-display-catalog.ts",
+    "test:resolve-attendee-display": "tsx scripts/test-resolve-attendee-display.ts",
     "test:printer": "bash scripts/test-printer.sh"
   },
   "dependencies": {

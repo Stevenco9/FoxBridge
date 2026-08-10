@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { closeDatabase, getDatabase } from './db/database'
 import { registerBadgePrintHandlers } from './badgePrintHandlers'
 import { registerCloudHandlers } from './cloudHandlers'
+import { registerEventSettingsHandlers } from './eventSettingsHandlers'
 import { registerMealValidationHandlers } from './mealValidationHandlers'
 import { registerPrintHandlers } from './printHandlers'
 import { registerRegFoxHandlers } from './regfoxHandlers'
@@ -48,6 +49,7 @@ app.whenReady().then(async () => {
   getDatabase()
   await initializeSettings()
   registerSettingsHandlers()
+  registerEventSettingsHandlers()
   registerRegFoxHandlers()
   registerPrintHandlers()
   registerBadgePrintHandlers()
@@ -68,6 +70,7 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     getDatabase()
     registerSettingsHandlers()
+    registerEventSettingsHandlers()
     registerRegFoxHandlers()
     registerPrintHandlers()
     registerBadgePrintHandlers()

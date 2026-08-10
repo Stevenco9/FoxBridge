@@ -36,7 +36,13 @@ Meal redemption, badge printing history, check-in actions, and other on-site act
 FoxBridge shows normalized RegFox payment status and amounts for door staff. It does not currently update RegFox payment records. On-site payment recording, if added later, will be an explicit FoxBridge operational record—not a silent rewrite of RegFox finances. The payment model supports partial balances for future events even when the current event is primarily paid versus unpaid.
 
 **Quantity add-ons map as purchases (Sprint 17B).**  
-RegFox checkbox options arrive as `true`; quantity add-ons (e.g. *Libro de "Consejos sobre Agricultura" de Ellen White*) arrive as numeric strings like `"1"`. Both become `Attendee.purchases` so door staff can see book indicators without reading raw field paths. Contact and address numbers are excluded.
+RegFox checkbox options arrive as `true`; quantity add-ons (e.g. *Libro de "Consejos sobre Agricultura" de Ellen White*) arrive as numeric strings like `"1"`. Both become `Attendee.purchases` so door staff can see book and merchandise selections without reading raw field paths. Contact and address numbers are excluded. Hardcoded AdAgrA book UI was removed in Sprint 20.4 in favor of configurable Attendee Display (Event Settings).
+
+**Attendee-detail field catalogs are comprehensive (Sprint 20.1).**  
+When discovering fields organizers may later pin as highlights on the attendee details panel, FoxBridge includes the full meaningful `Attendee` surface: built-in properties, derived composites, payment snapshot fields, custom registration answers, and purchase/selection line items (tickets, meal plans, packages, books, merchandise, and other registration options). The catalog is not pre-filtered to a short “important” list—organizers choose what to display in a later configuration sprint.
+
+**Event-specific preferences use a dedicated settings file (Sprint 20.2).**  
+UI prefs that belong to one RegFox event (attendee display field keys today; badge layout / meal prefs later) persist in `{userData}/event-settings.json`, keyed by event id. They are not mixed into global `AppSettingsPublic` or SQLite operational tables. Selection stores stable field catalog keys, not labels.
 
 **Good defaults are better than complicated configuration.**  
 Most events should work out of the box. Advanced options can exist, but volunteers should rarely need them.

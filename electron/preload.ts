@@ -25,6 +25,10 @@ import type { PairingInfo, PairingStatus } from '../src/shared/models/PairingInf
 import type { ConnectPhoneInfo } from '../src/shared/models/ConnectPhoneInfo'
 import type { MobileScannerInfo } from '../src/shared/models/MobileScannerInfo'
 import type { ScannerServerStatus } from '../src/shared/models/ScannerServer'
+import type {
+  EventSettingsEntry,
+  EventSettingsPatch,
+} from '../src/shared/models/EventSettings'
 
 const electronAPI = {
   getAttendees: (): Promise<Attendee[]> => ipcRenderer.invoke('regfox:getAttendees'),
@@ -89,6 +93,12 @@ const electronAPI = {
   getSetupStatus: (): Promise<SetupStatus> => ipcRenderer.invoke('settings:getSetupStatus'),
   completeSetup: (): Promise<AppSettingsPublic> => ipcRenderer.invoke('settings:completeSetup'),
   resetSetup: (): Promise<AppSettingsPublic> => ipcRenderer.invoke('settings:resetSetup'),
+  getEventSettings: (eventId: string): Promise<EventSettingsEntry> =>
+    ipcRenderer.invoke('eventSettings:get', eventId),
+  patchEventSettings: (
+    eventId: string,
+    patch: EventSettingsPatch,
+  ): Promise<EventSettingsEntry> => ipcRenderer.invoke('eventSettings:patch', eventId, patch),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)
