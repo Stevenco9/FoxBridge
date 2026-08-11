@@ -59,6 +59,15 @@ interface ElectronAPI {
     desktopConnectionKey: string
     conferenceId?: string | null
   }) => Promise<MobileServiceTestResult>
+  enrollFoxBridgeCloudDesktop: (payload: {
+    enrollmentCode: string
+    label?: string | null
+  }) => Promise<{
+    success: boolean
+    conferenceId: string | null
+    conferenceName: string | null
+    message: string | null
+  }>
   setupMobileScanner: () => Promise<MobileScannerSetupResult>
   getConnectPhoneInfo: () => Promise<ConnectPhoneInfo>
   createScannerPairing: () => Promise<PairingInfo>

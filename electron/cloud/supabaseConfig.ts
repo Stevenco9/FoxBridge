@@ -15,6 +15,7 @@ import {
   getEnvValueForCloudConfig,
   readPublicCloudSettingsSync,
 } from './cloudConfigInternals'
+import { resolveDesktopCloudOpsTransport } from './cloudOpsTransport'
 
 export interface SupabaseConnectionConfig {
   url: string
@@ -55,7 +56,7 @@ export function loadSupabaseConfig(): SupabaseConfig | null {
 }
 
 export function isSupabaseConfigured(): boolean {
-  return loadSupabaseConnectionConfig() !== null
+  return resolveDesktopCloudOpsTransport() !== 'none'
 }
 
 export function getMobileAppUrl(): string | null {

@@ -33,6 +33,7 @@ import {
 import { createRegFoxServiceFromSettings } from '../regfox/regfoxConfig'
 import { mergeAttendeesWithPersistedCheckIns } from '../regfox/checkInAttendee'
 import { activateRegFoxEvent } from './eventIdentityService'
+import { enrollDesktopWithCode } from '../cloud/desktopCloudApi'
 
 const MOBILE_PUBLISH_WARNING =
   'Phone scanners could not be updated. Desktop registration is still available.'
@@ -75,6 +76,11 @@ export async function saveSettingsSecrets(
     regfoxApiKey: patch.regfoxApiKey ?? current.regfoxApiKey,
     mobileDesktopConnectionKey:
       patch.mobileDesktopConnectionKey ?? current.mobileDesktopConnectionKey,
+    foxbridgeDeskToken: patch.foxbridgeDeskToken ?? current.foxbridgeDeskToken,
+    foxbridgeDeskDeviceId:
+      patch.foxbridgeDeskDeviceId ?? current.foxbridgeDeskDeviceId,
+    foxbridgeDeskConferenceId:
+      patch.foxbridgeDeskConferenceId ?? current.foxbridgeDeskConferenceId,
   })
   resetSupabaseServiceClient()
 }
@@ -359,6 +365,23 @@ export async function testMobileService(
     conferenceName: cloudStatus.conferenceName,
     message: null,
   }
+}
+
+export async function enrollFoxBridgeCloudDesktop(
+  enrollmentCode: string,
+  label?: string | null,
+): Promise<{
+  success: boolean
+  conferenceId: string | null
+  conferenceName: string | null
+  message: string | null
+}> {
+  const result = await enrollDesktopWithCode(enrollmentCode, label)
+  if (result.success) {
+    const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
+    void requestDesktopSyncBestEffort()
+  }
+  return result
 }
 
 export async function setupMobileScanner(): Promise<MobileScannerSetupResult> {

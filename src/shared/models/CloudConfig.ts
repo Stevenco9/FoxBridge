@@ -38,10 +38,17 @@ export interface FoxBridgeCloudConfigInfo {
   publishableKey: string | null
   scannerWebAddress: string | null
   publicSource: CloudConfigSource
+  /** Legacy local service-role / privileged key is present. */
   privilegedConfigured: boolean
   privilegedSource: CloudPrivilegedCredentialSource
-  /** True when Desktop can run privileged Cloud operations today (publish, etc.). */
+  /**
+   * True when Desktop can run FoxBridge Cloud ops via desk credential
+   * (production) or legacy privileged key (dev/migration).
+   */
   readyForPrivilegedDesktopOps: boolean
+  /** Event-scoped desk device credential is stored locally. */
+  deskCredentialConfigured: boolean
+  cloudOpsTransport: 'desk_credential' | 'legacy_service_role' | 'none'
 }
 
 export interface ResolveCloudPublicConfigInput {

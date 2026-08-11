@@ -77,6 +77,15 @@ const electronAPI = {
     desktopConnectionKey: string
     conferenceId?: string | null
   }): Promise<MobileServiceTestResult> => ipcRenderer.invoke('cloud:testMobileService', payload),
+  enrollFoxBridgeCloudDesktop: (payload: {
+    enrollmentCode: string
+    label?: string | null
+  }): Promise<{
+    success: boolean
+    conferenceId: string | null
+    conferenceName: string | null
+    message: string | null
+  }> => ipcRenderer.invoke('cloud:enrollDesktop', payload),
   setupMobileScanner: (): Promise<MobileScannerSetupResult> =>
     ipcRenderer.invoke('cloud:setupMobileScanner'),
   getConnectPhoneInfo: (): Promise<ConnectPhoneInfo> =>

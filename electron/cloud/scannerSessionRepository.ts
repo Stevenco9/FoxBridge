@@ -1,5 +1,7 @@
 import { ensureConferenceId } from './conferenceRepository'
-import { loadSupabaseConnectionConfig } from './supabaseConfig'
+import { resolveDesktopCloudOpsTransport } from './cloudOpsTransport'
+import { ensureScannerSessionViaDesk } from './desktopCloudApi'
+import { getSupabaseServiceClient } from './supabaseClient'
 
 function generateScannerCode(): string {
   const suffix = Math.random().toString(36).slice(2, 6)
@@ -14,15 +16,18 @@ export async function ensureScannerSession(): Promise<{ code: string; label: str
     return info.scannerSessions[0]
   }
 
-  const connection = loadSupabaseConnectionConfig()
-  if (!connection) {
-    throw new Error('Mobile service is not configured.')
+  const transport = resolveDesktopCloudOpsTransport()
+  if (transport === 'desk_credential') {
+    return ensureScannerSessionViaDesk()
   }
 
-  const { getSupabaseServiceClient } = await import('./supabaseClient')
+  if (transport !== 'legacy_service_role') {
+    throw new Error('FoxBridge Cloud is not ready for scanner setup.')
+  }
+
   const client = getSupabaseServiceClient()
   if (!client) {
-    throw new Error('Unable to connect to the mobile service.')
+    throw new Error('Unable to connect to FoxBridge Cloud.')
   }
 
   const conferenceId = await ensureConferenceId()

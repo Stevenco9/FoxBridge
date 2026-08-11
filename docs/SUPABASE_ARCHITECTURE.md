@@ -317,9 +317,22 @@ Mobile receives only what meal-line volunteers need: name, entitlements, validat
 - HTTPS only (Supabase default).
 - **Product vs implementation:** Organizers and product code speak **FoxBridge Cloud**. Supabase URL / anon / service-role are the current implementation.
 - **Publishable client key (anon)** may ship as packaged public defaults (`FOXBRIDGE_CLOUD_URL` + `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` / `FOXBRIDGE_CLOUD_ANON_KEY`) or live in the mobile PWA build. Acceptable once RLS is enforced.
-- **Service role / privileged desktop key** must **never** be embedded in distributed desktop builds, renderer, preload, or mobile JS — even via main-process-only packaging or `safeStorage` bake-in.
-- Privileged operations today still use a **local** secret (Advanced migration path or developer `.env`) in the Electron main process. Target: move those ops behind a FoxBridge API / Supabase Edge Function so conference machines need no service-role at all.
-- Existing installs that already configured Cloud in Settings continue to work (settings/secrets win over packaged public defaults).
+- **Service role** must **never** be embedded in distributed desktop builds, renderer, preload, or mobile JS.
+- **Sprint 21.6 production path:** Desktop enrolls with a one-time event enrollment code and receives a revocable **desk device credential** scoped to one `conference_id`. Privileged writes run in Edge Functions that hold the service role server-side and enforce desk→conference binding.
+- **Legacy path:** A local privileged key (`mobileDesktopConnectionKey` / `SUPABASE_SERVICE_ROLE_KEY`) remains only for development and migrating older installs.
+- Desk tokens are stored in Desktop `safeStorage` (or fallback secrets file). They are not service-role keys and cannot authorize other events.
+- Existing installs that already configured a local privileged key continue to work until enrolled.
+
+### 5.6 Desk enrollment & Edge Functions (Sprint 21.6)
+
+| Piece | Purpose |
+|-------|---------|
+| `desk_enrollment_codes` | Single-use, short-lived codes (hash stored) |
+| `desk_devices` | Revocable Desktop credentials bound to one `conference_id` |
+| `issue_desk_enrollment_code(conference_id, ttl_minutes, label)` | Operator helper (`service_role` only) returns raw code once |
+| Edge Functions `desktop-*` | Verify desk token; perform privileged DB work with server-held service role |
+
+Deploy functions after migration `009_desk_devices.sql`. Desktop never receives the service role.
 
 ---
 

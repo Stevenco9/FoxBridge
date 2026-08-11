@@ -12,7 +12,9 @@ import {
   setCloudPublishSuccess,
 } from './cloudPublishStore'
 import { ensureConferenceId, resolveConferenceId } from './conferenceRepository'
-import { loadSupabaseConnectionConfig } from './supabaseConfig'
+import { resolveDesktopCloudOpsTransport } from './cloudOpsTransport'
+import { publishAttendeesViaDesk, resolveConferenceViaDesk } from './desktopCloudApi'
+import { readDeskCredentialSync } from './deskCredentialStore'
 import { getSupabaseServiceClient } from './supabaseClient'
 
 const UPSERT_BATCH_SIZE = 100
@@ -26,10 +28,10 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 export async function getCloudStatus(): Promise<CloudStatus> {
-  const connection = loadSupabaseConnectionConfig()
+  const transport = resolveDesktopCloudOpsTransport()
   const publishState = await getCloudPublishState()
 
-  if (!connection) {
+  if (transport === 'none') {
     return {
       configured: false,
       connected: false,
@@ -38,6 +40,36 @@ export async function getCloudStatus(): Promise<CloudStatus> {
       lastPublishAt: publishState.lastPublishAt,
       lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
       lastPublishError: publishState.lastPublishError,
+    }
+  }
+
+  if (transport === 'desk_credential') {
+    try {
+      const conference = await resolveConferenceViaDesk()
+      return {
+        configured: true,
+        connected: true,
+        conferenceId: conference.id,
+        conferenceName: conference.name,
+        lastPublishAt: publishState.lastPublishAt,
+        lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
+        lastPublishError: publishState.lastPublishError,
+      }
+    } catch (error) {
+      console.error(
+        '[cloud-status] desk conference resolve failed',
+        error instanceof Error ? error.message : error,
+      )
+      const desk = readDeskCredentialSync()
+      return {
+        configured: true,
+        connected: false,
+        conferenceId: desk?.conferenceId ?? null,
+        conferenceName: null,
+        lastPublishAt: publishState.lastPublishAt,
+        lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
+        lastPublishError: publishState.lastPublishError,
+      }
     }
   }
 
@@ -105,7 +137,7 @@ export async function getCloudStatus(): Promise<CloudStatus> {
 async function upsertAttendees(rows: PublishAttendeeRow[]): Promise<void> {
   const client = getSupabaseServiceClient()
   if (!client) {
-    throw new Error('Supabase is not configured.')
+    throw new Error('Legacy Cloud client is not configured.')
   }
 
   for (const batch of chunk(rows, UPSERT_BATCH_SIZE)) {
@@ -124,11 +156,9 @@ async function replaceMealEntitlements(
 ): Promise<void> {
   const client = getSupabaseServiceClient()
   if (!client) {
-    throw new Error('Supabase is not configured.')
+    throw new Error('Legacy Cloud client is not configured.')
   }
 
-  // Full conference replace so cancelled / removed / remapped attendees cannot leave
-  // stale entitlement rows that diverge from the current RegFox sync.
   const { error: deleteError } = await client
     .from('meal_entitlements')
     .delete()
@@ -152,10 +182,10 @@ async function replaceMealEntitlements(
 }
 
 export async function publishAttendees(attendees?: Attendee[]): Promise<PublishAttendeesResult> {
-  const connection = loadSupabaseConnectionConfig()
-  if (!connection) {
+  const transport = resolveDesktopCloudOpsTransport()
+  if (transport === 'none') {
     const message =
-      'Phone scanning is not configured. Add the service URL, public key, and desktop connection key under Settings → Advanced.'
+      'FoxBridge Cloud is not ready. Enroll this computer with an enrollment code under Settings → Advanced, or configure development Cloud credentials.'
     await setCloudPublishError(message)
     return {
       success: false,
@@ -168,18 +198,6 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
   const sourceAttendees = attendees ?? getAttendeeCache()
   if (sourceAttendees.length === 0 || !isAttendeeCacheLoaded()) {
     const message = 'No attendees loaded. Wait for RegFox sync before publishing.'
-    await setCloudPublishError(message)
-    return {
-      success: false,
-      attendeeCount: 0,
-      publishedAt: null,
-      error: message,
-    }
-  }
-
-  const client = getSupabaseServiceClient()
-  if (!client) {
-    const message = 'Unable to create Supabase client.'
     await setCloudPublishError(message)
     return {
       success: false,
@@ -217,23 +235,34 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
   }
 
   try {
-    await upsertAttendees(attendeeRows)
-
-    await replaceMealEntitlements(conferenceId, entitlementRows)
-
-    await client
-      .from('conferences')
-      .update({ last_desktop_sync_at: publishedAt, updated_at: publishedAt })
-      .eq('id', conferenceId)
-      .then(({ error }) => {
-        if (error) {
-          // Conference row may not exist yet; attendee publish still succeeded.
-        }
+    if (transport === 'desk_credential') {
+      await publishAttendeesViaDesk({
+        conferenceId,
+        attendees: attendeeRows,
+        mealEntitlements: entitlementRows,
+        publishedAt,
       })
+    } else {
+      const client = getSupabaseServiceClient()
+      if (!client) {
+        throw new Error('Unable to create legacy Cloud client.')
+      }
+
+      await upsertAttendees(attendeeRows)
+      await replaceMealEntitlements(conferenceId, entitlementRows)
+      await client
+        .from('conferences')
+        .update({ last_desktop_sync_at: publishedAt, updated_at: publishedAt })
+        .eq('id', conferenceId)
+        .then(({ error }) => {
+          if (error) {
+            // Conference row may not exist yet; attendee publish still succeeded.
+          }
+        })
+    }
 
     await setCloudPublishSuccess(sourceAttendees.length, publishedAt)
 
-    // Lifecycle-owned pull (manager gates overlap; no-ops when preconditions fail).
     const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
     void requestDesktopSyncBestEffort()
 
@@ -244,7 +273,8 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
       error: null,
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to publish attendees to Supabase.'
+    const message =
+      error instanceof Error ? error.message : 'Unable to publish attendees to FoxBridge Cloud.'
     await setCloudPublishError(message)
     return {
       success: false,

@@ -1,4 +1,5 @@
 import { resolveConferenceId } from './conferenceRepository'
+import { getSupabaseAnonClient } from './desktopCloudApi'
 import { getSupabaseServiceClient } from './supabaseClient'
 import type { AttendeeMealValidationsResult } from '../../src/shared/models/AttendeeMealStatus'
 
@@ -29,7 +30,7 @@ export async function loadAttendeeMealValidations(
     }
   }
 
-  const client = getSupabaseServiceClient()
+  const client = getSupabaseAnonClient() ?? getSupabaseServiceClient()
   if (!client) {
     return {
       success: true,

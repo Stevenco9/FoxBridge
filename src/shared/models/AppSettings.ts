@@ -35,11 +35,14 @@ export interface AppSettingsPublic {
 export interface AppSettingsSecrets {
   regfoxApiKey: string | null
   /**
-   * Privileged Desktop Cloud key (legacy name). Local secrets / developer env
-   * only — never packaged into distributed builds. Target: move privileged
-   * Cloud ops behind a FoxBridge API / Edge Function.
+   * Legacy privileged Desktop Cloud key (service role). Local secrets /
+   * developer env only — never packaged into distributed builds.
    */
   mobileDesktopConnectionKey: string | null
+  /** Event-scoped desk credential issued after enrollment (Sprint 21.6). */
+  foxbridgeDeskToken: string | null
+  foxbridgeDeskDeviceId: string | null
+  foxbridgeDeskConferenceId: string | null
 }
 
 export interface SafeStorageStatus {

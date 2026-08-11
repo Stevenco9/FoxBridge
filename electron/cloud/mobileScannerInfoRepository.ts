@@ -1,4 +1,6 @@
 import type { MobileScannerInfo, ScannerSessionCode } from '../../src/shared/models/MobileScannerInfo'
+import { resolveDesktopCloudOpsTransport } from './cloudOpsTransport'
+import { ensureScannerSessionViaDesk } from './desktopCloudApi'
 import { getCloudStatus } from './publishAttendeesRepository'
 import { getMobileScannerUrl } from './supabaseConfig'
 import { getSupabaseServiceClient } from './supabaseClient'
@@ -6,8 +8,9 @@ import { getSupabaseServiceClient } from './supabaseClient'
 export async function getMobileScannerInfo(): Promise<MobileScannerInfo> {
   const mobileScannerUrl = getMobileScannerUrl()
   const cloudStatus = await getCloudStatus()
+  const transport = resolveDesktopCloudOpsTransport()
 
-  if (!cloudStatus.configured) {
+  if (!cloudStatus.configured || transport === 'none') {
     return {
       configured: false,
       connected: false,
@@ -16,6 +19,34 @@ export async function getMobileScannerInfo(): Promise<MobileScannerInfo> {
       mobileScannerUrl,
       scannerSessions: [],
       error: null,
+    }
+  }
+
+  if (transport === 'desk_credential') {
+    try {
+      const session = await ensureScannerSessionViaDesk()
+      const scannerSessions: ScannerSessionCode[] = [
+        { code: session.code, label: session.label },
+      ]
+      return {
+        configured: true,
+        connected: cloudStatus.connected,
+        conferenceId: cloudStatus.conferenceId,
+        conferenceName: cloudStatus.conferenceName,
+        mobileScannerUrl,
+        scannerSessions,
+        error: null,
+      }
+    } catch (caught) {
+      return {
+        configured: true,
+        connected: cloudStatus.connected,
+        conferenceId: cloudStatus.conferenceId,
+        conferenceName: cloudStatus.conferenceName,
+        mobileScannerUrl,
+        scannerSessions: [],
+        error: caught instanceof Error ? caught.message : 'Unable to load scanner codes.',
+      }
     }
   }
 

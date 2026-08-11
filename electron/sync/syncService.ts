@@ -1,5 +1,5 @@
-import { resolveConferenceId } from '../cloud/conferenceRepository'
 import { getSupabaseServiceClient } from '../cloud/supabaseClient'
+import { getSupabaseAnonClient } from '../cloud/desktopCloudApi'
 import { readPublicSettings } from '../settings/settingsStore'
 import { mealValidationSyncHandler } from './entities/mealValidationSync'
 import type { SyncEntityHandler, SyncRunResult } from './syncTypes'
@@ -16,19 +16,12 @@ const ENTITY_HANDLERS: readonly SyncEntityHandler[] = [mealValidationSyncHandler
 /**
  * Desktop Sync Service — Cloud → SQLite operational pull.
  *
- * Single entry point: `sync()`. Safe to call from main-process lifecycle after
- * Cloud is already usable. Never throws; skips when Cloud is unavailable so
- * Desktop stays offline-first.
- *
- * Sprint 21.4: ongoing scheduling is owned by `syncManager` (interval +
- * overlap gate). Callers should prefer `requestDesktopSyncBestEffort` for
- * lifecycle hooks; entity handlers still register here.
- *
- * Renderer must not call this.
+ * Uses anon client when available (RLS-permitted reads). Falls back to legacy
+ * service-role client for development/migration installs.
  */
 export async function sync(): Promise<SyncRunResult> {
   try {
-    const client = getSupabaseServiceClient()
+    const client = getSupabaseAnonClient() ?? getSupabaseServiceClient()
     if (!client) {
       return {
         status: 'skipped',
@@ -37,6 +30,7 @@ export async function sync(): Promise<SyncRunResult> {
       }
     }
 
+    const { resolveConferenceId } = await import('../cloud/conferenceRepository')
     const conference = await resolveConferenceId(false)
     if (!conference) {
       return {

@@ -1,4 +1,5 @@
 import { resolveConferenceId } from './conferenceRepository'
+import { getSupabaseAnonClient } from './desktopCloudApi'
 import { getSupabaseServiceClient } from './supabaseClient'
 import { getAttendeeCache, isAttendeeCacheLoaded } from '../scannerServer/attendeeCache'
 import { aggregateMealDashboard } from '../../src/shared/meals/aggregateMealDashboard'
@@ -44,7 +45,7 @@ interface ScannerLabelRow {
  * - Falls back to Supabase meal_entitlements only when the cache is empty
  */
 export async function loadMealDashboard(): Promise<MealDashboardResult> {
-  const client = getSupabaseServiceClient()
+  const client = getSupabaseAnonClient() ?? getSupabaseServiceClient()
   if (!client) {
     return {
       success: false,
@@ -215,12 +216,12 @@ export async function loadMealDashboardDetail(mealKey: string): Promise<MealDeta
     return { success: false, error: 'Select a meal to view its detail report.' }
   }
 
-  const client = getSupabaseServiceClient()
+  const client = getSupabaseAnonClient() ?? getSupabaseServiceClient()
   if (!client) {
     return {
       success: false,
       error:
-        'Phone / cloud service is not configured. Open Settings to connect Supabase, then try again.',
+        'FoxBridge Cloud is not ready. Enroll this computer or configure Cloud under Settings → Advanced.',
     }
   }
 

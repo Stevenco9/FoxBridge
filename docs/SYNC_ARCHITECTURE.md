@@ -344,6 +344,29 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **21.3** | Event identity foundation — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event |
 | **21.4** | Sync scheduling & lifecycle — main-process Sync Manager owns initial + periodic best-effort `sync()` |
 | **21.5** | Seamless Cloud configuration foundation — FoxBridge Cloud public defaults + config abstraction; no privileged keys in builds |
+| **21.6** | Trusted Cloud operations boundary — event-scoped desk credentials + Edge Functions; no local service-role for production |
+
+### Sprint 21.6 — Trusted Cloud operations boundary
+
+Privileged Desktop Cloud writes no longer require a packaged or everyday local service-role key.
+
+| Item | Detail |
+|------|--------|
+| **Enrollment** | One-time short-lived code (`desk_enrollment_codes`) → Edge Function `desktop-enroll` |
+| **Desk credential** | `desk_devices` token hash, bound to one `conference_id`, revocable |
+| **Transport** | Desktop uses packaged/public Cloud config + desk token → Edge Functions (service role only in Cloud) |
+| **Moved ops** | Publish attendees/entitlements, resolve conference, create pairing, pairing status, ensure scanner session |
+| **Reads** | Meal validation pull / dashboards use anon client where RLS allows |
+| **Legacy** | Local service-role path remains for development/migration only (`legacy_service_role`) |
+| **Schema** | `supabase/migrations/009_desk_devices.sql` |
+| **Functions** | `supabase/functions/desktop-*` |
+| **Test** | `npm run test:desk-credential` |
+
+Operator issue (SQL as service_role):
+
+```sql
+SELECT * FROM issue_desk_enrollment_code('<conference_uuid>', 60, 'Registration desk 1');
+```
 
 ### Sprint 21.5 — Seamless Cloud configuration foundation
 
@@ -429,7 +452,7 @@ Future registration adapters: map to `Attendee`, call `replaceAttendeeCacheFromR
 | **Offline** | If Cloud unavailable / no conference → `skipped` no-op |
 | **Extension** | Register another `SyncEntityHandler` in `ENTITY_HANDLERS` |
 
-Suggested next: trusted FoxBridge API for privileged Desktop ops (eliminate local service-role); simplified QR phone pairing; phone offline outbox.
+Suggested next: simplified QR phone pairing on desk-enrolled installs; tighten anon RLS; phone offline outbox.
 
 ---
 

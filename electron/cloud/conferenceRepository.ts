@@ -1,6 +1,9 @@
 import { getSupabaseServiceClient } from './supabaseClient'
 import { isConferenceUuid } from './supabaseConnectionTest'
 import { patchPublicSettings, readPublicSettings } from '../settings/settingsStore'
+import { resolveDesktopCloudOpsTransport } from './cloudOpsTransport'
+import { resolveConferenceViaDesk } from './desktopCloudApi'
+import { readDeskCredentialSync } from './deskCredentialStore'
 
 function slugFromEventId(eventId: string): string {
   const slug = eventId
@@ -15,7 +18,21 @@ function slugFromEventId(eventId: string): string {
 export async function resolveConferenceId(
   createIfMissing: boolean,
 ): Promise<{ id: string; name: string } | null> {
+  const transport = resolveDesktopCloudOpsTransport()
   const settings = await readPublicSettings()
+
+  if (transport === 'desk_credential') {
+    const desk = readDeskCredentialSync()
+    if (!desk) {
+      return null
+    }
+
+    // Desk credentials are bound to one Cloud conference; do not create others.
+    return resolveConferenceViaDesk({
+      regfoxEventId: settings.regfoxEventId,
+    })
+  }
+
   const eventId = settings.regfoxEventId?.trim()
   const client = getSupabaseServiceClient()
 
@@ -98,7 +115,9 @@ export async function resolveConferenceId(
 export async function ensureConferenceId(): Promise<string> {
   const conference = await resolveConferenceId(true)
   if (!conference) {
-    throw new Error('RegFox is not configured. Connect registration before publishing.')
+    throw new Error(
+      'FoxBridge Cloud is not ready. Enroll this computer with an enrollment code, or use Advanced development credentials.',
+    )
   }
 
   return conference.id

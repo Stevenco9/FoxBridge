@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 21.5 — Seamless Cloud configuration foundation)  
+Last updated: August 2026 (Sprint 21.6 — Trusted Cloud operations boundary)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -40,8 +40,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Sprint 21.3 Event identity** — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event; `regfoxEventId` kept for RegFox
 - **Sprint 21.4 Sync lifecycle** — Sync Manager: initial + every-5-minute best-effort `sync()`; overlap gated; non-blocking
 - **Sprint 21.5 Cloud config foundation** — FoxBridge Cloud public defaults + config abstraction; privileged keys stay local/dev-only (not packaged)
+- **Sprint 21.6 Trusted Cloud ops** — event-scoped desk enrollment + Edge Functions; production Desktop needs no local service-role
 
-**Not yet built:** FoxBridge API for zero-config privileged Desktop ops, simplified QR phone pairing, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
+**Not yet built:** simplified QR phone pairing polish, tighter anon RLS, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
 
 ---
 
@@ -460,14 +461,30 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Sprint 21.6 (recommended):** simplified QR phone pairing on top of packaged FoxBridge Cloud public config, and/or a trusted server boundary for privileged Desktop Cloud ops.
+**Sprint 21.7 (recommended):** simplified QR phone pairing on desk-enrolled installs (fewer organizer prerequisites once public Cloud defaults + enrollment are in place).
 
 Remaining Sync backlog:
 
-1. Trusted FoxBridge API / Edge Function for privileged Desktop Cloud operations (remove local service-role requirement).
-2. Simplified QR phone pairing (fewer organizer Cloud prerequisites).
+1. Simplified QR phone pairing UX / fewer Cloud prerequisites for organizers.
+2. Tighten anon RLS (replace broad `USING (true)` reads with conference-scoped policies).
 3. Mobile offline cache + validation outbox.
 4. RLS hardening / scanner session scoping beyond anon read policies.
+
+---
+
+## Sprint 21.6 — Trusted Cloud operations boundary
+
+Backend/infrastructure. No registration/badge/meal-validation behavior redesign; pairing flow unchanged product-wise.
+
+| Item | Detail |
+|------|--------|
+| **Credential** | One-time enrollment code → revocable desk device token bound to one conference |
+| **Server** | Supabase Edge Functions (`desktop-enroll`, `desktop-publish`, `desktop-resolve-conference`, `desktop-create-pairing`, `desktop-pairing-status`, `desktop-ensure-scanner-session`) |
+| **Schema** | `desk_devices`, `desk_enrollment_codes` + `issue_desk_enrollment_code()` |
+| **Desktop** | `desktopCloudApi.ts`; transport prefers desk credential over legacy service-role |
+| **Production** | No local service-role required when public Cloud config + enrollment succeed |
+| **Legacy** | Advanced privileged key still works for dev/migration |
+| **Test** | `npm run test:desk-credential` |
 
 ---
 
@@ -794,7 +811,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: Sprint 21.6 — simplified QR phone pairing and/or trusted API for privileged Cloud ops (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
+Next task: Sprint 21.7 — simplified QR phone pairing on desk-enrolled Cloud installs (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

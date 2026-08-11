@@ -8,6 +8,7 @@ import {
   resolveCloudPrivilegedCredentials,
   resolveCloudPublicConfig,
 } from '../../src/shared/models/CloudConfig'
+import { resolveCloudOpsTransport } from '../../src/shared/cloud/deskCredentialPolicy'
 import { getPackagedCloudPublicDefaults } from '../config/appDefaults'
 import {
   getEnvValueForCloudConfig,
@@ -16,14 +17,14 @@ import {
   readDesktopConnectionKeySync,
   readPublicCloudSettingsSync,
 } from './cloudConfigInternals'
+import { readDeskCredentialSync } from './deskCredentialStore'
 
 /**
  * FoxBridge Cloud configuration boundary (product-facing).
  *
- * Separates Sync/Cloud concepts from Supabase implementation adapters.
- *
  * Public (non-secret): settings override → packaged defaults → local env.
- * Privileged: local secrets or developer env only — never packaged defaults.
+ * Production ops auth: event-scoped desk credential (Sprint 21.6).
+ * Legacy privileged key: local secrets / developer env only — never packaged.
  */
 
 function envPublishableKey(): string | null {
@@ -55,6 +56,7 @@ export function resolveFoxBridgeCloudPublicConfig(): FoxBridgeCloudPublicConfig 
   })
 }
 
+/** Legacy service-role connection only (dev/migration). Prefer desk credential path. */
 export function resolveFoxBridgeCloudConnection(): FoxBridgeCloudConnectionConfig | null {
   const publicConfig = resolveFoxBridgeCloudPublicConfig()
   const privileged = resolveCloudPrivilegedCredentials({
@@ -69,9 +71,9 @@ export function isFoxBridgeCloudPublicConfigured(): boolean {
   return resolveFoxBridgeCloudPublicConfig() !== null
 }
 
-/** Privileged Desktop Cloud ops (publish, service client) are available. */
+/** Desktop can perform FoxBridge Cloud ops (desk credential or legacy key). */
 export function isFoxBridgeCloudPrivilegedConfigured(): boolean {
-  return resolveFoxBridgeCloudConnection() !== null
+  return getFoxBridgeCloudConfigInfo().readyForPrivilegedDesktopOps
 }
 
 export function getFoxBridgeCloudConfigInfo(): FoxBridgeCloudConfigInfo {
@@ -80,7 +82,12 @@ export function getFoxBridgeCloudConfigInfo(): FoxBridgeCloudConfigInfo {
     secretsPrivilegedKey: readDesktopConnectionKeySync(),
     envPrivilegedKey: getEnvValueForCloudConfig('SUPABASE_SERVICE_ROLE_KEY'),
   })
-  const connection = resolveCloudConnectionConfig({ publicConfig, privileged })
+  const desk = readDeskCredentialSync()
+  const transport = resolveCloudOpsTransport({
+    publicConfigured: Boolean(publicConfig),
+    deskTokenPresent: Boolean(desk?.deskToken),
+    legacyPrivilegedKeyPresent: Boolean(privileged),
+  })
 
   return {
     cloudUrl: publicConfig?.cloudUrl ?? null,
@@ -89,7 +96,9 @@ export function getFoxBridgeCloudConfigInfo(): FoxBridgeCloudConfigInfo {
     publicSource: publicConfig?.source ?? 'none',
     privilegedConfigured: Boolean(privileged),
     privilegedSource: privileged?.source ?? 'none',
-    readyForPrivilegedDesktopOps: connection !== null,
+    readyForPrivilegedDesktopOps: transport !== 'none',
+    deskCredentialConfigured: Boolean(desk),
+    cloudOpsTransport: transport,
   }
 }
 

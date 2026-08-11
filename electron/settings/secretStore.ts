@@ -8,12 +8,23 @@ const FALLBACK_SECRETS_FILENAME = 'secrets.fallback.json'
 
 export interface StoredSecrets {
   regfoxApiKey: string | null
+  /**
+   * Legacy privileged Cloud key (service role). Dev/migration only —
+   * never packaged into distributed builds.
+   */
   mobileDesktopConnectionKey: string | null
+  /** Event-scoped FoxBridge Cloud desk credential (Sprint 21.6). */
+  foxbridgeDeskToken: string | null
+  foxbridgeDeskDeviceId: string | null
+  foxbridgeDeskConferenceId: string | null
 }
 
 const EMPTY_SECRETS: StoredSecrets = {
   regfoxApiKey: null,
   mobileDesktopConnectionKey: null,
+  foxbridgeDeskToken: null,
+  foxbridgeDeskDeviceId: null,
+  foxbridgeDeskConferenceId: null,
 }
 
 export function getSafeStorageStatus(): { available: boolean; usingFallback: boolean } {
@@ -32,14 +43,20 @@ function getFallbackSecretsPath(): string {
   return path.join(getSettingsDirectory(), FALLBACK_SECRETS_FILENAME)
 }
 
+function normalizeSecrets(parsed: Partial<StoredSecrets> | null | undefined): StoredSecrets {
+  return {
+    regfoxApiKey: parsed?.regfoxApiKey ?? null,
+    mobileDesktopConnectionKey: parsed?.mobileDesktopConnectionKey ?? null,
+    foxbridgeDeskToken: parsed?.foxbridgeDeskToken ?? null,
+    foxbridgeDeskDeviceId: parsed?.foxbridgeDeskDeviceId ?? null,
+    foxbridgeDeskConferenceId: parsed?.foxbridgeDeskConferenceId ?? null,
+  }
+}
+
 async function readFallbackSecrets(): Promise<StoredSecrets> {
   try {
     const raw = await fs.readFile(getFallbackSecretsPath(), 'utf8')
-    const parsed = JSON.parse(raw) as StoredSecrets
-    return {
-      regfoxApiKey: parsed.regfoxApiKey ?? null,
-      mobileDesktopConnectionKey: parsed.mobileDesktopConnectionKey ?? null,
-    }
+    return normalizeSecrets(JSON.parse(raw) as Partial<StoredSecrets>)
   } catch {
     return { ...EMPTY_SECRETS }
   }
@@ -58,11 +75,7 @@ export async function readSecrets(): Promise<StoredSecrets> {
     try {
       const encrypted = await fs.readFile(getSecretsPath())
       const decrypted = safeStorage.decryptString(encrypted)
-      const parsed = JSON.parse(decrypted) as StoredSecrets
-      return {
-        regfoxApiKey: parsed.regfoxApiKey ?? null,
-        mobileDesktopConnectionKey: parsed.mobileDesktopConnectionKey ?? null,
-      }
+      return normalizeSecrets(JSON.parse(decrypted) as Partial<StoredSecrets>)
     } catch {
       return { ...EMPTY_SECRETS }
     }
@@ -72,7 +85,7 @@ export async function readSecrets(): Promise<StoredSecrets> {
 }
 
 export async function writeSecrets(secrets: StoredSecrets): Promise<void> {
-  const payload = JSON.stringify(secrets)
+  const payload = JSON.stringify(normalizeSecrets(secrets))
 
   if (safeStorage.isEncryptionAvailable()) {
     const encrypted = safeStorage.encryptString(payload)
@@ -85,5 +98,14 @@ export async function writeSecrets(secrets: StoredSecrets): Promise<void> {
     return
   }
 
-  await writeFallbackSecrets(secrets)
+  await writeFallbackSecrets(normalizeSecrets(secrets))
+}
+
+export async function patchSecrets(
+  patch: Partial<StoredSecrets>,
+): Promise<StoredSecrets> {
+  const current = await readSecrets()
+  const next = normalizeSecrets({ ...current, ...patch })
+  await writeSecrets(next)
+  return next
 }

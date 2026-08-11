@@ -11,6 +11,7 @@ import { createScannerPairing, getPairingStatus } from './mobile/pairingReposito
 import {
   setupMobileScanner,
   testMobileService,
+  enrollFoxBridgeCloudDesktop,
 } from './settings/settingsService'
 
 export function registerCloudHandlers(): void {
@@ -59,6 +60,13 @@ export function registerCloudHandlers(): void {
         payload.desktopConnectionKey,
         payload.conferenceId,
       ),
+  )
+
+  ipcMain.removeHandler('cloud:enrollDesktop')
+  ipcMain.handle(
+    'cloud:enrollDesktop',
+    async (_event, payload: { enrollmentCode: string; label?: string | null }) =>
+      enrollFoxBridgeCloudDesktop(payload.enrollmentCode, payload.label),
   )
 
   ipcMain.removeHandler('cloud:setupMobileScanner')

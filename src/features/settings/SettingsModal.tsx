@@ -33,8 +33,11 @@ export default function SettingsModal({
   const [publicKey, setPublicKey] = useState('')
   const [desktopKey, setDesktopKey] = useState('')
   const [conferenceId, setConferenceId] = useState('')
+  const [enrollmentCode, setEnrollmentCode] = useState('')
+  const [deskEnrolled, setDeskEnrolled] = useState(false)
   const [advancedMessage, setAdvancedMessage] = useState<string | null>(null)
   const [isSavingAdvanced, setIsSavingAdvanced] = useState(false)
+  const [isEnrolling, setIsEnrolling] = useState(false)
 
   const t = (key: Parameters<typeof translate>[1]) => translate(language, key)
 
@@ -51,13 +54,12 @@ export default function SettingsModal({
       setPublicKey(settings.mobilePublicKey ?? '')
       setConferenceId(settings.conferenceId ?? '')
 
-      // Soft-fill Advanced from effective FoxBridge Cloud public config when
-      // this install has no explicit override (packaged defaults / env).
       if (
         (!settings.mobileServiceUrl || !settings.mobilePublicKey) &&
         window.electronAPI.getFoxBridgeCloudConfigInfo
       ) {
         const cloudInfo = await window.electronAPI.getFoxBridgeCloudConfigInfo()
+        setDeskEnrolled(cloudInfo.deskCredentialConfigured === true)
         if (!settings.mobileServiceUrl && cloudInfo.cloudUrl) {
           setServiceUrl(cloudInfo.cloudUrl)
         }
@@ -70,6 +72,9 @@ export default function SettingsModal({
         ) {
           setScannerWebAddress(cloudInfo.scannerWebAddress)
         }
+      } else if (window.electronAPI.getFoxBridgeCloudConfigInfo) {
+        const cloudInfo = await window.electronAPI.getFoxBridgeCloudConfigInfo()
+        setDeskEnrolled(cloudInfo.deskCredentialConfigured === true)
       }
     })()
   }, [open, refreshToken])
@@ -82,6 +87,40 @@ export default function SettingsModal({
     setShowDesktopMealValidation(enabled)
     await window.electronAPI.savePublicSettings({ showDesktopMealValidation: enabled })
     onSettingsSaved?.()
+  }
+
+  const handleEnrollDesktop = async (): Promise<void> => {
+    if (!window.electronAPI?.enrollFoxBridgeCloudDesktop) {
+      return
+    }
+
+    setIsEnrolling(true)
+    setAdvancedMessage(null)
+    try {
+      const result = await window.electronAPI.enrollFoxBridgeCloudDesktop({
+        enrollmentCode,
+      })
+      if (!result.success) {
+        setAdvancedMessage(result.message ?? 'Unable to enroll this computer.')
+        return
+      }
+
+      setDeskEnrolled(true)
+      setEnrollmentCode('')
+      if (result.conferenceId) {
+        setConferenceId(result.conferenceId)
+      }
+      setAdvancedMessage(
+        result.conferenceName
+          ? `Enrolled for ${result.conferenceName}.`
+          : 'This computer is enrolled for FoxBridge Cloud.',
+      )
+      onSettingsSaved?.()
+    } catch (error) {
+      setAdvancedMessage(error instanceof Error ? error.message : 'Unable to enroll this computer.')
+    } finally {
+      setIsEnrolling(false)
+    }
   }
 
   const handleSaveAdvanced = async (): Promise<void> => {
@@ -102,9 +141,16 @@ export default function SettingsModal({
         })
 
         if (!testResult.success) {
-          setAdvancedMessage(testResult.message ?? 'Could not connect to the phone scanning service.')
+          setAdvancedMessage(testResult.message ?? 'Could not connect to FoxBridge Cloud.')
           return
         }
+      } else if (serviceUrl.trim() && publicKey.trim()) {
+        // Public Cloud endpoint only (no legacy privileged key) — required for desk enrollment.
+        await window.electronAPI.savePublicSettings({
+          mobileServiceUrl: serviceUrl.trim(),
+          mobilePublicKey: publicKey.trim(),
+          conferenceId: conferenceId.trim() || null,
+        })
       }
 
       await window.electronAPI.savePublicSettings({
@@ -185,6 +231,35 @@ export default function SettingsModal({
                 placeholder="https://scanner.example.com"
               />
             </label>
+
+            <h3 className="settings-modal__subtitle">{t('settings.cloudEnrollTitle')}</h3>
+            <p className="settings-modal__help">{t('settings.cloudEnrollHelp')}</p>
+            {deskEnrolled ? (
+              <p className="settings-modal__message" role="status">
+                {t('settings.cloudEnrolled')}
+              </p>
+            ) : (
+              <>
+                <label className="settings-modal__field">
+                  <span>{t('settings.cloudEnrollmentCode')}</span>
+                  <input
+                    type="text"
+                    value={enrollmentCode}
+                    onChange={(event) => setEnrollmentCode(event.target.value)}
+                    placeholder="ABCD-EFGH-IJKL"
+                    autoComplete="off"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="settings-modal__button settings-modal__button--primary"
+                  onClick={() => void handleEnrollDesktop()}
+                  disabled={isEnrolling || !enrollmentCode.trim()}
+                >
+                  {isEnrolling ? '…' : t('settings.cloudEnrollButton')}
+                </button>
+              </>
+            )}
 
             <h3 className="settings-modal__subtitle">{t('settings.phoneServiceTitle')}</h3>
             <p className="settings-modal__help">{t('settings.cloudOverrideHelp')}</p>

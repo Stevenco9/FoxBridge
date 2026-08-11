@@ -99,6 +99,11 @@ export type MessageKey =
   | 'settings.scannerWebAddress'
   | 'settings.phoneServiceTitle'
   | 'settings.cloudOverrideHelp'
+  | 'settings.cloudEnrollTitle'
+  | 'settings.cloudEnrollHelp'
+  | 'settings.cloudEnrollmentCode'
+  | 'settings.cloudEnrollButton'
+  | 'settings.cloudEnrolled'
   | 'settings.saveAdvanced'
   | 'connect.close'
   | 'settings.title'
@@ -216,7 +221,13 @@ const en: Record<MessageKey, string> = {
   'settings.scannerWebAddress': 'Scanner web address',
   'settings.phoneServiceTitle': 'FoxBridge Cloud (development / migration)',
   'settings.cloudOverrideHelp':
-    'Ordinary setups use packaged FoxBridge Cloud defaults. Use these fields only for local development or to keep an existing custom Cloud configuration. Do not paste privileged keys into everyday conference machines unless you are migrating a legacy install.',
+    'Ordinary production desks enroll with a one-time FoxBridge Cloud code. Use the legacy URL/key fields below only for local development or migrating an older install. Do not put a service-role key in a distributed desktop build.',
+  'settings.cloudEnrollTitle': 'Enroll this computer',
+  'settings.cloudEnrollHelp':
+    'Enter the short-lived enrollment code issued for this event. FoxBridge exchanges it for a revocable desk credential bound only to that event.',
+  'settings.cloudEnrollmentCode': 'Enrollment code',
+  'settings.cloudEnrollButton': 'Enroll computer',
+  'settings.cloudEnrolled': 'This computer is enrolled for FoxBridge Cloud.',
   'settings.saveAdvanced': 'Save advanced settings',
   'common.back': 'Back',
   'common.next': 'Next',
@@ -332,7 +343,13 @@ const es: Record<MessageKey, string> = {
   'settings.scannerWebAddress': 'Dirección web del escáner',
   'settings.phoneServiceTitle': 'FoxBridge Cloud (desarrollo / migración)',
   'settings.cloudOverrideHelp':
-    'Las instalaciones normales usan los valores predeterminados de FoxBridge Cloud. Use estos campos solo para desarrollo local o para conservar una configuración Cloud personalizada existente. No pegue claves privilegiadas en equipos de conferencia salvo que esté migrando una instalación anterior.',
+    'Las computadoras de producción se inscriben con un código de FoxBridge Cloud de un solo uso. Use los campos de URL/clave heredados solo para desarrollo local o para migrar una instalación anterior. No ponga una clave de servicio en una compilación de escritorio distribuida.',
+  'settings.cloudEnrollTitle': 'Inscribir esta computadora',
+  'settings.cloudEnrollHelp':
+    'Ingrese el código de inscripción de corta duración emitido para este evento. FoxBridge lo cambia por una credencial de escritorio revocable limitada a ese evento.',
+  'settings.cloudEnrollmentCode': 'Código de inscripción',
+  'settings.cloudEnrollButton': 'Inscribir computadora',
+  'settings.cloudEnrolled': 'Esta computadora está inscrita en FoxBridge Cloud.',
   'settings.saveAdvanced': 'Guardar configuración avanzada',
   'common.back': 'Atrás',
   'common.next': 'Siguiente',

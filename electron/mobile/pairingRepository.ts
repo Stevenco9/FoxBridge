@@ -2,15 +2,17 @@ import crypto from 'node:crypto'
 import type { PairingInfo, PairingStatus } from '../../src/shared/models/PairingInfo'
 import { PAIRING_TOKEN_TTL_MINUTES } from '../config/appDefaults'
 import { ensureConferenceId } from '../cloud/conferenceRepository'
+import { resolveDesktopCloudOpsTransport } from '../cloud/cloudOpsTransport'
+import {
+  createPairingViaDesk,
+  getPairingStatusViaDesk,
+  hashPairingToken,
+} from '../cloud/desktopCloudApi'
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
-import { loadSupabaseConnectionConfig, getScannerWebAddress } from '../cloud/supabaseConfig'
+import { getScannerWebAddress } from '../cloud/supabaseConfig'
 import { getSupabaseServiceClient } from '../cloud/supabaseClient'
 import { isAttendeeCacheLoaded, getAttendeeCache } from '../scannerServer/attendeeCache'
 import { loadRegFoxAttendees } from '../settings/settingsService'
-
-function hashToken(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex')
-}
 
 function isHttpsUrl(url: string): boolean {
   try {
@@ -44,8 +46,9 @@ async function ensureAttendeesPublished(): Promise<string | null> {
 export async function createScannerPairing(): Promise<PairingInfo> {
   const cloudStatus = await getCloudStatus()
   const scannerWebAddress = getScannerWebAddress()
+  const transport = resolveDesktopCloudOpsTransport()
 
-  if (!cloudStatus.configured || !cloudStatus.connected) {
+  if (!cloudStatus.configured || !cloudStatus.connected || transport === 'none') {
     return {
       ready: false,
       pairingUrl: null,
@@ -80,19 +83,6 @@ export async function createScannerPairing(): Promise<PairingInfo> {
     }
   }
 
-  const connection = loadSupabaseConnectionConfig()
-  const client = getSupabaseServiceClient()
-  if (!connection || !client) {
-    return {
-      ready: false,
-      pairingUrl: null,
-      expiresAt: null,
-      tokenId: null,
-      phoneConnected: false,
-      error: 'Phone scanning is not connected yet. Desktop registration is still available.',
-    }
-  }
-
   let conferenceId: string
   try {
     conferenceId = await ensureConferenceId()
@@ -108,21 +98,64 @@ export async function createScannerPairing(): Promise<PairingInfo> {
   }
 
   const rawToken = crypto.randomBytes(32).toString('base64url')
-  const tokenHash = hashToken(rawToken)
+  const tokenHash = hashPairingToken(rawToken)
   const expiresAt = new Date(Date.now() + PAIRING_TOKEN_TTL_MINUTES * 60 * 1000).toISOString()
 
-  const { data, error } = await client
-    .from('scanner_pairing_tokens')
-    .insert({
-      conference_id: conferenceId,
-      token_hash: tokenHash,
-      role: 'meal_scanner',
-      expires_at: expiresAt,
-    })
-    .select('id')
-    .single()
+  try {
+    let tokenId: string
 
-  if (error || !data) {
+    if (transport === 'desk_credential') {
+      const created = await createPairingViaDesk({ tokenHash, expiresAt })
+      tokenId = created.tokenId
+    } else {
+      const client = getSupabaseServiceClient()
+      if (!client) {
+        return {
+          ready: false,
+          pairingUrl: null,
+          expiresAt: null,
+          tokenId: null,
+          phoneConnected: false,
+          error: 'Phone scanning is not connected yet. Desktop registration is still available.',
+        }
+      }
+
+      const { data, error } = await client
+        .from('scanner_pairing_tokens')
+        .insert({
+          conference_id: conferenceId,
+          token_hash: tokenHash,
+          role: 'meal_scanner',
+          expires_at: expiresAt,
+        })
+        .select('id')
+        .single()
+
+      if (error || !data) {
+        return {
+          ready: false,
+          pairingUrl: null,
+          expiresAt: null,
+          tokenId: null,
+          phoneConnected: false,
+          error: 'Unable to create a pairing code right now. Try again.',
+        }
+      }
+
+      tokenId = data.id as string
+    }
+
+    const pairingUrl = `${scannerWebAddress.replace(/\/+$/, '')}/pair?token=${encodeURIComponent(rawToken)}`
+
+    return {
+      ready: true,
+      pairingUrl,
+      expiresAt,
+      tokenId,
+      phoneConnected: false,
+      error: null,
+    }
+  } catch {
     return {
       ready: false,
       pairingUrl: null,
@@ -132,38 +165,40 @@ export async function createScannerPairing(): Promise<PairingInfo> {
       error: 'Unable to create a pairing code right now. Try again.',
     }
   }
-
-  const pairingUrl = `${scannerWebAddress.replace(/\/+$/, '')}/pair?token=${encodeURIComponent(rawToken)}`
-
-  return {
-    ready: true,
-    pairingUrl,
-    expiresAt,
-    tokenId: data.id as string,
-    phoneConnected: false,
-    error: null,
-  }
 }
 
 export async function getPairingStatus(tokenId: string): Promise<PairingStatus> {
-  const client = getSupabaseServiceClient()
-  if (!client || !tokenId) {
+  if (!tokenId) {
     return { used: false, usedAt: null }
   }
 
-  const { data, error } = await client
-    .from('scanner_pairing_tokens')
-    .select('used_at')
-    .eq('id', tokenId)
-    .maybeSingle()
+  const transport = resolveDesktopCloudOpsTransport()
+  try {
+    if (transport === 'desk_credential') {
+      return await getPairingStatusViaDesk(tokenId)
+    }
 
-  if (error || !data) {
+    const client = getSupabaseServiceClient()
+    if (!client) {
+      return { used: false, usedAt: null }
+    }
+
+    const { data, error } = await client
+      .from('scanner_pairing_tokens')
+      .select('used_at')
+      .eq('id', tokenId)
+      .maybeSingle()
+
+    if (error || !data) {
+      return { used: false, usedAt: null }
+    }
+
+    const usedAt = (data.used_at as string | null) ?? null
+    return {
+      used: Boolean(usedAt),
+      usedAt,
+    }
+  } catch {
     return { used: false, usedAt: null }
-  }
-
-  const usedAt = (data.used_at as string | null) ?? null
-  return {
-    used: Boolean(usedAt),
-    usedAt,
   }
 }
