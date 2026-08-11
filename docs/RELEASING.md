@@ -158,7 +158,7 @@ Still **smoke-test the installer on a real Windows computer** before distributin
 | Shortcuts | Desktop + Start Menu (“FoxBridge”) |
 | Uninstall | Available through Windows Apps & features / the NSIS uninstaller |
 | Signing | Currently **unsigned** |
-| Secrets | Same as Mac: RegFox / Supabase credentials entered in Settings / wizard and stored under Electron `userData` via `safeStorage` (or a local fallback). No API keys are baked into the installer. |
+| Secrets | Same as Mac: RegFox credentials and any **local** privileged Cloud key live under Electron `userData` via `safeStorage` (or a local fallback). **Never** bake a service-role / privileged Cloud key into the installer. Optional non-secret FoxBridge Cloud public defaults (`FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` / `FOXBRIDGE_CLOUD_ANON_KEY`, `FOXBRIDGE_SCANNER_URL`) may be injected at packaging/CI time. |
 
 ### Microsoft Defender SmartScreen
 

@@ -98,6 +98,7 @@ export type MessageKey =
   | 'settings.showDesktopMealValidation'
   | 'settings.scannerWebAddress'
   | 'settings.phoneServiceTitle'
+  | 'settings.cloudOverrideHelp'
   | 'settings.saveAdvanced'
   | 'connect.close'
   | 'settings.title'
@@ -138,9 +139,9 @@ const en: Record<MessageKey, string> = {
   'mobile.skipForNow': 'Continue',
   'mobile.ready': 'Mobile scanner ready',
   'mobile.setupTitle': 'Mobile service setup',
-  'mobile.serviceUrl': 'Service URL',
-  'mobile.publicKey': 'Public key',
-  'mobile.desktopKey': 'Desktop connection key',
+  'mobile.serviceUrl': 'Cloud endpoint URL',
+  'mobile.publicKey': 'Publishable client key',
+  'mobile.desktopKey': 'Privileged desktop key (local only)',
   'mobile.conferenceId': 'Conference ID',
   'mobile.appUrl': 'Scanner web address',
   'mobile.appUrlHelp': 'This is the web address volunteers open on their phones.',
@@ -213,7 +214,9 @@ const en: Record<MessageKey, string> = {
   'settings.language': 'Language',
   'settings.showDesktopMealValidation': 'Show desktop meal validation',
   'settings.scannerWebAddress': 'Scanner web address',
-  'settings.phoneServiceTitle': 'Phone scanning service',
+  'settings.phoneServiceTitle': 'FoxBridge Cloud (development / migration)',
+  'settings.cloudOverrideHelp':
+    'Ordinary setups use packaged FoxBridge Cloud defaults. Use these fields only for local development or to keep an existing custom Cloud configuration. Do not paste privileged keys into everyday conference machines unless you are migrating a legacy install.',
   'settings.saveAdvanced': 'Save advanced settings',
   'common.back': 'Back',
   'common.next': 'Next',
@@ -250,9 +253,9 @@ const es: Record<MessageKey, string> = {
   'mobile.skipForNow': 'Continuar',
   'mobile.ready': 'Escáner móvil listo',
   'mobile.setupTitle': 'Configuración del servicio móvil',
-  'mobile.serviceUrl': 'URL del servicio',
-  'mobile.publicKey': 'Clave pública',
-  'mobile.desktopKey': 'Clave de conexión de escritorio',
+  'mobile.serviceUrl': 'URL del endpoint de Cloud',
+  'mobile.publicKey': 'Clave publicable del cliente',
+  'mobile.desktopKey': 'Clave privilegiada de escritorio (solo local)',
   'mobile.conferenceId': 'ID de conferencia',
   'mobile.appUrl': 'Dirección web del escáner',
   'mobile.appUrlHelp': 'Esta es la dirección web que los voluntarios abren en sus teléfonos.',
@@ -327,7 +330,9 @@ const es: Record<MessageKey, string> = {
   'settings.language': 'Idioma',
   'settings.showDesktopMealValidation': 'Mostrar validación de comidas en escritorio',
   'settings.scannerWebAddress': 'Dirección web del escáner',
-  'settings.phoneServiceTitle': 'Servicio de escaneo por teléfono',
+  'settings.phoneServiceTitle': 'FoxBridge Cloud (desarrollo / migración)',
+  'settings.cloudOverrideHelp':
+    'Las instalaciones normales usan los valores predeterminados de FoxBridge Cloud. Use estos campos solo para desarrollo local o para conservar una configuración Cloud personalizada existente. No pegue claves privilegiadas en equipos de conferencia salvo que esté migrando una instalación anterior.',
   'settings.saveAdvanced': 'Guardar configuración avanzada',
   'common.back': 'Atrás',
   'common.next': 'Siguiente',

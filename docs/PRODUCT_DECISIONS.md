@@ -135,6 +135,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 
 - **Volunteer pairs by scanning one temporary QR code** with the phone’s normal Camera app. No volunteer account, scanner code, conference selection, or technical setup is required.
 - **Organizer-facing UI is non-technical** — no `.env`, Supabase, RPC, anon key, service role, localhost, or scanner codes in Conference Mode. Technical configuration lives under Settings → Advanced only.
+- **FoxBridge Cloud public defaults are packaging-time (Sprint 21.5)** — Cloud endpoint URL + publishable client key may be injected via `FOXBRIDGE_CLOUD_*` at build/CI. Privileged desktop keys are never shipped in installers; they remain local migration/dev only until a FoxBridge API owns privileged ops.
 - **Pairing tokens are short-lived and single-use** — desktop creates token via service role; mobile exchanges via `exchange_scanner_pairing_token`; hash stored in `scanner_pairing_tokens`.
 - **HTTPS scanner web address required for production QR** — packaged default or Settings → Advanced override (“Scanner web address”).
 - **Desktop meal validation hidden by default** — mobile is the primary meal-line tool; desktop column available via Advanced toggle.

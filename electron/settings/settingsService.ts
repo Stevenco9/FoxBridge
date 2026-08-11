@@ -10,6 +10,7 @@ import type {
 } from '../../src/shared/models/AppSettings'
 import { resolvePhoneAccessibleUrl } from '../mobile/phoneUrlResolver'
 import { getMobileAppUrl } from '../cloud/supabaseConfig'
+import { isFoxBridgeCloudPrivilegedConfigured } from '../cloud/cloudConfig'
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
 import { ensureScannerSession } from '../cloud/scannerSessionRepository'
 import { resetSupabaseServiceClient } from '../cloud/supabaseClient'
@@ -93,11 +94,7 @@ export async function getSetupStatus(printerNames: string[]): Promise<SetupStatu
   const preferredPrinterName = await getPreferredPrinterName()
 
   const regfoxConfigured = Boolean(settings.regfoxEventId && secrets.regfoxApiKey)
-  const mobileConfigured = Boolean(
-    settings.mobileServiceUrl &&
-      settings.mobilePublicKey &&
-      secrets.mobileDesktopConnectionKey,
-  )
+  const mobileConfigured = isFoxBridgeCloudPrivilegedConfigured()
 
   const attendeeCount = isAttendeeCacheLoaded() ? getAttendeeCache().length : 0
 

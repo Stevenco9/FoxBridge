@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 21.4 — Sync scheduling & lifecycle)  
+Last updated: August 2026 (Sprint 21.5 — Seamless Cloud configuration foundation)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -39,8 +39,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Sprint 21.2 Local Event Store** — durable `event_attendees` table; Desktop uses local store as working dataset after import; RegFox connect/refresh unchanged
 - **Sprint 21.3 Event identity** — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event; `regfoxEventId` kept for RegFox
 - **Sprint 21.4 Sync lifecycle** — Sync Manager: initial + every-5-minute best-effort `sync()`; overlap gated; non-blocking
+- **Sprint 21.5 Cloud config foundation** — FoxBridge Cloud public defaults + config abstraction; privileged keys stay local/dev-only (not packaged)
 
-**Not yet built:** seamless Cloud onboarding, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
+**Not yet built:** FoxBridge API for zero-config privileged Desktop ops, simplified QR phone pairing, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
 
 ---
 
@@ -459,13 +460,31 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Sprint 21.5 (recommended):** seamless FoxBridge Cloud onboarding and/or phone offline cache + validation outbox.
+**Sprint 21.6 (recommended):** simplified QR phone pairing on top of packaged FoxBridge Cloud public config, and/or a trusted server boundary for privileged Desktop Cloud ops.
 
 Remaining Sync backlog:
 
-1. Seamless FoxBridge Cloud onboarding (replace manual Supabase key paste).
-2. Mobile offline cache + validation outbox.
-3. RLS hardening / scanner session scoping beyond anon read policies.
+1. Trusted FoxBridge API / Edge Function for privileged Desktop Cloud operations (remove local service-role requirement).
+2. Simplified QR phone pairing (fewer organizer Cloud prerequisites).
+3. Mobile offline cache + validation outbox.
+4. RLS hardening / scanner session scoping beyond anon read policies.
+
+---
+
+## Sprint 21.5 — Seamless Cloud configuration foundation
+
+Infrastructure / configuration layer. No registration, meal-validation, or pairing redesign.
+
+| Item | Detail |
+|------|--------|
+| **Product config** | `cloudConfig.ts` — FoxBridge Cloud public + privileged resolution |
+| **Shared model** | `src/shared/models/CloudConfig.ts` |
+| **Packaged public defaults** | Empty repo placeholders; CI via `FOXBRIDGE_CLOUD_URL` + `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` (or `FOXBRIDGE_CLOUD_ANON_KEY`) |
+| **Never packaged** | Service-role / privileged desktop key |
+| **Migration** | Existing Settings/secrets and local `.env` still win / remain supported |
+| **Advanced UI** | Labeled as development / migration override |
+| **IPC** | `cloud:getConfigInfo` → `getFoxBridgeCloudConfigInfo` |
+| **Test** | `npm run test:cloud-config` |
 
 ---
 
@@ -775,7 +794,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: Sprint 21.5 — seamless Cloud onboarding and/or phone offline outbox (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
+Next task: Sprint 21.6 — simplified QR phone pairing and/or trusted API for privileged Cloud ops (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

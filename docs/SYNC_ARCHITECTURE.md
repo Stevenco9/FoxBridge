@@ -164,7 +164,7 @@ Continuous sync (see §6)
 Event closed / archive (future) — retain ops history, revoke sessions
 ```
 
-**Today’s gaps vs target:** Cloud still needs manual URL/keys; attendees are not durable on disk; Cloud enablement is optional Advanced/setup fields rather than a seamless “Sync” product.
+**Today’s gaps vs target:** Public Cloud defaults can be packaged (Sprint 21.5); privileged Desktop ops still use local service credentials until a FoxBridge API / Edge Function exists. Attendees are durable on disk (Local Event Store); Cloud enablement is no longer “paste every key in Advanced” for ordinary packaged installs.
 
 ---
 
@@ -343,6 +343,30 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **21.2** | Local Event Store — durable `event_attendees` SQLite table; Desktop reads local after import |
 | **21.3** | Event identity foundation — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event |
 | **21.4** | Sync scheduling & lifecycle — main-process Sync Manager owns initial + periodic best-effort `sync()` |
+| **21.5** | Seamless Cloud configuration foundation — FoxBridge Cloud public defaults + config abstraction; no privileged keys in builds |
+
+### Sprint 21.5 — Seamless Cloud configuration foundation
+
+Product-facing **FoxBridge Cloud** configuration is separated from Supabase implementation details.
+
+| Layer | Contents | Who sets it |
+|-------|----------|-------------|
+| **Public (non-secret)** | Cloud endpoint URL + publishable client key (+ scanner HTTPS origin) | Packaged defaults (`FOXBRIDGE_CLOUD_*` at packaging/CI), or Advanced override, or local `.env` |
+| **Privileged** | Desktop service credential | Local secrets store / developer env **only** — never packaged into distributed builds |
+| **Implementation** | Supabase client adapters | `supabaseClient.ts`, repositories |
+
+**Resolution (public):** explicit settings → packaged defaults → local env.  
+**Resolution (privileged):** secrets → `SUPABASE_SERVICE_ROLE_KEY` env.  
+
+Ordinary organizers should not paste URL/anon/service-role during setup when packaging supplies public defaults. Privileged Desktop publish still requires a local secret or developer env until a trusted FoxBridge API / Edge Function removes that need (Sprint 21.6+).
+
+| Item | Detail |
+|------|--------|
+| **Abstraction** | `electron/cloud/cloudConfig.ts` + `src/shared/models/CloudConfig.ts` |
+| **Defaults** | `electron/config/appDefaults.ts` — empty placeholders in repo |
+| **Adapter** | `supabaseConfig.ts` remains; resolves via Cloud abstraction |
+| **Advanced UI** | Development / migration override only |
+| **Test** | `npm run test:cloud-config` |
 
 ### Sprint 21.4 — Sync scheduling & lifecycle
 
@@ -405,7 +429,7 @@ Future registration adapters: map to `Attendee`, call `replaceAttendeeCacheFromR
 | **Offline** | If Cloud unavailable / no conference → `skipped` no-op |
 | **Extension** | Register another `SyncEntityHandler` in `ENTITY_HANDLERS` |
 
-Suggested next: seamless Cloud onboarding; phone offline outbox; optional Desktop→Cloud meal upload.
+Suggested next: trusted FoxBridge API for privileged Desktop ops (eliminate local service-role); simplified QR phone pairing; phone offline outbox.
 
 ---
 

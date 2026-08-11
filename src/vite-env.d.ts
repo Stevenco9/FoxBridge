@@ -17,6 +17,7 @@ import type {
   ValidateMealResult,
 } from './shared/models/MealValidation'
 import type { CloudStatus, PublishAttendeesResult } from './shared/models/CloudStatus'
+import type { FoxBridgeCloudConfigInfo } from './shared/models/CloudConfig'
 import type { MealDashboardResult, MealDetailResult } from './shared/models/MealDashboard'
 import type { AttendeeMealValidationsResult } from './shared/models/AttendeeMealStatus'
 import type { BadgePrintStatus } from './shared/models/BadgePrintLog'
@@ -46,6 +47,7 @@ interface ElectronAPI {
   startScannerServer: (port?: number) => Promise<ScannerServerStatus>
   stopScannerServer: () => Promise<ScannerServerStatus>
   getCloudStatus: () => Promise<CloudStatus>
+  getFoxBridgeCloudConfigInfo: () => Promise<FoxBridgeCloudConfigInfo>
   getMealDashboard: () => Promise<MealDashboardResult>
   getMealDashboardDetail: (mealKey: string) => Promise<MealDetailResult>
   getAttendeeMealValidations: (attendeeIds: string[]) => Promise<AttendeeMealValidationsResult>

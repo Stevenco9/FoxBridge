@@ -315,8 +315,11 @@ Mobile receives only what meal-line volunteers need: name, entitlements, validat
 ### 5.5 Transport and secrets
 
 - HTTPS only (Supabase default).
-- Supabase **service role key** only in desktop main process (same boundary as RegFox key).
-- Supabase **anon key** in mobile PWA is acceptable once RLS is enforced.
+- **Product vs implementation:** Organizers and product code speak **FoxBridge Cloud**. Supabase URL / anon / service-role are the current implementation.
+- **Publishable client key (anon)** may ship as packaged public defaults (`FOXBRIDGE_CLOUD_URL` + `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` / `FOXBRIDGE_CLOUD_ANON_KEY`) or live in the mobile PWA build. Acceptable once RLS is enforced.
+- **Service role / privileged desktop key** must **never** be embedded in distributed desktop builds, renderer, preload, or mobile JS — even via main-process-only packaging or `safeStorage` bake-in.
+- Privileged operations today still use a **local** secret (Advanced migration path or developer `.env`) in the Electron main process. Target: move those ops behind a FoxBridge API / Supabase Edge Function so conference machines need no service-role at all.
+- Existing installs that already configured Cloud in Settings continue to work (settings/secrets win over packaged public defaults).
 
 ---
 

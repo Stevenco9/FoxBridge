@@ -4,6 +4,7 @@ import { getMobileScannerInfo } from './cloud/mobileScannerInfoRepository'
 import { loadMealDashboard, loadMealDashboardDetail } from './cloud/mealDashboardRepository'
 import { loadAttendeeMealValidations } from './cloud/attendeeMealStatusRepository'
 import { getCloudStatus, publishAttendees } from './cloud/publishAttendeesRepository'
+import { getFoxBridgeCloudConfigInfo } from './cloud/cloudConfig'
 import { getConnectPhoneInfo } from './mobile/connectPhoneRepository'
 import { createScannerPairing, getPairingStatus } from './mobile/pairingRepository'
 
@@ -15,6 +16,9 @@ import {
 export function registerCloudHandlers(): void {
   ipcMain.removeHandler('cloud:getStatus')
   ipcMain.handle('cloud:getStatus', async () => getCloudStatus())
+
+  ipcMain.removeHandler('cloud:getConfigInfo')
+  ipcMain.handle('cloud:getConfigInfo', async () => getFoxBridgeCloudConfigInfo())
 
   ipcMain.removeHandler('cloud:getMobileScannerInfo')
   ipcMain.handle('cloud:getMobileScannerInfo', async () => getMobileScannerInfo())

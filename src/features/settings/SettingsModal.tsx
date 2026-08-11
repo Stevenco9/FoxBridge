@@ -43,13 +43,35 @@ export default function SettingsModal({
       return
     }
 
-    void window.electronAPI.getPublicSettings().then((settings) => {
+    void (async () => {
+      const settings = await window.electronAPI.getPublicSettings()
       setShowDesktopMealValidation(settings.showDesktopMealValidation)
       setScannerWebAddress(settings.mobileAppUrl ?? settings.mobileScannerUrl ?? '')
       setServiceUrl(settings.mobileServiceUrl ?? '')
       setPublicKey(settings.mobilePublicKey ?? '')
       setConferenceId(settings.conferenceId ?? '')
-    })
+
+      // Soft-fill Advanced from effective FoxBridge Cloud public config when
+      // this install has no explicit override (packaged defaults / env).
+      if (
+        (!settings.mobileServiceUrl || !settings.mobilePublicKey) &&
+        window.electronAPI.getFoxBridgeCloudConfigInfo
+      ) {
+        const cloudInfo = await window.electronAPI.getFoxBridgeCloudConfigInfo()
+        if (!settings.mobileServiceUrl && cloudInfo.cloudUrl) {
+          setServiceUrl(cloudInfo.cloudUrl)
+        }
+        if (!settings.mobilePublicKey && cloudInfo.publishableKey) {
+          setPublicKey(cloudInfo.publishableKey)
+        }
+        if (
+          !(settings.mobileAppUrl ?? settings.mobileScannerUrl) &&
+          cloudInfo.scannerWebAddress
+        ) {
+          setScannerWebAddress(cloudInfo.scannerWebAddress)
+        }
+      }
+    })()
   }, [open, refreshToken])
 
   const handleMealValidationToggle = async (enabled: boolean): Promise<void> => {
@@ -165,6 +187,7 @@ export default function SettingsModal({
             </label>
 
             <h3 className="settings-modal__subtitle">{t('settings.phoneServiceTitle')}</h3>
+            <p className="settings-modal__help">{t('settings.cloudOverrideHelp')}</p>
             <label className="settings-modal__field">
               <span>{t('mobile.serviceUrl')}</span>
               <input type="url" value={serviceUrl} onChange={(event) => setServiceUrl(event.target.value)} />

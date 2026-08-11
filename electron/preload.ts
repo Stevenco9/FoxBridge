@@ -16,6 +16,7 @@ import type {
   ValidateMealResult,
 } from '../src/shared/models/MealValidation'
 import type { CloudStatus, PublishAttendeesResult } from '../src/shared/models/CloudStatus'
+import type { FoxBridgeCloudConfigInfo } from '../src/shared/models/CloudConfig'
 import type { MealDashboardResult, MealDetailResult } from '../src/shared/models/MealDashboard'
 import type { AttendeeMealValidationsResult } from '../src/shared/models/AttendeeMealStatus'
 import type {
@@ -58,6 +59,8 @@ const electronAPI = {
   stopScannerServer: (): Promise<ScannerServerStatus> =>
     ipcRenderer.invoke('scannerServer:stop'),
   getCloudStatus: (): Promise<CloudStatus> => ipcRenderer.invoke('cloud:getStatus'),
+  getFoxBridgeCloudConfigInfo: (): Promise<FoxBridgeCloudConfigInfo> =>
+    ipcRenderer.invoke('cloud:getConfigInfo'),
   getMealDashboard: (): Promise<MealDashboardResult> =>
     ipcRenderer.invoke('cloud:getMealDashboard'),
   getMealDashboardDetail: (mealKey: string): Promise<MealDetailResult> =>

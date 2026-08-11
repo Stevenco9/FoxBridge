@@ -14,7 +14,13 @@ export interface AppSettingsPublic {
    */
   activeEventId: string | null
   conferenceId: string | null
+  /**
+   * FoxBridge Cloud endpoint URL (legacy field name). Prefer packaged
+   * FoxBridge Cloud public defaults for ordinary installs; Advanced override
+   * for development / migration.
+   */
   mobileServiceUrl: string | null
+  /** Publishable Cloud client key (legacy field name; never a service-role). */
   mobilePublicKey: string | null
   mobileAppUrl: string | null
   /** @deprecated Use mobileAppUrl */
@@ -28,6 +34,11 @@ export interface AppSettingsPublic {
 
 export interface AppSettingsSecrets {
   regfoxApiKey: string | null
+  /**
+   * Privileged Desktop Cloud key (legacy name). Local secrets / developer env
+   * only — never packaged into distributed builds. Target: move privileged
+   * Cloud ops behind a FoxBridge API / Edge Function.
+   */
   mobileDesktopConnectionKey: string | null
 }
 
