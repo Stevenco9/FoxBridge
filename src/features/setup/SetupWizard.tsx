@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppLanguage, AppSettingsPublic, SetupStatus } from '../../shared/models/AppSettings'
 import { translate } from '../../i18n/messages'
+import FoxBridgeSyncEnrollment from '../sync/FoxBridgeSyncEnrollment'
 import './SetupWizard.css'
 
-type WizardStep = 'welcome' | 'language' | 'regfox' | 'printer' | 'mobile' | 'ready'
+type WizardStep = 'welcome' | 'language' | 'regfox' | 'foxbridgeSync' | 'printer' | 'mobile' | 'ready'
 
 interface SetupWizardProps {
   onComplete: () => void
@@ -16,6 +17,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isBusy, setIsBusy] = useState(false)
+  const [syncRefreshToken, setSyncRefreshToken] = useState(0)
+  const [syncConnectedInWizard, setSyncConnectedInWizard] = useState(false)
 
   const [apiKey, setApiKey] = useState('')
   const [eventId, setEventId] = useState('')
@@ -50,6 +53,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     setMobileReady(nextStatus.mobileConnected)
     setAttendeeCount(nextStatus.attendeeCount)
     setRegfoxConnected(nextStatus.regfoxConfigured && nextStatus.attendeeCount > 0)
+    setSyncConnectedInWizard(nextStatus.foxbridgeSyncConnected)
   }, [])
 
   useEffect(() => {
@@ -89,6 +93,13 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   }, [step, loadPrinters])
 
+  useEffect(() => {
+    if (step === 'foxbridgeSync') {
+      setSyncRefreshToken((token) => token + 1)
+      void refreshStatus()
+    }
+  }, [step, refreshStatus])
+
   const handleLanguageContinue = async (): Promise<void> => {
     if (!window.electronAPI?.savePublicSettings) {
       return
@@ -116,7 +127,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       setRegfoxConnected(true)
       setAttendeeCount(result.attendeeCount)
       await refreshStatus()
-      setStep('printer')
+      setStep('foxbridgeSync')
     } catch (connectError) {
       setError(
         connectError instanceof Error
@@ -168,6 +179,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   }
 
   const conferenceLabel = settings?.conferenceName ?? setupStatus?.conferenceName ?? 'Conference'
+  const syncReady =
+    syncConnectedInWizard || Boolean(setupStatus?.foxbridgeSyncConnected)
 
   return (
     <div className="setup-wizard">
@@ -258,11 +271,52 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               <button
                 type="button"
                 className="setup-wizard__button setup-wizard__button--primary"
-                onClick={() => void handleRegFoxConnect()}
+                onClick={() => {
+                  if (regfoxConnected) {
+                    setStep('foxbridgeSync')
+                    return
+                  }
+                  void handleRegFoxConnect()
+                }}
                 disabled={isBusy}
               >
                 {isBusy ? '…' : regfoxConnected ? t('common.next') : t('regfox.connect')}
               </button>
+            </div>
+          </>
+        )}
+
+        {step === 'foxbridgeSync' && (
+          <>
+            <h1 className="setup-wizard__title">{t('sync.title')}</h1>
+            <p className="setup-wizard__text">{t('sync.text')}</p>
+            <FoxBridgeSyncEnrollment
+              language={language}
+              variant="wizard"
+              refreshToken={syncRefreshToken}
+              showSkip={!syncReady}
+              onSkip={() => setStep('printer')}
+              onStatusResolved={(connected) => {
+                setSyncConnectedInWizard(connected)
+              }}
+              onEnrolled={() => {
+                setSyncConnectedInWizard(true)
+                void refreshStatus()
+              }}
+            />
+            <div className="setup-wizard__actions">
+              <button type="button" className="setup-wizard__button" onClick={() => setStep('regfox')}>
+                {t('common.back')}
+              </button>
+              {syncReady && (
+                <button
+                  type="button"
+                  className="setup-wizard__button setup-wizard__button--primary"
+                  onClick={() => setStep('printer')}
+                >
+                  {t('common.next')}
+                </button>
+              )}
             </div>
           </>
         )}
@@ -307,7 +361,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               >
                 {selectedPrinter ? t('printer.continue') : t('printer.skip')}
               </button>
-              <button type="button" className="setup-wizard__button" onClick={() => setStep('regfox')}>
+              <button
+                type="button"
+                className="setup-wizard__button"
+                onClick={() => setStep('foxbridgeSync')}
+              >
                 {t('printer.back')}
               </button>
             </div>
@@ -349,6 +407,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             <ul className="setup-wizard__summary">
               <li>{conferenceLabel}</li>
               <li>{t('ready.attendees', { count: setupStatus?.attendeeCount ?? attendeeCount })}</li>
+              <li>
+                {setupStatus?.foxbridgeSyncConnected || syncConnectedInWizard
+                  ? t('ready.syncReady')
+                  : t('ready.syncLater')}
+              </li>
               <li>
                 {setupStatus?.preferredPrinterName && setupStatus.printerAvailable
                   ? t('ready.printerReady')

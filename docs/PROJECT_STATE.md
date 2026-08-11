@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 21.7 — Simplified phone pairing)  
+Last updated: August 2026 (Sprint 21.8 — Organizer FoxBridge Sync enrollment UX)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -42,6 +42,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Sprint 21.5 Cloud config foundation** — FoxBridge Cloud public defaults + config abstraction; privileged keys stay local/dev-only (not packaged)
 - **Sprint 21.6 Trusted Cloud ops** — event-scoped desk enrollment + Edge Functions; production Desktop needs no local service-role
 - **Sprint 21.7 Simplified phone pairing** — one-scan HTTPS QR (`/pair?token=…`) with clear Desktop states; soft publish warning; non-technical organizer errors
+- **Sprint 21.8 Organizer Sync enrollment UX** — Setup Wizard Sync step + Operations Home status/connect card; shared enrollment logic; Advanced remains fallback only
 
 **Not yet built:** tighter anon RLS, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
 
@@ -462,7 +463,7 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Sprint 21.8 (recommended):** tighten anon RLS (replace broad `USING (true)` reads with conference-scoped policies) and/or phone offline cache + validation outbox.
+**Sprint 21.9 (recommended):** tighten anon RLS (replace broad `USING (true)` reads with conference-scoped policies) and/or phone offline cache + validation outbox.
 
 Remaining Sync backlog:
 
@@ -470,6 +471,23 @@ Remaining Sync backlog:
 2. Mobile offline cache + validation outbox.
 3. Optional Desktop→Cloud meal upload when desktop meals are used.
 4. Multi-event UI switching.
+
+---
+
+## Sprint 21.8 — Organizer FoxBridge Sync enrollment UX
+
+First-time enrollment in Setup Wizard; ongoing status and recovery on Operations Home. Shared enrollment/status logic — not two separate workflows.
+
+| Item | Detail |
+|------|--------|
+| **Wizard** | Always shows FoxBridge Sync after RegFox; ✓ Connected + Next when desk credential is valid; otherwise code entry + Set up later |
+| **Operations Home** | Compact Sync status row + FoxBridge Sync action; opens shared connect/reconnect panel |
+| **Shared UI** | `FoxBridgeSyncEnrollment` + `foxbridgeSyncStatus` helpers (phase classification, organizer-safe errors) |
+| **Status fields** | `CloudStatus.connectionError` / `deskCredentialConfigured`; `SetupStatus.foxbridgeSync*` |
+| **Copy** | “FoxBridge Sync” / enrollment code only — no Supabase, URLs, keys, or desk-token jargon |
+| **Advanced** | Fallback enroll still available; primary path is Wizard + Operations Home |
+| **Unchanged** | Phone pairing, registration, badge, meal, Quick Info |
+| **Test** | `npm run test:foxbridge-sync-status` |
 
 ---
 
@@ -827,7 +845,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: Sprint 21.8 — tighten anon RLS and/or phone offline outbox (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
+Next task: Sprint 21.9 — tighten anon RLS and/or phone offline outbox (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

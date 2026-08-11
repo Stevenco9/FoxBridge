@@ -9,6 +9,7 @@ import AttendeePaymentPanel, {
 import AttendeeQuickInfoPanel from './AttendeeQuickInfoPanel'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import ConnectPhonePanel from '../operations/ConnectPhonePanel'
+import ConnectFoxBridgeSyncPanel from '../operations/ConnectFoxBridgeSyncPanel'
 import OperationsHome from '../operations/OperationsHome'
 import EventSettingsPanel from '../eventSettings/EventSettingsPanel'
 import MealDashboardPanel from '../meals/MealDashboardPanel'
@@ -32,6 +33,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [connectPhoneOpen, setConnectPhoneOpen] = useState(false)
+  const [foxbridgeSyncOpen, setFoxbridgeSyncOpen] = useState(false)
   const [mealDashboardOpen, setMealDashboardOpen] = useState(false)
   const [eventSettingsOpen, setEventSettingsOpen] = useState(false)
   const [connectRefreshToken, setConnectRefreshToken] = useState(0)
@@ -121,6 +123,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         language={language}
         refreshToken={attendees.length}
         onConnectPhone={() => setConnectPhoneOpen(true)}
+        onOpenFoxBridgeSync={() => setFoxbridgeSyncOpen(true)}
         onOpenMealDashboard={() => setMealDashboardOpen(true)}
         onOpenEventSettings={() => setEventSettingsOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -237,6 +240,17 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         open={connectPhoneOpen}
         refreshToken={connectRefreshToken}
         onClose={() => setConnectPhoneOpen(false)}
+      />
+
+      <ConnectFoxBridgeSyncPanel
+        language={language}
+        open={foxbridgeSyncOpen}
+        refreshToken={connectRefreshToken}
+        onClose={() => setFoxbridgeSyncOpen(false)}
+        onChanged={() => {
+          void refreshMeta()
+          setConnectRefreshToken((token) => token + 1)
+        }}
       />
 
       <MealDashboardPanel

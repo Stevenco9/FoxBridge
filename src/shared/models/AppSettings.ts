@@ -55,6 +55,12 @@ export interface SetupStatus {
   regfoxConfigured: boolean
   mobileConfigured: boolean
   mobileConnected: boolean
+  /** Desk enrolled or legacy Cloud ops path ready. */
+  foxbridgeSyncEnrolled: boolean
+  /** Live Cloud verification succeeded for this computer. */
+  foxbridgeSyncConnected: boolean
+  /** Raw connection/enroll diagnostic; map before organizer display. */
+  foxbridgeSyncConnectionError: string | null
   attendeeCount: number
   preferredPrinterName: string | null
   printerAvailable: boolean

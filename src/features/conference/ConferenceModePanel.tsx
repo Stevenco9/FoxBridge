@@ -11,6 +11,8 @@ const EMPTY_CLOUD_STATUS: CloudStatus = {
   lastPublishAt: null,
   lastPublishAttendeeCount: null,
   lastPublishError: null,
+  deskCredentialConfigured: false,
+  connectionError: null,
 }
 
 interface ConferenceModePanelProps {

@@ -27,63 +27,79 @@ function chunk<T>(items: T[], size: number): T[][] {
   return batches
 }
 
+function deskCredentialConfigured(): boolean {
+  return Boolean(readDeskCredentialSync()?.deskToken)
+}
+
+function withPublishFields(
+  publishState: Awaited<ReturnType<typeof getCloudPublishState>>,
+  fields: Omit<
+    CloudStatus,
+    'lastPublishAt' | 'lastPublishAttendeeCount' | 'lastPublishError' | 'deskCredentialConfigured'
+  > & { deskCredentialConfigured?: boolean },
+): CloudStatus {
+  return {
+    lastPublishAt: publishState.lastPublishAt,
+    lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
+    lastPublishError: publishState.lastPublishError,
+    deskCredentialConfigured: fields.deskCredentialConfigured ?? deskCredentialConfigured(),
+    configured: fields.configured,
+    connected: fields.connected,
+    conferenceId: fields.conferenceId,
+    conferenceName: fields.conferenceName,
+    connectionError: fields.connectionError,
+  }
+}
+
 export async function getCloudStatus(): Promise<CloudStatus> {
   const transport = resolveDesktopCloudOpsTransport()
   const publishState = await getCloudPublishState()
 
   if (transport === 'none') {
-    return {
+    return withPublishFields(publishState, {
       configured: false,
       connected: false,
       conferenceId: null,
       conferenceName: null,
-      lastPublishAt: publishState.lastPublishAt,
-      lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-      lastPublishError: publishState.lastPublishError,
-    }
+      connectionError: null,
+    })
   }
 
   if (transport === 'desk_credential') {
     try {
       const conference = await resolveConferenceViaDesk()
-      return {
+      return withPublishFields(publishState, {
         configured: true,
         connected: true,
         conferenceId: conference.id,
         conferenceName: conference.name,
-        lastPublishAt: publishState.lastPublishAt,
-        lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-        lastPublishError: publishState.lastPublishError,
-      }
+        connectionError: null,
+        deskCredentialConfigured: true,
+      })
     } catch (error) {
-      console.error(
-        '[cloud-status] desk conference resolve failed',
-        error instanceof Error ? error.message : error,
-      )
+      const message = error instanceof Error ? error.message : 'Unable to verify desk enrollment.'
+      console.error('[cloud-status] desk conference resolve failed', message)
       const desk = readDeskCredentialSync()
-      return {
+      return withPublishFields(publishState, {
         configured: true,
         connected: false,
         conferenceId: desk?.conferenceId ?? null,
         conferenceName: null,
-        lastPublishAt: publishState.lastPublishAt,
-        lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-        lastPublishError: publishState.lastPublishError,
-      }
+        connectionError: message,
+        deskCredentialConfigured: true,
+      })
     }
   }
 
   const client = getSupabaseServiceClient()
   if (!client) {
-    return {
+    return withPublishFields(publishState, {
       configured: true,
       connected: false,
       conferenceId: null,
       conferenceName: null,
-      lastPublishAt: publishState.lastPublishAt,
-      lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-      lastPublishError: publishState.lastPublishError,
-    }
+      connectionError: null,
+    })
   }
 
   const { error: pingError } = await client.from('conferences').select('id').limit(1)
@@ -96,15 +112,13 @@ export async function getCloudStatus(): Promise<CloudStatus> {
         message: pingError.message,
       }),
     )
-    return {
+    return withPublishFields(publishState, {
       configured: true,
       connected: false,
       conferenceId: null,
       conferenceName: null,
-      lastPublishAt: publishState.lastPublishAt,
-      lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-      lastPublishError: publishState.lastPublishError,
-    }
+      connectionError: null,
+    })
   }
 
   let conferenceId: string | null = null
@@ -123,15 +137,13 @@ export async function getCloudStatus(): Promise<CloudStatus> {
     )
   }
 
-  return {
+  return withPublishFields(publishState, {
     configured: true,
     connected: true,
     conferenceId,
     conferenceName,
-    lastPublishAt: publishState.lastPublishAt,
-    lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
-    lastPublishError: publishState.lastPublishError,
-  }
+    connectionError: null,
+  })
 }
 
 async function upsertAttendees(rows: PublishAttendeeRow[]): Promise<void> {

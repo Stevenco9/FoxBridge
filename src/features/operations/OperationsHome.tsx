@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppLanguage, SetupStatus } from '../../shared/models/AppSettings'
+import { classifyFoxBridgeSyncIssue } from '../../shared/sync/foxbridgeSyncStatus'
 import { translate } from '../../i18n/messages'
 import './OperationsHome.css'
 
@@ -9,6 +10,7 @@ interface OperationsHomeProps {
   onOpenMealDashboard: () => void
   onOpenEventSettings: () => void
   onOpenSettings: () => void
+  onOpenFoxBridgeSync: () => void
   refreshToken?: number | string
 }
 
@@ -26,6 +28,7 @@ export default function OperationsHome({
   onOpenMealDashboard,
   onOpenEventSettings,
   onOpenSettings,
+  onOpenFoxBridgeSync,
   refreshToken,
 }: OperationsHomeProps) {
   const [status, setStatus] = useState<SetupStatus | null>(null)
@@ -82,6 +85,15 @@ export default function OperationsHome({
       ? t('home.status.attendees', { count: status.attendeeCount })
       : t('home.status.registration')
 
+  const syncIssue = classifyFoxBridgeSyncIssue(status?.foxbridgeSyncConnectionError)
+  const syncStatusLabel = status?.foxbridgeSyncConnected
+    ? t('home.status.syncConnected')
+    : status?.foxbridgeSyncEnrolled ||
+        syncIssue === 'revoked' ||
+        syncIssue === 'needs_reenrollment'
+      ? t('home.status.syncReconnect')
+      : t('home.status.syncNeeded')
+
   return (
     <section className="operations-home">
       <div className="operations-home__header">
@@ -111,6 +123,16 @@ export default function OperationsHome({
             ? t('home.status.printerReady')
             : t('home.status.printerUnavailable')}
         </li>
+        <li className="operations-home__status-row">
+          <span>{syncStatusLabel}</span>
+          <button
+            type="button"
+            className="operations-home__refresh"
+            onClick={onOpenFoxBridgeSync}
+          >
+            {status?.foxbridgeSyncConnected ? t('sync.connected') : t('sync.connect')}
+          </button>
+        </li>
         <li>
           {t('home.status.lastUpdate')}: {formatTimestamp(status?.lastAttendeeUpdate ?? null)}
         </li>
@@ -119,6 +141,13 @@ export default function OperationsHome({
       <div className="operations-home__actions">
         <button type="button" className="operations-home__action" onClick={onConnectPhone}>
           {t('home.action.connectPhone')}
+        </button>
+        <button
+          type="button"
+          className="operations-home__action operations-home__action--secondary"
+          onClick={onOpenFoxBridgeSync}
+        >
+          {t('home.action.foxbridgeSync')}
         </button>
         <button
           type="button"

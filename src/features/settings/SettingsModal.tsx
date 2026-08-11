@@ -234,32 +234,29 @@ export default function SettingsModal({
 
             <h3 className="settings-modal__subtitle">{t('settings.cloudEnrollTitle')}</h3>
             <p className="settings-modal__help">{t('settings.cloudEnrollHelp')}</p>
-            {deskEnrolled ? (
+            {deskEnrolled && (
               <p className="settings-modal__message" role="status">
                 {t('settings.cloudEnrolled')}
               </p>
-            ) : (
-              <>
-                <label className="settings-modal__field">
-                  <span>{t('settings.cloudEnrollmentCode')}</span>
-                  <input
-                    type="text"
-                    value={enrollmentCode}
-                    onChange={(event) => setEnrollmentCode(event.target.value)}
-                    placeholder="ABCD-EFGH-IJKL"
-                    autoComplete="off"
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="settings-modal__button settings-modal__button--primary"
-                  onClick={() => void handleEnrollDesktop()}
-                  disabled={isEnrolling || !enrollmentCode.trim()}
-                >
-                  {isEnrolling ? '…' : t('settings.cloudEnrollButton')}
-                </button>
-              </>
             )}
+            <label className="settings-modal__field">
+              <span>{t('settings.cloudEnrollmentCode')}</span>
+              <input
+                type="text"
+                value={enrollmentCode}
+                onChange={(event) => setEnrollmentCode(event.target.value)}
+                placeholder="ABCD-EFGH-IJKL"
+                autoComplete="off"
+              />
+            </label>
+            <button
+              type="button"
+              className="settings-modal__button settings-modal__button--primary"
+              onClick={() => void handleEnrollDesktop()}
+              disabled={isEnrolling || !enrollmentCode.trim()}
+            >
+              {isEnrolling ? '…' : t('settings.cloudEnrollButton')}
+            </button>
 
             <h3 className="settings-modal__subtitle">{t('settings.phoneServiceTitle')}</h3>
             <p className="settings-modal__help">{t('settings.cloudOverrideHelp')}</p>

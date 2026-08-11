@@ -335,6 +335,8 @@ Mobile receives only what meal-line volunteers need: name, entitlements, validat
 
 Deploy functions after migration `009_desk_devices.sql`. Desktop never receives the service role.
 
+**Organizer UX (Sprint 21.8):** Setup Wizard (after RegFox) and Operations Home share one enrollment/status surface. Organizers only see “FoxBridge Sync” and an enrollment code — never Supabase, URLs, public keys, or desk-token terminology. Settings → Advanced remains a fallback.
+
 ---
 
 ## 6. Offline strategy

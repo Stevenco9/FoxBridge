@@ -107,6 +107,29 @@ export type MessageKey =
   | 'settings.cloudEnrollButton'
   | 'settings.cloudEnrolled'
   | 'settings.saveAdvanced'
+  | 'sync.title'
+  | 'sync.text'
+  | 'sync.enterCodeHelp'
+  | 'sync.codeLabel'
+  | 'sync.codePlaceholder'
+  | 'sync.connect'
+  | 'sync.reconnect'
+  | 'sync.checking'
+  | 'sync.connecting'
+  | 'sync.connected'
+  | 'sync.connectedCheck'
+  | 'sync.setupLater'
+  | 'sync.error.invalidCode'
+  | 'sync.error.expiredCode'
+  | 'sync.error.revoked'
+  | 'sync.error.needsReconnect'
+  | 'sync.error.unavailable'
+  | 'home.status.syncConnected'
+  | 'home.status.syncNeeded'
+  | 'home.status.syncReconnect'
+  | 'home.action.foxbridgeSync'
+  | 'ready.syncReady'
+  | 'ready.syncLater'
   | 'connect.close'
   | 'settings.title'
   | 'settings.reopenSetup'
@@ -183,8 +206,35 @@ const en: Record<MessageKey, string> = {
   'home.action.connectPhone': 'Connect a phone',
   'home.action.mealDashboard': 'Meal Dashboard',
   'home.action.eventSettings': 'Event Settings',
+  'home.action.foxbridgeSync': 'FoxBridge Sync',
   'home.action.update': 'Update registrations',
   'home.updating': 'Updating…',
+  'home.status.syncConnected': 'FoxBridge Sync connected',
+  'home.status.syncNeeded': 'FoxBridge Sync not connected',
+  'home.status.syncReconnect': 'FoxBridge Sync needs to reconnect',
+  'sync.title': 'FoxBridge Sync',
+  'sync.text':
+    'Connect this computer so phones and other desks stay in sync for this event. You only need a short enrollment code.',
+  'sync.enterCodeHelp': 'Enter the enrollment code for this event.',
+  'sync.codeLabel': 'Enrollment code',
+  'sync.codePlaceholder': 'ABCD-EFGH-IJKL',
+  'sync.connect': 'Connect',
+  'sync.reconnect': 'Enter a new code',
+  'sync.checking': 'Checking connection…',
+  'sync.connecting': 'Connecting…',
+  'sync.connected': 'Connected',
+  'sync.connectedCheck': '✓ Connected',
+  'sync.setupLater': 'Set up later',
+  'sync.error.invalidCode':
+    'That code did not work. Check the code and try again, or ask for a new one.',
+  'sync.error.expiredCode': 'That code has expired. Ask for a new enrollment code and try again.',
+  'sync.error.revoked':
+    'This computer’s conference connection was revoked. Enter a new enrollment code to reconnect.',
+  'sync.error.needsReconnect':
+    'This computer needs to reconnect to FoxBridge Sync. Enter a new enrollment code.',
+  'sync.error.unavailable': 'Unable to connect to FoxBridge Sync right now. Try again in a moment.',
+  'ready.syncReady': 'FoxBridge Sync connected',
+  'ready.syncLater': 'FoxBridge Sync can be connected later from the home screen',
   'connect.title': 'Connect a phone',
   'connect.loading': 'Creating pairing code…',
   'connect.setupNeeded': 'Phone scanning is not available yet.',
@@ -226,12 +276,12 @@ const en: Record<MessageKey, string> = {
   'settings.phoneServiceTitle': 'FoxBridge Cloud (development / migration)',
   'settings.cloudOverrideHelp':
     'Ordinary production desks enroll with a one-time FoxBridge Cloud code. Use the legacy URL/key fields below only for local development or migrating an older install. Do not put a service-role key in a distributed desktop build.',
-  'settings.cloudEnrollTitle': 'Enroll this computer',
+  'settings.cloudEnrollTitle': 'FoxBridge Sync (fallback)',
   'settings.cloudEnrollHelp':
-    'Enter the short-lived enrollment code issued for this event. FoxBridge exchanges it for a revocable desk credential bound only to that event.',
+    'Prefer Connect FoxBridge Sync from the home screen or Setup. Use this only if those surfaces are unavailable.',
   'settings.cloudEnrollmentCode': 'Enrollment code',
-  'settings.cloudEnrollButton': 'Enroll computer',
-  'settings.cloudEnrolled': 'This computer is enrolled for FoxBridge Cloud.',
+  'settings.cloudEnrollButton': 'Connect',
+  'settings.cloudEnrolled': 'This computer is connected to FoxBridge Sync.',
   'settings.saveAdvanced': 'Save advanced settings',
   'common.back': 'Back',
   'common.next': 'Next',
@@ -305,8 +355,37 @@ const es: Record<MessageKey, string> = {
   'home.action.connectPhone': 'Conectar un teléfono',
   'home.action.mealDashboard': 'Panel de comidas',
   'home.action.eventSettings': 'Configuración del evento',
+  'home.action.foxbridgeSync': 'FoxBridge Sync',
   'home.action.update': 'Actualizar registros',
   'home.updating': 'Actualizando…',
+  'home.status.syncConnected': 'FoxBridge Sync conectado',
+  'home.status.syncNeeded': 'FoxBridge Sync no conectado',
+  'home.status.syncReconnect': 'FoxBridge Sync necesita reconectarse',
+  'sync.title': 'FoxBridge Sync',
+  'sync.text':
+    'Conecte esta computadora para que los teléfonos y otros escritorios se mantengan sincronizados en este evento. Solo necesita un código de inscripción corto.',
+  'sync.enterCodeHelp': 'Ingrese el código de inscripción de este evento.',
+  'sync.codeLabel': 'Código de inscripción',
+  'sync.codePlaceholder': 'ABCD-EFGH-IJKL',
+  'sync.connect': 'Conectar',
+  'sync.reconnect': 'Ingresar un código nuevo',
+  'sync.checking': 'Comprobando conexión…',
+  'sync.connecting': 'Conectando…',
+  'sync.connected': 'Conectado',
+  'sync.connectedCheck': '✓ Conectado',
+  'sync.setupLater': 'Configurar después',
+  'sync.error.invalidCode':
+    'Ese código no funcionó. Revise el código e intente de nuevo, o pida uno nuevo.',
+  'sync.error.expiredCode':
+    'Ese código venció. Pida un código de inscripción nuevo e intente de nuevo.',
+  'sync.error.revoked':
+    'Se revocó la conexión de esta computadora. Ingrese un código de inscripción nuevo para reconectar.',
+  'sync.error.needsReconnect':
+    'Esta computadora necesita reconectarse a FoxBridge Sync. Ingrese un código de inscripción nuevo.',
+  'sync.error.unavailable':
+    'No se pudo conectar a FoxBridge Sync ahora. Intente de nuevo en un momento.',
+  'ready.syncReady': 'FoxBridge Sync conectado',
+  'ready.syncLater': 'FoxBridge Sync se puede conectar después desde la pantalla principal',
   'connect.title': 'Conectar un teléfono',
   'connect.loading': 'Creando código de emparejamiento…',
   'connect.setupNeeded': 'El escaneo por teléfono aún no está disponible.',
@@ -350,12 +429,12 @@ const es: Record<MessageKey, string> = {
   'settings.phoneServiceTitle': 'FoxBridge Cloud (desarrollo / migración)',
   'settings.cloudOverrideHelp':
     'Las computadoras de producción se inscriben con un código de FoxBridge Cloud de un solo uso. Use los campos de URL/clave heredados solo para desarrollo local o para migrar una instalación anterior. No ponga una clave de servicio en una compilación de escritorio distribuida.',
-  'settings.cloudEnrollTitle': 'Inscribir esta computadora',
+  'settings.cloudEnrollTitle': 'FoxBridge Sync (alternativa)',
   'settings.cloudEnrollHelp':
-    'Ingrese el código de inscripción de corta duración emitido para este evento. FoxBridge lo cambia por una credencial de escritorio revocable limitada a ese evento.',
+    'Prefiera Conectar FoxBridge Sync desde la pantalla principal o la configuración inicial. Use esto solo si esas pantallas no están disponibles.',
   'settings.cloudEnrollmentCode': 'Código de inscripción',
-  'settings.cloudEnrollButton': 'Inscribir computadora',
-  'settings.cloudEnrolled': 'Esta computadora está inscrita en FoxBridge Cloud.',
+  'settings.cloudEnrollButton': 'Conectar',
+  'settings.cloudEnrolled': 'Esta computadora está conectada a FoxBridge Sync.',
   'settings.saveAdvanced': 'Guardar configuración avanzada',
   'common.back': 'Atrás',
   'common.next': 'Siguiente',

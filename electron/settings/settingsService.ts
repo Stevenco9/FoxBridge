@@ -104,11 +104,18 @@ export async function getSetupStatus(printerNames: string[]): Promise<SetupStatu
 
   const attendeeCount = isAttendeeCacheLoaded() ? getAttendeeCache().length : 0
 
+  const foxbridgeSyncEnrolled = cloudStatus.deskCredentialConfigured
+  const foxbridgeSyncConnected =
+    cloudStatus.deskCredentialConfigured && cloudStatus.connected
+
   return {
     setupComplete: settings.setupComplete,
     regfoxConfigured,
     mobileConfigured,
     mobileConnected: cloudStatus.connected,
+    foxbridgeSyncEnrolled,
+    foxbridgeSyncConnected,
+    foxbridgeSyncConnectionError: cloudStatus.connectionError,
     attendeeCount,
     preferredPrinterName,
     printerAvailable: preferredPrinterName

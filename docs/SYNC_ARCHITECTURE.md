@@ -347,6 +347,17 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **21.6** | Trusted Cloud operations boundary — event-scoped desk credentials + Edge Functions; no local service-role for production |
 | **21.7** | Simplified phone pairing — one-scan HTTPS QR; Desktop waiting/connected/expired states; non-technical organizer errors |
 
+### Sprint 21.8 — Organizer enrollment UX
+
+| Item | Detail |
+|------|--------|
+| **Surfaces** | Setup Wizard (after RegFox) + Operations Home Sync status/connect |
+| **Shared logic** | `FoxBridgeSyncEnrollment` + `src/shared/sync/foxbridgeSyncStatus.ts` |
+| **Wizard** | Always shown; Connected + Next when valid; else enroll + Set up later |
+| **Recovery** | Operations Home reopen of same enroll panel (re-enrollment) |
+| **Jargon** | Organizer copy uses FoxBridge Sync / enrollment code only |
+| **Test** | `npm run test:foxbridge-sync-status` |
+
 ### Sprint 21.7 — Simplified phone pairing
 
 | Item | Detail |

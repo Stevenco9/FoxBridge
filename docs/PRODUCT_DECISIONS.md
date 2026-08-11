@@ -136,7 +136,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Volunteer pairs by scanning one temporary QR code** with the phone’s normal Camera app. No volunteer account, scanner code, conference selection, or technical setup is required.
 - **Organizer-facing UI is non-technical** — no `.env`, Supabase, RPC, anon key, service role, localhost, or scanner codes in Conference Mode. Technical configuration lives under Settings → Advanced only.
 - **FoxBridge Cloud public defaults are packaging-time (Sprint 21.5)** — Cloud endpoint URL + publishable client key may be injected via `FOXBRIDGE_CLOUD_*` at build/CI. Privileged desktop keys are never shipped in installers.
-- **Production desks enroll with a one-time event code (Sprint 21.6)** — Desktop exchanges the code for a revocable event-scoped desk credential; privileged Cloud writes run in FoxBridge Cloud Edge Functions. Legacy local service-role remains development/migration only.
+- **Production desks enroll with a one-time event code (Sprint 21.6–21.8)** — Desktop exchanges the code for a revocable event-scoped desk credential; privileged Cloud writes run in FoxBridge Cloud Edge Functions. Legacy local service-role remains development/migration only. Organizers enroll from Setup Wizard (after RegFox) or Operations Home; Advanced remains a fallback. No Supabase/URLs/keys/desk-token jargon in those surfaces.
 - **Pairing tokens are short-lived and single-use** — desktop creates token via desk Edge Function (or legacy service role); mobile exchanges via `exchange_scanner_pairing_token`; hash stored in `scanner_pairing_tokens`. QR is HTTPS `/pair?token=…` only (Sprint 21.7).
 - **HTTPS scanner web address required for production QR** — packaged default or Settings → Advanced override (“Scanner web address”).
 - **Desktop meal validation hidden by default** — mobile is the primary meal-line tool; desktop column available via Advanced toggle.
@@ -144,7 +144,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 ### Sprint 13A — Guided setup decisions
 
 - **In-app settings over `.env` for organizers** — RegFox and phone scanning service credentials are saved in Electron `userData` with encrypted secrets. `.env` remains a developer fallback.
-- **Wizard vs operations home** — First-time and reset flows use a step-by-step wizard. Day-of operations use a simplified home screen focused on conference status and Connect a phone.
+- **Wizard vs operations home** — First-time and reset flows use a step-by-step wizard (including FoxBridge Sync). Day-of operations use a simplified home screen with Sync status/recovery plus Connect a phone.
 - **Advanced holds legacy tools** — Cloud status, manual publish, localhost scanner server, and desktop meal validation stay available but outside the default AdAgrA workflow.
 
 When a decision feels ambiguous, return to the principles above: fewer clicks, hidden complexity, FoxBridge as an operational layer that syncs with registration platforms (not a replacement), RegFox as source of truth for attendee data, FoxBridge as owner of on-site operations, and defaults that work without a manual.

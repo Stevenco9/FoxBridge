@@ -6,6 +6,13 @@ export interface CloudStatus {
   lastPublishAt: string | null
   lastPublishAttendeeCount: number | null
   lastPublishError: string | null
+  /** Local event-scoped desk credential is present. */
+  deskCredentialConfigured: boolean
+  /**
+   * Technical server message when desk verification fails.
+   * Map with classifyFoxBridgeSyncIssue before showing to organizers.
+   */
+  connectionError: string | null
 }
 
 export interface PublishAttendeesResult {

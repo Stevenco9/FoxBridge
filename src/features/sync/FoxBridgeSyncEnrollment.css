@@ -1,0 +1,106 @@
+.foxbridge-sync {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.foxbridge-sync__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.foxbridge-sync__text {
+  margin: 0;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.foxbridge-sync__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.foxbridge-sync__field input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.65rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.foxbridge-sync__field input:disabled {
+  opacity: 0.7;
+}
+
+.foxbridge-sync__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.foxbridge-sync__button {
+  padding: 0.7rem 1rem;
+  border: 2px solid #d1d5db;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.foxbridge-sync__button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.foxbridge-sync__button--primary {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
+.foxbridge-sync__button--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.foxbridge-sync__success {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #ecfdf5;
+  color: #065f46;
+  font-weight: 700;
+}
+
+.foxbridge-sync__status {
+  margin: 0;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.foxbridge-sync__error {
+  margin: 0;
+  color: #b91c1c;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.foxbridge-sync__reconnect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.foxbridge-sync--wizard .foxbridge-sync__button--quiet {
+  align-self: center;
+}
