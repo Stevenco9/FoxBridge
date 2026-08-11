@@ -268,14 +268,15 @@ One-time pairing codes for **Connect a phone**. Desktop creates; mobile exchange
 
 **RPCs:**
 
-- Desktop (service role): insert into `scanner_pairing_tokens`
+- Desktop (desk credential → Edge Function `desktop-create-pairing`, or legacy service role): insert hash into `scanner_pairing_tokens`
 - Mobile (anon): `exchange_scanner_pairing_token(p_token)` — verifies hash, expiration, unused state; marks used; creates `scanner_sessions` row; returns session + conference info
 
-Pairing URL: `https://<scanner-host>/pair?token=<raw-token>`
+Pairing URL (Sprint 21.7 QR payload): `https://<scanner-host>/pair?token=<raw-token>`  
+Does **not** include Cloud URL, anon/service keys, conference id, or desk credentials. Mobile uses packaged/public Cloud config (`VITE_SUPABASE_*`).
 
 Alternative: **`scanner_users`** with Supabase Auth email/password for recurring staff — defer until post-AdAgrA.
 
-**Production pairing (Sprint 13B):** Organizer shows one HTTPS QR. Volunteer scans with Camera app. No manual scanner code entry.
+**Production pairing:** Organizer shows one HTTPS QR. Volunteer scans with Camera app. No manual scanner code, Cloud URL, or key entry.
 
 ---
 

@@ -137,7 +137,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Organizer-facing UI is non-technical** — no `.env`, Supabase, RPC, anon key, service role, localhost, or scanner codes in Conference Mode. Technical configuration lives under Settings → Advanced only.
 - **FoxBridge Cloud public defaults are packaging-time (Sprint 21.5)** — Cloud endpoint URL + publishable client key may be injected via `FOXBRIDGE_CLOUD_*` at build/CI. Privileged desktop keys are never shipped in installers.
 - **Production desks enroll with a one-time event code (Sprint 21.6)** — Desktop exchanges the code for a revocable event-scoped desk credential; privileged Cloud writes run in FoxBridge Cloud Edge Functions. Legacy local service-role remains development/migration only.
-- **Pairing tokens are short-lived and single-use** — desktop creates token via service role; mobile exchanges via `exchange_scanner_pairing_token`; hash stored in `scanner_pairing_tokens`.
+- **Pairing tokens are short-lived and single-use** — desktop creates token via desk Edge Function (or legacy service role); mobile exchanges via `exchange_scanner_pairing_token`; hash stored in `scanner_pairing_tokens`. QR is HTTPS `/pair?token=…` only (Sprint 21.7).
 - **HTTPS scanner web address required for production QR** — packaged default or Settings → Advanced override (“Scanner web address”).
 - **Desktop meal validation hidden by default** — mobile is the primary meal-line tool; desktop column available via Advanced toggle.
 

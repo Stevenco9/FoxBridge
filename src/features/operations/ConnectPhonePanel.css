@@ -65,10 +65,27 @@
 }
 
 .connect-phone__instruction {
-  margin: 0 0 1rem;
+  margin: 0 0 0.5rem;
   line-height: 1.5;
   color: #374151;
   font-size: 1rem;
+}
+
+.connect-phone__waiting {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.connect-phone__warning {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .connect-phone__countdown {

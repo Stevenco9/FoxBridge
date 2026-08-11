@@ -90,6 +90,8 @@ export type MessageKey =
   | 'home.status.attendees'
   | 'home.action.refresh'
   | 'connect.instruction'
+  | 'connect.waiting'
+  | 'connect.renewing'
   | 'connect.expiresIn'
   | 'connect.expired'
   | 'connect.newCode'
@@ -191,6 +193,8 @@ const en: Record<MessageKey, string> = {
   'connect.noPhoneUrl': 'A scanner web address is not set up yet.',
   'connect.configureWebAddress': 'Open settings',
   'connect.instruction': 'Scan this code with the phone’s Camera app.',
+  'connect.waiting': 'Waiting for the phone…',
+  'connect.renewing': 'That code expired. Creating a new one…',
   'connect.expiresIn': 'Code expires in {time}',
   'connect.expired': 'This code has expired. Create a new code.',
   'connect.newCode': 'Create a new code',
@@ -312,6 +316,8 @@ const es: Record<MessageKey, string> = {
   'connect.noPhoneUrl': 'Aún no hay una dirección web del escáner configurada.',
   'connect.configureWebAddress': 'Abrir configuración',
   'connect.instruction': 'Escanee este código con la app Cámara del teléfono.',
+  'connect.waiting': 'Esperando el teléfono…',
+  'connect.renewing': 'Ese código venció. Creando uno nuevo…',
   'connect.expiresIn': 'El código vence en {time}',
   'connect.expired': 'Este código venció. Cree uno nuevo.',
   'connect.newCode': 'Crear un código nuevo',

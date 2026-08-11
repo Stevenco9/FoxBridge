@@ -1,5 +1,10 @@
 import crypto from 'node:crypto'
 import type { PairingInfo, PairingStatus } from '../../src/shared/models/PairingInfo'
+import {
+  buildScannerPairingUrl,
+  pairingBlockMessage,
+  pairingPublishWarningMessage,
+} from '../../src/shared/pairing/pairingMessages'
 import { PAIRING_TOKEN_TTL_MINUTES } from '../config/appDefaults'
 import { ensureConferenceId } from '../cloud/conferenceRepository'
 import { resolveDesktopCloudOpsTransport } from '../cloud/cloudOpsTransport'
@@ -8,6 +13,9 @@ import {
   getPairingStatusViaDesk,
   hashPairingToken,
 } from '../cloud/desktopCloudApi'
+import {
+  getCloudPublishState,
+} from '../cloud/cloudPublishStore'
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
 import { getScannerWebAddress } from '../cloud/supabaseConfig'
 import { getSupabaseServiceClient } from '../cloud/supabaseClient'
@@ -22,25 +30,54 @@ function isHttpsUrl(url: string): boolean {
   }
 }
 
-async function ensureAttendeesPublished(): Promise<string | null> {
-  const cloudStatus = await getCloudStatus()
-  if (!cloudStatus.configured || !cloudStatus.connected) {
-    return 'Phone scanners are not connected yet. Desktop registration is still available.'
+function failedPairing(error: string): PairingInfo {
+  return {
+    ready: false,
+    pairingUrl: null,
+    expiresAt: null,
+    tokenId: null,
+    phoneConnected: false,
+    error,
+    warning: null,
   }
+}
 
+/**
+ * Best-effort publish so phones get attendees. Hard-fails only when there is
+ * nothing useful to publish; publish glitches become a soft warning so one-scan
+ * pairing can still proceed on an enrolled desk.
+ */
+async function prepareAttendeesForPairing(): Promise<{
+  hardError: string | null
+  warning: string | null
+}> {
   if (!isAttendeeCacheLoaded() || getAttendeeCache().length === 0) {
     const loadResult = await loadRegFoxAttendees()
-    if (!loadResult.success) {
-      return loadResult.message ?? 'Unable to load attendees before pairing.'
+    if (!loadResult.success || getAttendeeCache().length === 0) {
+      return {
+        hardError: pairingBlockMessage('no_attendees'),
+        warning: null,
+      }
     }
   }
 
   const publishResult = await publishAttendees()
-  if (!publishResult.success) {
-    return 'Phone scanners could not be updated. Desktop registration is still available.'
+  if (publishResult.success) {
+    return { hardError: null, warning: null }
   }
 
-  return null
+  const publishState = await getCloudPublishState()
+  if (publishState.lastPublishAt && getAttendeeCache().length > 0) {
+    return {
+      hardError: null,
+      warning: pairingPublishWarningMessage(),
+    }
+  }
+
+  return {
+    hardError: null,
+    warning: pairingPublishWarningMessage(),
+  }
 }
 
 export async function createScannerPairing(): Promise<PairingInfo> {
@@ -48,53 +85,28 @@ export async function createScannerPairing(): Promise<PairingInfo> {
   const scannerWebAddress = getScannerWebAddress()
   const transport = resolveDesktopCloudOpsTransport()
 
-  if (!cloudStatus.configured || !cloudStatus.connected || transport === 'none') {
-    return {
-      ready: false,
-      pairingUrl: null,
-      expiresAt: null,
-      tokenId: null,
-      phoneConnected: false,
-      error: 'Phone scanning is not connected yet. Desktop registration is still available.',
-    }
+  if (transport === 'none' || !cloudStatus.configured) {
+    return failedPairing(pairingBlockMessage('not_enrolled'))
+  }
+
+  if (!cloudStatus.connected) {
+    return failedPairing(pairingBlockMessage('not_enrolled'))
   }
 
   if (!scannerWebAddress || !isHttpsUrl(scannerWebAddress)) {
-    return {
-      ready: false,
-      pairingUrl: null,
-      expiresAt: null,
-      tokenId: null,
-      phoneConnected: false,
-      error:
-        'A scanner web address is not set up yet. Add it under Settings → Advanced if phone scanning is needed.',
-    }
+    return failedPairing(pairingBlockMessage('scanner_url_missing'))
   }
 
-  const publishWarning = await ensureAttendeesPublished()
-  if (publishWarning) {
-    return {
-      ready: false,
-      pairingUrl: null,
-      expiresAt: null,
-      tokenId: null,
-      phoneConnected: false,
-      error: publishWarning,
-    }
+  const attendeePrep = await prepareAttendeesForPairing()
+  if (attendeePrep.hardError) {
+    return failedPairing(attendeePrep.hardError)
   }
 
   let conferenceId: string
   try {
     conferenceId = await ensureConferenceId()
   } catch {
-    return {
-      ready: false,
-      pairingUrl: null,
-      expiresAt: null,
-      tokenId: null,
-      phoneConnected: false,
-      error: 'Phone scanning is not connected yet. Desktop registration is still available.',
-    }
+    return failedPairing(pairingBlockMessage('not_enrolled'))
   }
 
   const rawToken = crypto.randomBytes(32).toString('base64url')
@@ -110,14 +122,7 @@ export async function createScannerPairing(): Promise<PairingInfo> {
     } else {
       const client = getSupabaseServiceClient()
       if (!client) {
-        return {
-          ready: false,
-          pairingUrl: null,
-          expiresAt: null,
-          tokenId: null,
-          phoneConnected: false,
-          error: 'Phone scanning is not connected yet. Desktop registration is still available.',
-        }
+        return failedPairing(pairingBlockMessage('not_enrolled'))
       }
 
       const { data, error } = await client
@@ -132,38 +137,23 @@ export async function createScannerPairing(): Promise<PairingInfo> {
         .single()
 
       if (error || !data) {
-        return {
-          ready: false,
-          pairingUrl: null,
-          expiresAt: null,
-          tokenId: null,
-          phoneConnected: false,
-          error: 'Unable to create a pairing code right now. Try again.',
-        }
+        return failedPairing(pairingBlockMessage('token_create_failed'))
       }
 
       tokenId = data.id as string
     }
 
-    const pairingUrl = `${scannerWebAddress.replace(/\/+$/, '')}/pair?token=${encodeURIComponent(rawToken)}`
-
     return {
       ready: true,
-      pairingUrl,
+      pairingUrl: buildScannerPairingUrl(scannerWebAddress, rawToken),
       expiresAt,
       tokenId,
       phoneConnected: false,
       error: null,
+      warning: attendeePrep.warning,
     }
   } catch {
-    return {
-      ready: false,
-      pairingUrl: null,
-      expiresAt: null,
-      tokenId: null,
-      phoneConnected: false,
-      error: 'Unable to create a pairing code right now. Try again.',
-    }
+    return failedPairing(pairingBlockMessage('token_create_failed'))
   }
 }
 

@@ -35,6 +35,7 @@
     "test:sync-manager": "tsx scripts/test-sync-manager.ts",
     "test:cloud-config": "tsx scripts/test-cloud-config.ts",
     "test:desk-credential": "tsx scripts/test-desk-credential.ts",
+    "test:pairing": "tsx scripts/test-pairing.ts",
     "test:local-event-store": "tsx scripts/test-local-event-store.ts",
     "test:event-identity": "tsx scripts/test-event-identity.ts",
     "test:printer": "bash scripts/test-printer.sh"

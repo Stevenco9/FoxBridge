@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'react-qr-code'
 import type { AppLanguage } from '../../shared/models/AppSettings'
 import type { PairingInfo } from '../../shared/models/PairingInfo'
 import { translate } from '../../i18n/messages'
 import './ConnectPhonePanel.css'
+
+type PairingPhase = 'generating' | 'waiting' | 'connected' | 'expired' | 'failed'
 
 interface ConnectPhonePanelProps {
   language: AppLanguage
@@ -24,6 +26,26 @@ function formatCountdown(expiresAt: string): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+function resolvePhase(
+  isLoading: boolean,
+  pairing: PairingInfo | null,
+  isExpired: boolean,
+): PairingPhase {
+  if (isLoading) {
+    return 'generating'
+  }
+  if (pairing?.phoneConnected) {
+    return 'connected'
+  }
+  if (isExpired) {
+    return 'expired'
+  }
+  if (pairing?.ready && pairing.pairingUrl) {
+    return 'waiting'
+  }
+  return 'failed'
+}
+
 export default function ConnectPhonePanel({
   language,
   open,
@@ -33,6 +55,7 @@ export default function ConnectPhonePanel({
   const [pairing, setPairing] = useState<PairingInfo | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [countdown, setCountdown] = useState('')
+  const autoRenewingRef = useRef(false)
 
   const t = useCallback(
     (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
@@ -49,7 +72,10 @@ export default function ConnectPhonePanel({
 
     try {
       const nextPairing = await window.electronAPI.createScannerPairing()
-      setPairing(nextPairing)
+      setPairing({
+        ...nextPairing,
+        warning: nextPairing.warning ?? null,
+      })
     } catch {
       setPairing({
         ready: false,
@@ -57,24 +83,36 @@ export default function ConnectPhonePanel({
         expiresAt: null,
         tokenId: null,
         phoneConnected: false,
-        error: 'Unable to create a pairing code right now. Try again.',
+        error: 'Unable to create a phone code right now. Try again.',
+        warning: null,
       })
     } finally {
       setIsLoading(false)
+      autoRenewingRef.current = false
     }
   }, [])
 
   useEffect(() => {
     if (!open) {
       setPairing(null)
+      autoRenewingRef.current = false
       return
     }
 
     void createPairing()
   }, [open, createPairing, refreshToken])
 
+  const isExpired = Boolean(
+    pairing?.expiresAt &&
+      new Date(pairing.expiresAt).getTime() <= Date.now() &&
+      !pairing.phoneConnected &&
+      pairing.ready,
+  )
+
+  const phase = resolvePhase(isLoading, pairing, isExpired)
+
   useEffect(() => {
-    if (!open || !pairing?.expiresAt || pairing.phoneConnected) {
+    if (!open || !pairing?.expiresAt || pairing.phoneConnected || phase === 'failed') {
       return
     }
 
@@ -85,10 +123,10 @@ export default function ConnectPhonePanel({
     updateCountdown()
     const intervalId = window.setInterval(updateCountdown, 1000)
     return () => window.clearInterval(intervalId)
-  }, [open, pairing?.expiresAt, pairing?.phoneConnected])
+  }, [open, pairing?.expiresAt, pairing?.phoneConnected, phase])
 
   useEffect(() => {
-    if (!open || !pairing?.ready || !pairing.tokenId || pairing.phoneConnected) {
+    if (!open || !pairing?.ready || !pairing.tokenId || pairing.phoneConnected || isExpired) {
       return
     }
 
@@ -110,14 +148,21 @@ export default function ConnectPhonePanel({
     }, 2000)
 
     return () => window.clearInterval(intervalId)
-  }, [open, pairing?.ready, pairing?.tokenId, pairing?.phoneConnected])
+  }, [open, pairing?.ready, pairing?.tokenId, pairing?.phoneConnected, isExpired])
+
+  // Auto-create a fresh code when the current one expires (one-shot).
+  useEffect(() => {
+    if (!open || !isExpired || isLoading || autoRenewingRef.current) {
+      return
+    }
+
+    autoRenewingRef.current = true
+    void createPairing()
+  }, [open, isExpired, isLoading, createPairing])
 
   if (!open) {
     return null
   }
-
-  const isExpired =
-    pairing?.expiresAt && new Date(pairing.expiresAt).getTime() <= Date.now() && !pairing.phoneConnected
 
   return (
     <div className="connect-phone">
@@ -127,23 +172,30 @@ export default function ConnectPhonePanel({
           {t('connect.title')}
         </h2>
 
-        {isLoading && <p className="connect-phone__status">{t('connect.loading')}</p>}
+        {phase === 'generating' && (
+          <p className="connect-phone__status" role="status">
+            {t('connect.loading')}
+          </p>
+        )}
 
-        {!isLoading && pairing?.phoneConnected && (
+        {phase === 'connected' && (
           <p className="connect-phone__success" role="status">
             {t('connect.phoneConnected')}
           </p>
         )}
 
-        {!isLoading && pairing && !pairing.ready && !pairing.phoneConnected && (
+        {phase === 'failed' && (
           <div className="connect-phone__notice">
-            <p>{pairing.error ?? t('connect.unavailable')}</p>
+            <p>{pairing?.error ?? t('connect.unavailable')}</p>
           </div>
         )}
 
-        {!isLoading && pairing?.ready && pairing.pairingUrl && !pairing.phoneConnected && (
+        {phase === 'waiting' && pairing?.pairingUrl && (
           <>
             <p className="connect-phone__instruction">{t('connect.instruction')}</p>
+            <p className="connect-phone__waiting" role="status">
+              {t('connect.waiting')}
+            </p>
 
             <div className="connect-phone__qr-wrap">
               <QRCode
@@ -156,21 +208,27 @@ export default function ConnectPhonePanel({
             </div>
 
             <p className="connect-phone__countdown">
-              {isExpired
-                ? t('connect.expired')
-                : t('connect.expiresIn', { time: countdown || formatCountdown(pairing.expiresAt!) })}
+              {t('connect.expiresIn', {
+                time: countdown || formatCountdown(pairing.expiresAt!),
+              })}
             </p>
+
+            {pairing.warning && (
+              <p className="connect-phone__warning" role="status">
+                {pairing.warning}
+              </p>
+            )}
           </>
         )}
 
-        {pairing?.error && pairing.ready && !pairing.phoneConnected && (
-          <p className="connect-phone__error" role="alert">
-            {pairing.error}
+        {phase === 'expired' && (
+          <p className="connect-phone__status" role="status">
+            {t('connect.renewing')}
           </p>
         )}
 
         <div className="connect-phone__actions">
-          {pairing?.ready && !pairing.phoneConnected && (
+          {(phase === 'waiting' || phase === 'failed' || phase === 'expired') && (
             <button
               type="button"
               className="connect-phone__button connect-phone__button--primary"

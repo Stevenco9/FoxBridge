@@ -209,19 +209,19 @@ Phones never write to registration platforms.
 
 ## 7. Pairing workflow
 
-Target pairing preserves the existing one-scan product, framed as Sync:
+One-scan product (Sprint 21.7) for desk-enrolled Desktops:
 
-1. Organizer opens **Connect a phone** on Desktop (Cloud session required).
-2. Desktop ensures recent registration sync to Cloud (publish if needed).
-3. Cloud issues a short-lived pairing token (digest stored server-side).
-4. Desktop shows HTTPS QR → mobile PWA `/pair?token=…`.
-5. Phone exchanges token for a `scanner_session` bound to the conference.
-6. Desktop polls until token used; volunteer is ready to scan.
-7. Session can be revoked later (future admin) without affecting Desktop offline ops.
+1. Organizer opens **Connect a phone** (desk enrolled + scanner HTTPS origin packaged or configured).
+2. Desktop best-effort publishes attendees (soft warning if publish lags; QR still shown when attendees exist).
+3. Desktop creates a short-lived pairing token via `desktop-create-pairing` (desk credential) or legacy path.
+4. Desktop shows HTTPS QR only: `https://<scanner-origin>/pair?token=<raw>` — no Cloud keys, conference id, or desk secrets.
+5. Phone Camera opens the PWA; mobile redeems immediately via `exchange_scanner_pairing_token` using packaged public Cloud config.
+6. Desktop polls `desktop-pairing-status` → **Phone connected**; volunteer reaches Ready to Scan.
+7. Expired codes auto-renew on Desktop; failures use plain-language organizer copy.
 
-**Policy:** Pairing materials never contain RegFox API keys. Pairing fails closed without HTTPS scanner origin.
+**Policy:** Pairing materials never contain RegFox API keys or desk credentials. Pairing tokens are not privileged Desk credentials.
 
-Implementation details of tokens/RPCs: [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) and migrations under `supabase/migrations/`.
+Implementation: [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md), `electron/mobile/pairingRepository.ts`, `ConnectPhonePanel`.
 
 ---
 
@@ -345,6 +345,18 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **21.4** | Sync scheduling & lifecycle — main-process Sync Manager owns initial + periodic best-effort `sync()` |
 | **21.5** | Seamless Cloud configuration foundation — FoxBridge Cloud public defaults + config abstraction; no privileged keys in builds |
 | **21.6** | Trusted Cloud operations boundary — event-scoped desk credentials + Edge Functions; no local service-role for production |
+| **21.7** | Simplified phone pairing — one-scan HTTPS QR; Desktop waiting/connected/expired states; non-technical organizer errors |
+
+### Sprint 21.7 — Simplified phone pairing
+
+| Item | Detail |
+|------|--------|
+| **QR** | HTTPS FoxBridge Scanner URL + short-lived pairing token only (`/pair?token=…`) |
+| **Not in QR** | Cloud URL, publishable/service keys, conference id, desk credential |
+| **Desktop** | `ConnectPhonePanel` phases: generating, waiting, connected, expired (auto-renew), failed |
+| **Mobile** | Packaged public Cloud config; Camera opens URL → redeem token → Ready to Scan |
+| **Auth distinction** | Pairing token → phone scanner session; desk device token → Desktop privileged Cloud ops |
+| **Test** | `npm run test:pairing` |
 
 ### Sprint 21.6 — Trusted Cloud operations boundary
 
@@ -452,7 +464,7 @@ Future registration adapters: map to `Attendee`, call `replaceAttendeeCacheFromR
 | **Offline** | If Cloud unavailable / no conference → `skipped` no-op |
 | **Extension** | Register another `SyncEntityHandler` in `ENTITY_HANDLERS` |
 
-Suggested next: simplified QR phone pairing on desk-enrolled installs; tighten anon RLS; phone offline outbox.
+Suggested next: tighten anon RLS; phone offline outbox; optional Desktop→Cloud meal upload.
 
 ---
 

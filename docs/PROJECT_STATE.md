@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 21.6 — Trusted Cloud operations boundary)  
+Last updated: August 2026 (Sprint 21.7 — Simplified phone pairing)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -41,8 +41,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Sprint 21.4 Sync lifecycle** — Sync Manager: initial + every-5-minute best-effort `sync()`; overlap gated; non-blocking
 - **Sprint 21.5 Cloud config foundation** — FoxBridge Cloud public defaults + config abstraction; privileged keys stay local/dev-only (not packaged)
 - **Sprint 21.6 Trusted Cloud ops** — event-scoped desk enrollment + Edge Functions; production Desktop needs no local service-role
+- **Sprint 21.7 Simplified phone pairing** — one-scan HTTPS QR (`/pair?token=…`) with clear Desktop states; soft publish warning; non-technical organizer errors
 
-**Not yet built:** simplified QR phone pairing polish, tighter anon RLS, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
+**Not yet built:** tighter anon RLS, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
 
 ---
 
@@ -461,14 +462,29 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Sprint 21.7 (recommended):** simplified QR phone pairing on desk-enrolled installs (fewer organizer prerequisites once public Cloud defaults + enrollment are in place).
+**Sprint 21.8 (recommended):** tighten anon RLS (replace broad `USING (true)` reads with conference-scoped policies) and/or phone offline cache + validation outbox.
 
 Remaining Sync backlog:
 
-1. Simplified QR phone pairing UX / fewer Cloud prerequisites for organizers.
-2. Tighten anon RLS (replace broad `USING (true)` reads with conference-scoped policies).
-3. Mobile offline cache + validation outbox.
-4. RLS hardening / scanner session scoping beyond anon read policies.
+1. Tighten anon RLS (conference-scoped SELECT policies).
+2. Mobile offline cache + validation outbox.
+3. Optional Desktop→Cloud meal upload when desktop meals are used.
+4. Multi-event UI switching.
+
+---
+
+## Sprint 21.7 — Simplified phone pairing
+
+One-scan pairing for desk-enrolled Desktops. QR is an HTTPS FoxBridge Scanner URL with a short-lived token only.
+
+| Item | Detail |
+|------|--------|
+| **QR payload** | `https://<scanner-origin>/pair?token=<raw>` — no Cloud URL/keys, conference id, or desk secrets |
+| **Desktop states** | generating → waiting → connected; expired auto-renews; failed with plain-language errors |
+| **Publish** | Best-effort; soft warning if phones may be behind; hard-fail only when no attendees |
+| **Mobile** | Existing `/pair` + `exchange_scanner_pairing_token` → Ready to Scan (packaged VITE Cloud config) |
+| **Reuse** | `desktop-create-pairing`, `desktop-pairing-status`, Sprint 21.6 desk boundary |
+| **Test** | `npm run test:pairing` |
 
 ---
 
@@ -811,7 +827,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: Sprint 21.7 — simplified QR phone pairing on desk-enrolled Cloud installs (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
+Next task: Sprint 21.8 — tighten anon RLS and/or phone offline outbox (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```
