@@ -187,7 +187,7 @@ Triggered by: initial connect, Refresh registrations, reconnect after offline, a
 |------|-----------|---------|
 | Publish registration projection | Desktop → Cloud | Phones can look up attendees & entitlements |
 | Phone meal validation | Phone → Cloud | Shared meal redemptions |
-| Pull meal validations | Cloud → Desktop | Desk/dashboard offline-capable merge (**target**) |
+| Pull meal validations | Cloud → Desktop | Desk/dashboard offline-capable merge (**implemented** via Sync Manager schedule + `sync()`) |
 | Check-in | Desktop → RegFox (+ local); optional mirror → Cloud (**target**) | Upstream status + FoxBridge history |
 | Badge print log | Desktop local; optional Cloud aggregate (**future**) | Reprint history |
 | Event Settings / Quick Info config | Desktop local; optional Cloud mirror for multi-desk (**future**) | Organizer prefs |
@@ -342,6 +342,24 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **21.1** | Desktop Sync foundation — Cloud → SQLite meal validation pull via `electron/sync` (`sync()`), no UI |
 | **21.2** | Local Event Store — durable `event_attendees` SQLite table; Desktop reads local after import |
 | **21.3** | Event identity foundation — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event |
+| **21.4** | Sync scheduling & lifecycle — main-process Sync Manager owns initial + periodic best-effort `sync()` |
+
+### Sprint 21.4 — Sync scheduling & lifecycle
+
+Desktop Sync is an independent main-process subsystem. Entity pull logic remains in `syncService.sync()`; timing and overlap live in `syncManager`.
+
+| Item | Detail |
+|------|--------|
+| **Owner** | `electron/sync/syncManager.ts` — `startDesktopSyncManager` / `stopDesktopSyncManager` / `requestDesktopSyncBestEffort` |
+| **Interval** | `DESKTOP_SYNC_INTERVAL_MS` (5 minutes) in `syncManagerHelpers.ts` |
+| **Initial run** | After app init via `startDesktopSyncManager()` (fire-and-forget; never blocks startup) |
+| **Preconditions** | Active FoxBridge Event (`activeEventId`) + Cloud configured; otherwise silent skip |
+| **Overlap** | In-progress flag — concurrent requests/intervals no-op until the current run finishes |
+| **Offline** | Best-effort / fail silent; local workflows continue; next interval retries |
+| **Event scope** | `sync()` still passes `settings.activeEventId` into handlers/cursors |
+| **Legacy hooks** | Successful publish + connection-test still call `requestDesktopSyncBestEffort` (manager-owned, non-blocking) |
+| **Future entities** | Register another `SyncEntityHandler` in `ENTITY_HANDLERS` — no new timers |
+| **Test** | `npm run test:sync-manager` |
 
 ### Sprint 21.3 — Event identity foundation
 
@@ -380,14 +398,14 @@ Future registration adapters: map to `Attendee`, call `replaceAttendeeCacheFromR
 | Item | Detail |
 |------|--------|
 | **Entry point** | `electron/sync/syncService.ts` → `sync()` / `syncBestEffort()` |
-| **Invocation** | After successful Cloud publish; after successful mobile-service connection test. No timers, IPC, or UI. |
+| **Invocation** | Owned by Sync Manager (Sprint 21.4). Legacy: after successful Cloud publish; after successful mobile-service connection test. |
 | **Entity** | `meal_validations` only (`electron/sync/entities/mealValidationSync.ts`) |
 | **Policy** | First write wins (`UNIQUE(attendee_id, meal_key)`); preserve Cloud timestamps; `importSyncedMealValidation` does not change `validateMeal()` |
 | **Incremental** | Cursor in `userData/desktop-sync-cursors.json` (`validated_at` + cloud `id`) |
 | **Offline** | If Cloud unavailable / no conference → `skipped` no-op |
 | **Extension** | Register another `SyncEntityHandler` in `ENTITY_HANDLERS` |
 
-Suggested next (after 21.2): continuous/realtime `sync()` scheduling; seamless Cloud onboarding; phone offline outbox.
+Suggested next: seamless Cloud onboarding; phone offline outbox; optional Desktop→Cloud meal upload.
 
 ---
 

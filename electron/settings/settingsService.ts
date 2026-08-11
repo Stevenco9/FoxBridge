@@ -353,8 +353,8 @@ export async function testMobileService(
   }
 
   if (cloudStatus.connected) {
-    const { syncBestEffort } = await import('../sync/syncService')
-    await syncBestEffort()
+    const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
+    void requestDesktopSyncBestEffort()
   }
 
   return {

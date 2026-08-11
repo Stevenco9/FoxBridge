@@ -20,6 +20,10 @@ import {
   registerScannerServerHandlers,
   stopScannerServer,
 } from './scannerServerHandlers'
+import {
+  startDesktopSyncManager,
+  stopDesktopSyncManager,
+} from './sync/syncManager'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -73,6 +77,8 @@ app.whenReady().then(async () => {
   registerCloudHandlers()
   createWindow()
   await maybeAutoStartScannerServer()
+  // Non-blocking Sync lifecycle: initial best-effort + periodic schedule.
+  startDesktopSyncManager()
 })
 
 app.on('window-all-closed', () => {
@@ -97,6 +103,7 @@ app.on('activate', () => {
 })
 
 app.on('will-quit', () => {
+  stopDesktopSyncManager()
   void stopScannerServer()
   closeDatabase()
 })

@@ -17,10 +17,14 @@ const ENTITY_HANDLERS: readonly SyncEntityHandler[] = [mealValidationSyncHandler
  * Desktop Sync Service — Cloud → SQLite operational pull.
  *
  * Single entry point: `sync()`. Safe to call from main-process lifecycle after
- * Cloud is already usable (e.g. successful publish). Never throws; skips when
- * Cloud is unavailable so Desktop stays offline-first.
+ * Cloud is already usable. Never throws; skips when Cloud is unavailable so
+ * Desktop stays offline-first.
  *
- * Renderer must not call this. No timers/polling in Sprint 21.1.
+ * Sprint 21.4: ongoing scheduling is owned by `syncManager` (interval +
+ * overlap gate). Callers should prefer `requestDesktopSyncBestEffort` for
+ * lifecycle hooks; entity handlers still register here.
+ *
+ * Renderer must not call this.
  */
 export async function sync(): Promise<SyncRunResult> {
   try {

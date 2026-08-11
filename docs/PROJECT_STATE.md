@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 21.3 — Event identity foundation)  
+Last updated: August 2026 (Sprint 21.4 — Sync scheduling & lifecycle)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -38,8 +38,9 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Sprint 21.1 Desktop Sync foundation** — main-process `sync()` pulls Cloud meal validations into SQLite (incremental, first-write-wins); no UI / phone / pairing changes
 - **Sprint 21.2 Local Event Store** — durable `event_attendees` table; Desktop uses local store as working dataset after import; RegFox connect/refresh unchanged
 - **Sprint 21.3 Event identity** — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event; `regfoxEventId` kept for RegFox
+- **Sprint 21.4 Sync lifecycle** — Sync Manager: initial + every-5-minute best-effort `sync()`; overlap gated; non-blocking
 
-**Not yet built:** continuous/realtime sync scheduling, seamless Cloud onboarding, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
+**Not yet built:** seamless Cloud onboarding, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
 
 ---
 
@@ -458,14 +459,31 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Sprint 21.4 (recommended):** continuous or event-driven Desktop `sync()` scheduling (same `sync()` entry point), and/or seamless FoxBridge Cloud onboarding.
+**Sprint 21.5 (recommended):** seamless FoxBridge Cloud onboarding and/or phone offline cache + validation outbox.
 
 Remaining Sync backlog:
 
-1. Continuous or event-driven `sync()` scheduling (same entry point).
+1. Seamless FoxBridge Cloud onboarding (replace manual Supabase key paste).
 2. Mobile offline cache + validation outbox.
-3. Seamless FoxBridge Cloud onboarding (replace manual Supabase key paste).
-4. RLS hardening / scanner session scoping beyond anon read policies.
+3. RLS hardening / scanner session scoping beyond anon read policies.
+
+---
+
+## Sprint 21.4 — Sync scheduling & lifecycle
+
+Infrastructure only. No UI, phone, pairing, Cloud onboarding, or registration-workflow changes.
+
+| Item | Detail |
+|------|--------|
+| **Manager** | `electron/sync/syncManager.ts` |
+| **Interval** | `DESKTOP_SYNC_INTERVAL_MS` = 5 minutes |
+| **Start** | `main.ts` after boot identity hydrate — non-blocking |
+| **Stop** | `will-quit` before DB close |
+| **Entry** | Still `sync()` / `syncBestEffort()` for entity work |
+| **Preconditions** | `activeEventId` + Cloud configured |
+| **Overlap** | Single in-progress run; extra ticks/hooks skip |
+| **Hooks** | Publish + connection-test call `requestDesktopSyncBestEffort` (void) |
+| **Test** | `npm run test:sync-manager` |
 
 ---
 
@@ -509,7 +527,7 @@ Infrastructure only. No UI, phone, pairing, or registration-import changes.
 |------|--------|
 | **Service** | `electron/sync/syncService.ts` — `sync()` / `syncBestEffort()` |
 | **Entity** | Meal validations pull Cloud → SQLite |
-| **Triggers** | After successful `publishAttendees`; after successful `testMobileService` when connected |
+| **Triggers** | Sync Manager (initial + every 5 min); also after successful `publishAttendees` / `testMobileService` via manager |
 | **Cursor** | `userData/desktop-sync-cursors.json` |
 | **Policy** | First write wins; preserve Cloud `validated_at` |
 | **Test** | `npm run test:desktop-sync` |
@@ -757,7 +775,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: Sprint 21.4 — sync scheduling and/or seamless Cloud onboarding (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
+Next task: Sprint 21.5 — seamless Cloud onboarding and/or phone offline outbox (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

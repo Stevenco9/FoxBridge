@@ -32,6 +32,7 @@
     "test:attendee-display-catalog": "tsx scripts/test-attendee-display-catalog.ts",
     "test:resolve-attendee-display": "tsx scripts/test-resolve-attendee-display.ts",
     "test:desktop-sync": "tsx scripts/test-desktop-sync.ts",
+    "test:sync-manager": "tsx scripts/test-sync-manager.ts",
     "test:local-event-store": "tsx scripts/test-local-event-store.ts",
     "test:event-identity": "tsx scripts/test-event-identity.ts",
     "test:printer": "bash scripts/test-printer.sh"
