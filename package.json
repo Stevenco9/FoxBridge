@@ -37,6 +37,7 @@
     "test:desk-credential": "tsx scripts/test-desk-credential.ts",
     "test:pairing": "tsx scripts/test-pairing.ts",
     "test:foxbridge-sync-status": "tsx scripts/test-foxbridge-sync-status.ts",
+    "test:sync-deployment-readiness": "tsx scripts/test-sync-deployment-readiness.ts",
     "test:local-event-store": "tsx scripts/test-local-event-store.ts",
     "test:event-identity": "tsx scripts/test-event-identity.ts",
     "test:printer": "bash scripts/test-printer.sh"

@@ -1,11 +1,12 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 21.8 — Organizer FoxBridge Sync enrollment UX)  
+Last updated: August 2026 (Sprint 21.10 — Live clean-install Sync validation PASS)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
 **Sync design:** [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) — canonical FoxBridge Sync architecture (Sprint 21.0).  
+**Sync deploy/validation:** [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) — Sprint 21.9 operator checklist.  
 **Cloud backend:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — current Supabase implementation of FoxBridge Cloud.  
 **Mobile product:** [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md) — volunteer-focused mobile scope and guardrails (`apps/mobile`).  
 **Vision:** [`VISION.md`](./VISION.md) — long-term product and architecture principles.
@@ -43,6 +44,8 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Sprint 21.6 Trusted Cloud ops** — event-scoped desk enrollment + Edge Functions; production Desktop needs no local service-role
 - **Sprint 21.7 Simplified phone pairing** — one-scan HTTPS QR (`/pair?token=…`) with clear Desktop states; soft publish warning; non-technical organizer errors
 - **Sprint 21.8 Organizer Sync enrollment UX** — Setup Wizard Sync step + Operations Home status/connect card; shared enrollment logic; Advanced remains fallback only
+- **Sprint 21.9 Sync deployment readiness** — production deploy/validation checklists; migration 010 enrollment `digest`/`search_path` fix; automated packaging readiness test
+- **Sprint 21.10 Live clean-install validation** — packaged Desktop + desk enroll + pair + meal validate + Cloud→SQLite Sync **PASS** (no local service-role)
 
 **Not yet built:** tighter anon RLS, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
 
@@ -463,14 +466,59 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Sprint 21.9 (recommended):** tighten anon RLS (replace broad `USING (true)` reads with conference-scoped policies) and/or phone offline cache + validation outbox.
-
-Remaining Sync backlog:
+**Post–Sprint 21 backlog** (Sync feature track closed after 21.10 live PASS):
 
 1. Tighten anon RLS (conference-scoped SELECT policies).
 2. Mobile offline cache + validation outbox.
 3. Optional Desktop→Cloud meal upload when desktop meals are used.
 4. Multi-event UI switching.
+5. Wire `FOXBRIDGE_CLOUD_*` into GitHub Actions Windows packaging when Sync-ready CI artifacts are desired.
+
+---
+
+## Sprint 21.10 — Live clean-install Sync validation
+
+Production-style validation against Cloud project `upsjnvlllkeucjarbnnx` / conference `d00f67ca-2d5b-4e3e-b7bb-659bc0031363` (RegFox `1012457`). Packaged Desktop: `release/mac-arm64/FoxBridge.app` with public Cloud config only.
+
+| Gate | Result |
+|------|--------|
+| Migrations 001–010 (incl. 010) | PASS |
+| Edge Functions `desktop-*` (6) | PASS deployed |
+| Scanner PWA `https://fox-bridge.vercel.app` | PASS (live `VITE_SUPABASE_*` matched project) |
+| Packaged Desktop public config / no service-role | PASS |
+| **A** Clean install | PASS |
+| **B** Connect RegFox | PASS |
+| **C** Load/select event | PASS |
+| **D** Reach FoxBridge Sync | PASS |
+| **E** Enrollment code | PASS |
+| **F** Sync Connected | PASS |
+| **G** Publish attendees | PASS |
+| **H–K** Connect phone / QR / Camera / Ready to Scan | PASS |
+| **L** Validate test meal on phone | PASS |
+| **M** Cloud `meal_validations` row | PASS |
+| **N** Desktop Sync → SQLite | PASS |
+| **O** Restart — event, Sync Connected, Meal Dashboard still show validation | PASS |
+
+**Sprint 21 Sync feature/enablement track: CLOSED.**
+
+Runbook: [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md).
+
+---
+
+## Sprint 21.9 — End-to-end Sync deployment & validation
+
+Primarily validation, deployment readiness, and documentation. Architecture unchanged except migration **010** (hosted-safe enrollment code issuance).
+
+| Item | Detail |
+|------|--------|
+| **Runbook** | [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) |
+| **Fix** | `010_fix_issue_desk_enrollment_digest.sql` — `issue_desk_enrollment_code` uses `search_path = public, extensions` |
+| **Requires deploy** | Migrations 001–**010**; all six `desktop-*` Edge Functions; conference bootstrap + enrollment code |
+| **Desktop package vars** | `FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` (or `ANON_KEY`), `FOXBRIDGE_SCANNER_URL` |
+| **Mobile package vars** | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+| **No local service-role** | Production Desktop + Mobile operate with public config + desk enrollment |
+| **Automated** | `npm run test:sync-deployment-readiness` |
+| **Live validation** | Completed in Sprint 21.10 (clean-install A–O PASS) |
 
 ---
 
@@ -514,7 +562,7 @@ Backend/infrastructure. No registration/badge/meal-validation behavior redesign;
 |------|--------|
 | **Credential** | One-time enrollment code → revocable desk device token bound to one conference |
 | **Server** | Supabase Edge Functions (`desktop-enroll`, `desktop-publish`, `desktop-resolve-conference`, `desktop-create-pairing`, `desktop-pairing-status`, `desktop-ensure-scanner-session`) |
-| **Schema** | `desk_devices`, `desk_enrollment_codes` + `issue_desk_enrollment_code()` |
+| **Schema** | `desk_devices`, `desk_enrollment_codes` + `issue_desk_enrollment_code()` (`009`; hosted fix `010`) |
 | **Desktop** | `desktopCloudApi.ts`; transport prefers desk credential over legacy service-role |
 | **Production** | No local service-role required when public Cloud config + enrollment succeed |
 | **Legacy** | Advanced privileged key still works for dev/migration |
@@ -835,17 +883,18 @@ No new features. Polish + validation of Sprint 20 Event Settings / Quick Info:
 ```
 I'm continuing work on FoxBridge, a desktop Electron + React + TypeScript app for RegFox event check-in and Brother label badge printing.
 
-Read docs/PROJECT_STATE.md, docs/SYNC_ARCHITECTURE.md, docs/MOBILE_PRODUCT.md, docs/SUPABASE_ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
+Read docs/PROJECT_STATE.md, docs/SYNC_ARCHITECTURE.md, docs/FOXBRIDGE_SYNC_DEPLOYMENT.md, docs/MOBILE_PRODUCT.md, docs/SUPABASE_ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
 
 Current state:
-- Desktop: guided setup wizard, operations home, RegFox sync, badges, print, SQLite meal validation, optional mobile cloud publish
+- Desktop: guided setup wizard (including FoxBridge Sync enrollment), operations home, RegFox sync, badges, print, SQLite meal validation, optional mobile cloud publish
 - Mobile PWA: sign-in, QR scan, online meal validation via Supabase validate_meal RPC
-- Sync design: docs/SYNC_ARCHITECTURE.md (Sprint 21.0)
+- Sync design: docs/SYNC_ARCHITECTURE.md (Sprint 21.0–21.9)
+- Sync deploy/validation: docs/FOXBRIDGE_SYNC_DEPLOYMENT.md
 - Branch main is on GitHub
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: Sprint 21.9 — tighten anon RLS and/or phone offline outbox (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
+Next task: Post–Sprint 21 backlog — tighten anon RLS / phone offline outbox (Sync live E2E validated in Sprint 21.10).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

@@ -13,11 +13,12 @@ Operational checklist for event organizers and volunteers running registration a
 - [ ] Install and open FoxBridge on the registration laptop
 - [ ] Complete the **guided setup wizard** (or confirm setup already finished)
 - [ ] On **Connect registration**, enter RegFox API key and page ID — attendees should load automatically
+- [ ] On **FoxBridge Sync**, enter the one-time enrollment code from your setup person (or choose Set up later and connect from the home screen)
+- [ ] Confirm FoxBridge Sync shows **Connected** (or reconnect from Operations Home if needed)
 - [ ] Confirm attendee count looks reasonable after setup
 - [ ] Spot-check a few registrants against RegFox (names, meal choices, registration type)
 - [ ] Test search functionality (name, email, organization)
-- [ ] On **Mobile scanner** step, confirm “Mobile scanner ready” (or configure mobile service fields)
-- [ ] Use **Connect a phone** from the operations home to verify QR, scanner code, and mobile URL
+- [ ] Use **Connect a phone** from the operations home to verify the pairing QR with a volunteer phone
 
 ### Badge printing
 

@@ -333,9 +333,13 @@ Mobile receives only what meal-line volunteers need: name, entitlements, validat
 | `issue_desk_enrollment_code(conference_id, ttl_minutes, label)` | Operator helper (`service_role` only) returns raw code once |
 | Edge Functions `desktop-*` | Verify desk token; perform privileged DB work with server-held service role |
 
-Deploy functions after migration `009_desk_devices.sql`. Desktop never receives the service role.
+Deploy functions after migrations `009_desk_devices.sql` **and** `010_fix_issue_desk_enrollment_digest.sql`. Desktop never receives the service role.
+
+**Migration 010 (required):** `issue_desk_enrollment_code` must use `SET search_path = public, extensions` so hosted Supabase can resolve pgcrypto `digest()` / `gen_random_bytes()`. Without 010, operator code issuance can fail the same way pairing did before migration 008.
 
 **Organizer UX (Sprint 21.8):** Setup Wizard (after RegFox) and Operations Home share one enrollment/status surface. Organizers only see “FoxBridge Sync” and an enrollment code — never Supabase, URLs, public keys, or desk-token terminology. Settings → Advanced remains a fallback.
+
+**Production deploy & validation checklist:** [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) (Sprint 21.9). **Sprint 21.10:** live clean-install A–O validated PASS on project `upsjnvlllkeucjarbnnx` with Scanner `https://fox-bridge.vercel.app` and no local Desktop service-role.
 
 ---
 

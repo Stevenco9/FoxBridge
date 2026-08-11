@@ -208,6 +208,33 @@ Run through this checklist on a clean machine **without** Cursor or `npm run dev
 - [ ] Settings and local database persist across restart
 - [ ] App runs with Cursor and development servers closed
 
+### FoxBridge Sync production packaging (Sprint 21.9)
+
+For Sync-ready installers (Clean desk enrollment without Settings → Advanced):
+
+1. Follow **[`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md)** — migrations **001–010** (including **010**), deploy all `desktop-*` Edge Functions, bootstrap conference + enrollment code.
+2. Build Desktop with public packaging env (never service-role):
+
+```bash
+export FOXBRIDGE_CLOUD_URL='https://YOUR_PROJECT.supabase.co'
+export FOXBRIDGE_CLOUD_PUBLISHABLE_KEY='YOUR_ANON_OR_PUBLISHABLE_KEY'
+export FOXBRIDGE_SCANNER_URL='https://scanner.your-conference.example.com'
+npm run dist:mac   # or npm run dist:win
+```
+
+3. Build and host the Scanner PWA with matching `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` at the HTTPS origin used for `FOXBRIDGE_SCANNER_URL`.
+4. Run the clean-install validation checklist in [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) §3 on a machine with no prior FoxBridge userData.
+
+**Sprint 21.10:** That clean-install path was validated **PASS** (packaged Mac Desktop, desk enrollment, one-scan phone pairing via `https://fox-bridge.vercel.app`, meal → Cloud → Desktop Sync → SQLite, restart persistence) **without** a local service-role key.
+
+Repo automated readiness (does **not** replace live Cloud E2E):
+
+```bash
+npm run test:sync-deployment-readiness
+```
+
+**Note:** `.github/workflows/build-windows.yml` does not currently inject `FOXBRIDGE_CLOUD_*`. Wire CI secrets/vars before treating that workflow artifact as Sync-ready for organizers.
+
 Record any failures before sending the installer to volunteers.
 
 ---

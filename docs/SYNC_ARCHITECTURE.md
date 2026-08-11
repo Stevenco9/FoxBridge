@@ -164,7 +164,7 @@ Continuous sync (see §6)
 Event closed / archive (future) — retain ops history, revoke sessions
 ```
 
-**Today’s gaps vs target:** Public Cloud defaults can be packaged (Sprint 21.5); privileged Desktop ops still use local service credentials until a FoxBridge API / Edge Function exists. Attendees are durable on disk (Local Event Store); Cloud enablement is no longer “paste every key in Advanced” for ordinary packaged installs.
+**Today’s gaps vs target:** Public Cloud defaults can be packaged (Sprint 21.5); privileged Desktop ops use desk credentials + Edge Functions in production (Sprint 21.6+), with legacy local service-role only for development/migration. Attendees are durable on disk (Local Event Store); ordinary organizers enroll with a one-time code rather than pasting every Cloud key.
 
 ---
 
@@ -346,6 +346,31 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **21.5** | Seamless Cloud configuration foundation — FoxBridge Cloud public defaults + config abstraction; no privileged keys in builds |
 | **21.6** | Trusted Cloud operations boundary — event-scoped desk credentials + Edge Functions; no local service-role for production |
 | **21.7** | Simplified phone pairing — one-scan HTTPS QR; Desktop waiting/connected/expired states; non-technical organizer errors |
+| **21.8** | Organizer Sync enrollment UX — Setup Wizard + Operations Home share enrollment/status |
+| **21.9** | End-to-end Sync deployment readiness — checklists, packaging vars, migration 010 enrollment digest fix |
+| **21.10** | Live clean-install validation PASS — packaged Desktop desk enroll → pair → meal → Cloud→SQLite |
+
+Canonical operator runbook: [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md).
+
+### Sprint 21.10 — Live validation
+
+| Item | Detail |
+|------|--------|
+| **Result** | Clean-install A–O **PASS** (incl. O: restart kept event, Sync Connected, Meal Dashboard validation) |
+| **Cloud** | Project `upsjnvlllkeucjarbnnx`; conference RegFox `1012457` (`d00f67ca-2d5b-4e3e-b7bb-659bc0031363`) |
+| **Scanner** | `https://fox-bridge.vercel.app` |
+| **Desktop** | Packaged build with public Cloud config; **no** local service-role |
+| **Close Sprint 21?** | **Yes** — Sync feature/enablement track closed; RLS/offline remain backlog |
+
+### Sprint 21.9 — Deployment & validation
+
+| Item | Detail |
+|------|--------|
+| **Purpose** | Validate Sync can be deployed and used without organizer Supabase/service-role knowledge |
+| **Fix** | Migration `010_fix_issue_desk_enrollment_digest.sql` — `issue_desk_enrollment_code` search_path includes `extensions` |
+| **Checklist** | [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) |
+| **Automated** | `npm run test:sync-deployment-readiness` (repo packaging/schema; not live Cloud E2E) |
+| **Manual** | Clean-install §3 + failure/recovery §4 in the deployment doc |
 
 ### Sprint 21.8 — Organizer enrollment UX
 
@@ -404,7 +429,7 @@ Product-facing **FoxBridge Cloud** configuration is separated from Supabase impl
 **Resolution (public):** explicit settings → packaged defaults → local env.  
 **Resolution (privileged):** secrets → `SUPABASE_SERVICE_ROLE_KEY` env.  
 
-Ordinary organizers should not paste URL/anon/service-role during setup when packaging supplies public defaults. Privileged Desktop publish still requires a local secret or developer env until a trusted FoxBridge API / Edge Function removes that need (Sprint 21.6+).
+Ordinary organizers should not paste URL/anon/service-role during setup when packaging supplies public defaults. Production Desktop publish/pairing use desk enrollment + Edge Functions (Sprint 21.6+); local privileged keys remain development/migration only. See [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md).
 
 | Item | Detail |
 |------|--------|
