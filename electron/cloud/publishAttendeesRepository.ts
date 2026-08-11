@@ -233,6 +233,10 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
 
     await setCloudPublishSuccess(sourceAttendees.length, publishedAt)
 
+    // Sprint 21.1: Cloud → SQLite pull after a proven Cloud publish path.
+    const { syncBestEffort } = await import('../sync/syncService')
+    await syncBestEffort()
+
     return {
       success: true,
       attendeeCount: sourceAttendees.length,

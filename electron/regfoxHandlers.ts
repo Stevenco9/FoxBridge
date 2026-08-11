@@ -1,7 +1,12 @@
 import { ipcMain } from 'electron'
 import { checkInAttendee } from './regfox/checkInAttendee'
 import { createRegFoxServiceFromSettings } from './regfox/regfoxConfig'
-import { getAttendeeCache } from './scannerServer/attendeeCache'
+import {
+  getAttendeeCache,
+  hydrateAttendeeCacheFromLocalEventStore,
+  isAttendeeCacheLoaded,
+} from './scannerServer/attendeeCache'
+import { resolveLocalEventStoreKey } from './settings/eventIdentityService'
 import {
   connectRegFox,
   loadRegFoxAttendees,
@@ -11,6 +16,17 @@ import {
 export function registerRegFoxHandlers(): void {
   ipcMain.removeHandler('regfox:getAttendees')
   ipcMain.handle('regfox:getAttendees', async () => {
+    // Prefer Local Event Store (canonical working dataset after import).
+    if (!isAttendeeCacheLoaded()) {
+      const storeKey = await resolveLocalEventStoreKey()
+      hydrateAttendeeCacheFromLocalEventStore(storeKey)
+    }
+
+    if (getAttendeeCache().length > 0) {
+      return getAttendeeCache()
+    }
+
+    // Empty local store — download from the registration platform (RegFox today).
     const result = await loadRegFoxAttendees()
     if (!result.success) {
       throw new Error(result.message ?? 'Unable to load attendees from RegFox.')

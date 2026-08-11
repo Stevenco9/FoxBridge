@@ -18,7 +18,11 @@ import {
   testSupabaseConnection,
 } from '../cloud/supabaseConnectionTest'
 import { getPreferredPrinterName } from '../printing/preferredPrinterStore'
-import { getAttendeeCache, isAttendeeCacheLoaded, setAttendeeCache } from '../scannerServer/attendeeCache'
+import {
+  getAttendeeCache,
+  isAttendeeCacheLoaded,
+  replaceAttendeeCacheFromRegistrationSync,
+} from '../scannerServer/attendeeCache'
 import { readSecrets, writeSecrets, getSafeStorageStatus } from './secretStore'
 import {
   migrateSettingsFromEnvIfNeeded,
@@ -27,6 +31,7 @@ import {
 } from './settingsStore'
 import { createRegFoxServiceFromSettings } from '../regfox/regfoxConfig'
 import { mergeAttendeesWithPersistedCheckIns } from '../regfox/checkInAttendee'
+import { activateRegFoxEvent } from './eventIdentityService'
 
 const MOBILE_PUBLISH_WARNING =
   'Phone scanners could not be updated. Desktop registration is still available.'
@@ -158,11 +163,24 @@ export async function connectRegFox(
   }
 
   await saveSettingsSecrets({ regfoxApiKey: trimmedKey })
-  await patchPublicSettings({
-    regfoxEventId: trimmedEventId,
-    lastAttendeeSyncAt: new Date().toISOString(),
+  const syncedAt = new Date().toISOString()
+  const settings = await readPublicSettings()
+  // Keep regfoxEventId for RegFox workflows; associate Local Event Store with FoxBridge Event id.
+  const foxEvent = await activateRegFoxEvent({
+    platformEventId: trimmedEventId,
+    name: settings.conferenceName,
+    markSynced: true,
+    syncedAt,
   })
-  setAttendeeCache(mergeAttendeesWithPersistedCheckIns(attendees))
+  await patchPublicSettings({
+    lastAttendeeSyncAt: syncedAt,
+  })
+  replaceAttendeeCacheFromRegistrationSync({
+    attendees: mergeAttendeesWithPersistedCheckIns(attendees),
+    eventId: foxEvent.id,
+    sourcePlatform: 'regfox',
+    syncedAt,
+  })
 
   const publishWarning = await publishAttendeesIfConfigured()
   await patchPublicSettings({
@@ -189,8 +207,31 @@ export async function loadRegFoxAttendees(): Promise<RegFoxConnectResult> {
 
   try {
     const attendees = await service.getAttendees()
-    setAttendeeCache(mergeAttendeesWithPersistedCheckIns(attendees))
-    await patchPublicSettings({ lastAttendeeSyncAt: new Date().toISOString() })
+    const settings = await readPublicSettings()
+    const platformEventId =
+      settings.regfoxEventId?.trim() || attendees[0]?.eventId || ''
+    if (!platformEventId) {
+      return {
+        success: false,
+        attendeeCount: 0,
+        message: 'RegFox page ID is missing.',
+      }
+    }
+
+    const syncedAt = new Date().toISOString()
+    const foxEvent = await activateRegFoxEvent({
+      platformEventId,
+      name: settings.conferenceName,
+      markSynced: true,
+      syncedAt,
+    })
+    replaceAttendeeCacheFromRegistrationSync({
+      attendees: mergeAttendeesWithPersistedCheckIns(attendees),
+      eventId: foxEvent.id,
+      sourcePlatform: 'regfox',
+      syncedAt,
+    })
+    await patchPublicSettings({ lastAttendeeSyncAt: syncedAt })
 
     const publishWarning = await publishAttendeesIfConfigured()
     await patchPublicSettings({
@@ -309,6 +350,11 @@ export async function testMobileService(
   const cloudStatus = await getCloudStatus()
   if (cloudStatus.conferenceName) {
     await patchPublicSettings({ conferenceName: cloudStatus.conferenceName })
+  }
+
+  if (cloudStatus.connected) {
+    const { syncBestEffort } = await import('../sync/syncService')
+    await syncBestEffort()
   }
 
   return {

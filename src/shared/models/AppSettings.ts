@@ -2,7 +2,17 @@ export type AppLanguage = 'en' | 'es'
 
 export interface AppSettingsPublic {
   language: AppLanguage
+  /**
+   * RegFox page/form id for the current RegFox integration.
+   * Kept for existing RegFox workflows; prefer `activeEventId` for new
+   * FoxBridge event-scoped associations.
+   */
   regfoxEventId: string | null
+  /**
+   * Active FoxBridge Event id (`events.id`). Maps to the current registration
+   * platform event (e.g. RegFox via `events.platform_event_id`).
+   */
+  activeEventId: string | null
   conferenceId: string | null
   mobileServiceUrl: string | null
   mobilePublicKey: string | null

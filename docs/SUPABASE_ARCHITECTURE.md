@@ -1,10 +1,17 @@
-# FoxBridge — Supabase Architecture (Planning)
+# FoxBridge — Supabase Cloud Implementation
 
-**Status:** Implemented (Sprint 10–13B) — migrations in `supabase/migrations/`  
-**Last updated:** July 2026  
-**Audience:** Developers continuing FoxBridge after desktop MVP
+**Status:** Implemented (Sprint 10–13B+) — migrations in `supabase/migrations/`  
+**Last updated:** August 2026  
+**Audience:** Developers working on the current cloud backend
 
-This document describes the planned **Supabase-backed mobile meal scanner** system. It does **not** replace the current desktop SQLite workflow. FoxBridge Desktop remains the reliable registration-day tool; Supabase enables mobile scanning from anywhere on the event network (or offline with later sync).
+Supabase is the **current implementation** of **FoxBridge Cloud** (the sync/pairing hub). It is **not** the Sync architecture itself.
+
+| Document | Read for |
+|----------|----------|
+| [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) | **Canonical** Sync design: roles, lifecycles, offline/reconnect, data policies, reuse plan (Sprint 21.0) |
+| This document | Supabase-specific schema, RPCs, RLS notes, and historical planning context for the mobile meal scanner |
+
+FoxBridge Desktop remains the reliable offline registration-day tool. Supabase enables shared conference data and mobile scanning. Do not treat “add another Supabase table” as the Sync product strategy—prefer contracts in `SYNC_ARCHITECTURE.md`.
 
 Related docs: [`PROJECT_STATE.md`](./PROJECT_STATE.md), [`PRODUCT_DECISIONS.md`](./PRODUCT_DECISIONS.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
@@ -12,7 +19,7 @@ Related docs: [`PROJECT_STATE.md`](./PROJECT_STATE.md), [`PRODUCT_DECISIONS.md`]
 
 ## 1. Why Supabase
 
-FoxBridge needs a shared, online store that mobile scanners can reach without depending on the desktop machine's LAN IP or uptime. Supabase is a good fit for this phase because:
+FoxBridge needs a shared, online store that mobile scanners can reach without depending on the desktop machine's LAN IP or uptime. Supabase fits the **current** FoxBridge Cloud backend because:
 
 | Need | How Supabase helps |
 |------|-------------------|
@@ -25,11 +32,11 @@ FoxBridge needs a shared, online store that mobile scanners can reach without de
 
 **Why not only the desktop local scanner server?**
 
-The localhost/LAN HTTP server in Electron is useful for same-room testing and optional fallback, but it requires phones to reach the desktop machine, does not survive desktop sleep/restart gracefully, and has no built-in multi-device sync story. Supabase is the **durable hub**; desktop remains the **authoritative sync agent** from RegFox.
+The localhost/LAN HTTP server in Electron is useful for same-room testing and optional fallback, but it requires phones to reach the desktop machine, does not survive desktop sleep/restart gracefully, and has no built-in multi-device sync story. In Sync terms, Supabase is the **current FoxBridge Cloud hub**; desktop remains the **registration sync agent** (see [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md)).
 
 **Why not replace desktop SQLite with Supabase immediately?**
 
-Registration day must work if Wi‑Fi or Supabase is down. Desktop SQLite is local, fast, and already proven for meal validation. Cloud sync is additive—not a replacement—for AdAgrA and early events.
+Registration day must work if Wi‑Fi or Supabase is down. Desktop SQLite is local, fast, and already proven for meal validation. Cloud sync is additive—not a replacement—for AdAgrA and early events. This matches Sync’s offline-first Desktop principle.
 
 ---
 
@@ -75,12 +82,14 @@ Registration day must work if Wi‑Fi or Supabase is down. Desktop SQLite is loc
 
 ### Component roles
 
+Roles below are the **Supabase-era mapping**. For the platform-level Sync responsibilities (Desktop / Cloud / Phones / registration platforms), see [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md).
+
 | Component | Role |
 |-----------|------|
 | **RegFox** | Authoritative registration, purchases, custom fields |
-| **FoxBridge Desktop** | RegFox sync, badge printing, primary meal validation, Supabase upload/download |
+| **FoxBridge Desktop** | RegFox sync, badge printing, primary desk UI, Supabase upload/download |
 | **SQLite** | Local operational DB; works offline on registration day |
-| **Supabase** | Shared conference data + mobile validation writes |
+| **Supabase** | Current FoxBridge Cloud backend: shared conference data + mobile validation writes |
 | **Mobile web scanner** | Roaming meal lines; reads entitlements, writes validations |
 
 ### What stays on desktop only

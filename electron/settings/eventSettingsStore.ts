@@ -1,18 +1,21 @@
-import { app } from 'electron'
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import type {
+  EventSettingsEntry,
+  EventSettingsFile,
+  EventSettingsPatch,
+} from '../../src/shared/models/EventSettings'
 import {
   createDefaultEventSettingsEntry,
   createEmptyEventSettingsFile,
-  type EventSettingsEntry,
-  type EventSettingsFile,
-  type EventSettingsPatch,
 } from '../../src/shared/models/EventSettings'
 import {
   applyEventSettingsPatch,
   normalizeEventSettingsEntry,
   normalizeEventSettingsFile,
 } from '../../src/shared/settings/normalizeEventSettings'
+import { app } from 'electron'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { findEventByPlatform, getEventById } from '../db/eventRepository'
 
 const STORE_FILENAME = 'event-settings.json'
 
@@ -39,24 +42,62 @@ function normalizeEventId(eventId: string | null | undefined): string | null {
 }
 
 /**
- * Returns preferences for one RegFox event.
- * Missing events yield defaults without writing the file.
+ * Resolves storage keys for an event id that may be a FoxBridge Event id
+ * or a legacy registration-platform event id (e.g. RegFox page id).
  */
-export async function getEventSettings(
-  eventId: string,
-): Promise<EventSettingsEntry> {
+function resolveSettingsKeys(eventKey: string): string[] {
+  const keys = [eventKey]
+  const byId = getEventById(eventKey)
+  if (byId) {
+    keys.push(byId.platformEventId)
+    return [...new Set(keys.map((key) => key.trim()).filter(Boolean))]
+  }
+
+  // Look up as RegFox platform id (most common legacy key).
+  const byRegFox = findEventByPlatform('regfox', eventKey)
+  if (byRegFox) {
+    keys.unshift(byRegFox.id)
+  }
+
+  return [...new Set(keys.map((key) => key.trim()).filter(Boolean))]
+}
+
+function readEntryForKeys(
+  file: EventSettingsFile,
+  keys: string[],
+): { entry: EventSettingsEntry; primaryKey: string } {
+  for (const key of keys) {
+    if (file.events[key]) {
+      return {
+        entry: normalizeEventSettingsEntry(file.events[key]),
+        primaryKey: keys[0] ?? key,
+      }
+    }
+  }
+
+  return {
+    entry: createDefaultEventSettingsEntry(),
+    primaryKey: keys[0] ?? '',
+  }
+}
+
+/**
+ * Returns preferences for one event (FoxBridge Event id preferred; platform id still works).
+ */
+export async function getEventSettings(eventId: string): Promise<EventSettingsEntry> {
   const id = normalizeEventId(eventId)
   if (!id) {
     return createDefaultEventSettingsEntry()
   }
 
   const file = await readFile()
-  return normalizeEventSettingsEntry(file.events[id])
+  const keys = resolveSettingsKeys(id)
+  return readEntryForKeys(file, keys).entry
 }
 
 /**
- * Merges a patch into one event's settings and persists the file.
- * Returns the normalized entry after write.
+ * Merges a patch and persists under the FoxBridge Event id when known,
+ * while mirroring the legacy platform-keyed entry for RegFox UI compatibility.
  */
 export async function patchEventSettings(
   eventId: string,
@@ -68,15 +109,52 @@ export async function patchEventSettings(
   }
 
   const file = await readFile()
-  const current = normalizeEventSettingsEntry(file.events[id])
-  const next = applyEventSettingsPatch(current, patch ?? {})
+  const keys = resolveSettingsKeys(id)
+  const { entry } = readEntryForKeys(file, keys)
+  const next = applyEventSettingsPatch(entry, patch ?? {})
 
-  file.events[id] = next
+  const foxbridgeEvent =
+    getEventById(id) ?? findEventByPlatform('regfox', id)
+  const primaryKey = foxbridgeEvent?.id ?? id
+  const aliasKey = foxbridgeEvent?.platformEventId
+
+  file.events[primaryKey] = next
+  if (aliasKey && aliasKey !== primaryKey) {
+    file.events[aliasKey] = next
+  }
+
   await writeFile(file)
   return next
+}
+
+/**
+ * Copies Event Settings from a legacy platform event key onto the FoxBridge Event id.
+ */
+export async function migrateEventSettingsAlias(
+  platformEventId: string,
+  foxbridgeEventId: string,
+): Promise<void> {
+  const fromId = platformEventId.trim()
+  const toId = foxbridgeEventId.trim()
+  if (!fromId || !toId || fromId === toId) {
+    return
+  }
+
+  const file = await readFile()
+  const legacy = file.events[fromId]
+  if (!legacy) {
+    return
+  }
+
+  if (!file.events[toId]) {
+    file.events[toId] = normalizeEventSettingsEntry(legacy)
+    await writeFile(file)
+  }
 }
 
 /** Absolute path to the on-disk store (for diagnostics / tests). */
 export function getEventSettingsFilePath(): string {
   return getStorePath()
 }
+
+export { createEmptyEventSettingsFile }

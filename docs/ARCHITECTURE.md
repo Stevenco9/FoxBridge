@@ -2,20 +2,36 @@
 
 ## Purpose
 
-FoxBridge is a companion application for RegFox event management. It gives event staff a fast, reliable way to search attendees, preview badges, and print labels at the door—without CSV exports or manual data handling.
+FoxBridge is a companion application for event registration platforms (today: RegFox). It gives event staff a fast, reliable way to search attendees, preview badges, print labels, and run on-site workflows at the door—without CSV exports or manual data handling.
 
 The MVP targets desktop (Electron). The long-term vision includes mobile clients for on-the-go check-in and scanning.
 
-## Guiding Principle: Source of Truth
+Synchronization across Desktop, FoxBridge Cloud, phones, and registration platforms is specified in [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md). Supabase is the current Cloud backend ([`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md)).
 
-**RegFox is the source of truth.** All attendee and event data originates in RegFox and is authoritative.
+## Guiding Principles
 
-FoxBridge maintains a **local cache** of that data to enable:
+### Operational layer, not a registration platform
 
-- Fast search and UI responsiveness at the event
-- Continued operation when network connectivity is limited or unavailable
+**FoxBridge is not a replacement for registration platforms. It is an operational layer that synchronizes with them.**
 
-The cache is a performance and resilience layer—not a second system of record. Changes that affect registration state flow through RegFox; FoxBridge syncs to stay current.
+Organizers continue to collect registrations, payments, and form answers in their existing platform. FoxBridge syncs that data, then focuses on what platforms usually leave to staff on the ground: check-in, badge printing, meal validation, and other live-event operations.
+
+This principle constrains product and technical choices:
+
+- Do not rebuild registration forms, checkout, or official payment administration inside FoxBridge
+- Prefer sync and display of upstream registration data over inventing a second registration record
+- Own on-site operational history in FoxBridge (meals, badge prints, check-ins) while registration remains authoritative upstream
+- Design integrations so additional registration platforms can map into the same operational model over time
+
+### Source of truth
+
+**The connected registration platform is the source of truth for attendee and registration data.** Today that platform is RegFox.
+
+All attendee and event registration data originates upstream and is authoritative.
+
+FoxBridge maintains a **local event store** (SQLite `event_attendees`) plus an in-memory cache so Desktop remains usable offline after import. See [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) and [`DATA_MODEL.md`](./DATA_MODEL.md).
+
+The store is a performance and resilience layer for **operations**—not a second registration system of record. Changes that affect registration state flow through the registration platform; FoxBridge syncs to stay current.
 
 ## Layers
 
@@ -53,7 +69,7 @@ Adapters to external systems and platform capabilities:
 
 ## Multi-Client Strategy
 
-FoxBridge will eventually ship as **desktop and mobile clients** that share common business logic in Core and Services. Each client provides its own UI and platform-specific Integrations (e.g., desktop printing vs. mobile scanning), while RegFox remains the single source of truth and the local cache strategy applies to all clients.
+FoxBridge will eventually ship as **desktop and mobile clients** that share common business logic in Core and Services. Each client provides its own UI and platform-specific Integrations (e.g., desktop printing vs. mobile scanning), while the registration platform remains the source of truth for attendee data and the local cache strategy applies to all clients.
 
 ## Current State (MVP)
 

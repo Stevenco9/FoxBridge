@@ -10,7 +10,7 @@ See also: [`src/shared/models/Attendee.ts`](../src/shared/models/Attendee.ts)
 
 ### Purpose
 
-The central record for a person registered for an event. Attendees are cached locally for fast search, check-in, and badge workflows at the door.
+The central record for a person registered for an event. Attendees are stored in the Desktop **Local Event Store** (`event_attendees` SQLite table) as the canonical working dataset after import, with an in-memory cache for hot reads.
 
 ### Primary fields
 
@@ -53,22 +53,58 @@ Organizers will eventually configure which attributes appear as highlights on th
 
 Discovery does not call RegFox and does not change import storage.
 
+### Local Event Store (Sprint 21.2)
+
+Desktop SQLite separates concerns:
+
+| Store | Contents |
+|-------|----------|
+| **`event_attendees`** | Canonical local registration working dataset (platform-agnostic `Attendee` JSON + `source_platform`) |
+| **Operational tables** | `meal_validations`, `attendee_check_ins`, `badge_print_logs` |
+| **`event-settings.json`** | Event-specific UI prefs (Attendee Display field keys, future badge/meal UI config) |
+
+Registration adapters (RegFox today) map into `Attendee[]` and call `replaceAttendeeCacheFromRegistrationSync`. Desktop workflows read the local store after import; Connect / Refresh still pull from the registration platform.
+
+### FoxBridge Event identity (Sprint 21.3)
+
+A platform-independent **Event** lives in SQLite `events` and is distinct from a registration platform’s page/form id:
+
+| Field | Description |
+|-------|-------------|
+| `id` | FoxBridge-stable UUID (`activeEventId` in AppSettings) |
+| `name` | Display name |
+| `registrationPlatform` | e.g. `regfox` |
+| `platformEventId` | Upstream id (RegFox page id — still stored as `regfoxEventId`) |
+| `createdAt`, `lastSyncedAt` | Lifecycle timestamps |
+
+**Associations (prefer FoxBridge `Event.id`):**
+
+| Store | Key |
+|-------|-----|
+| Local Event Store (`event_attendees.event_id`) | FoxBridge Event id after connect/load/boot migration |
+| Event Settings (`event-settings.json`) | FoxBridge id primary; platform id mirrored/aliased |
+| Sync cursors (`desktop-sync-cursors.json`) | Optional `events[foxbridgeEventId].conferences[…]` |
+
+`AppSettingsPublic.regfoxEventId` stays for existing RegFox workflows. New event-scoped code should prefer `activeEventId`. This sprint does **not** force a full source-of-truth cutover away from `regfoxEventId`.
+
+Future registration platforms create a FoxBridge Event with their own `registrationPlatform` + `platformEventId` and reuse the same associations.
+
 ### Event settings file (Sprint 20.2)
 
-Organizer preferences that differ by RegFox event live in Electron `userData/event-settings.json` (not `AppSettingsPublic`, not SQLite):
+Organizer preferences that differ by event live in Electron `userData/event-settings.json` (not `AppSettingsPublic`, not SQLite):
 
 ```json
 {
   "version": 1,
   "events": {
-    "<regfoxEventId>": {
+    "<foxbridgeEventId or legacy regfoxEventId>": {
       "attendeeDisplay": { "fieldKeys": ["fullName", "custom:…"] }
     }
   }
 }
 ```
 
-- Keyed by RegFox event id
+- Prefer FoxBridge Event id keys; RegFox page ids still resolve via aliasing
 - `attendeeDisplay.fieldKeys` stores stable catalog keys from Sprint 20.1
 - Additional sections (badge layout, meals, …) can be added under each event later
 - IPC: `getEventSettings` / `patchEventSettings`

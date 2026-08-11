@@ -11,6 +11,11 @@ import { registerRegFoxHandlers } from './regfoxHandlers'
 import { registerSettingsHandlers } from './settingsHandlers'
 import { initializeSettings } from './settings/settingsService'
 import {
+  ensureActiveEventIdentityFromSettings,
+  resolveLocalEventStoreKey,
+} from './settings/eventIdentityService'
+import { hydrateAttendeeCacheFromLocalEventStore } from './scannerServer/attendeeCache'
+import {
   maybeAutoStartScannerServer,
   registerScannerServerHandlers,
   stopScannerServer,
@@ -48,6 +53,16 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   getDatabase()
   await initializeSettings()
+  try {
+    await ensureActiveEventIdentityFromSettings()
+    const storeKey = await resolveLocalEventStoreKey()
+    hydrateAttendeeCacheFromLocalEventStore(storeKey)
+  } catch (error) {
+    console.warn(
+      '[local-event-store]',
+      error instanceof Error ? error.message : String(error),
+    )
+  }
   registerSettingsHandlers()
   registerEventSettingsHandlers()
   registerRegFoxHandlers()

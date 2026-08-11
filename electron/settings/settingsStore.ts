@@ -5,6 +5,7 @@ import { ensureSettingsDirectory, getSettingsFilePath } from './settingsPaths'
 const DEFAULT_SETTINGS: AppSettingsPublic = {
   language: 'en',
   regfoxEventId: null,
+  activeEventId: null,
   conferenceId: null,
   mobileServiceUrl: null,
   mobilePublicKey: null,
@@ -30,6 +31,10 @@ export async function readPublicSettings(): Promise<AppSettingsPublic> {
       mobileAppUrl,
       mobileScannerUrl: parsed.mobileScannerUrl ?? mobileAppUrl,
       language: parsed.language === 'es' ? 'es' : 'en',
+      activeEventId:
+        typeof parsed.activeEventId === 'string' && parsed.activeEventId.trim()
+          ? parsed.activeEventId.trim()
+          : null,
       showDesktopMealValidation: parsed.showDesktopMealValidation === true,
       lastMobilePublishWarning:
         typeof parsed.lastMobilePublishWarning === 'string'

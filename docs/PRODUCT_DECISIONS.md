@@ -26,8 +26,14 @@ The first print may require choosing a printer; after that, printing a badge sho
 **QR codes contain only stable attendee identifiers.**  
 Badges encode a lookup key, not personal or sensitive data. Meal details, contact information, and credentials never belong in a QR payload.
 
+**FoxBridge is an operational layer, not a registration platform.**  
+FoxBridge synchronizes with registration systems; it does not replace them. Organizers keep registrations, payments, and form answers upstream. FoxBridge owns live-event operations (check-in, badges, meals, and related on-site history). See [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
 **RegFox is the source of truth for attendee data.**  
 Registration answers, purchases, custom fields, and official payment status come from RegFox. FoxBridge reads and presents that data; it does not invent attendee records.
+
+**FoxBridge Event identity is platform-independent (Sprint 21.3).**  
+A FoxBridge Event is distinct from a RegFox page id. Associations (Local Event Store, Event Settings, sync state) prefer the FoxBridge Event id. `regfoxEventId` remains for existing RegFox integration until a later migration — this is not a full source-of-truth cutover.
 
 **FoxBridge owns operational data.**  
 Meal redemption, badge printing history, check-in actions, and other on-site activity live in FoxBridge. That separation keeps registration data authoritative in RegFox while giving staff a clear record of what happened at the event.
@@ -139,4 +145,4 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Wizard vs operations home** — First-time and reset flows use a step-by-step wizard. Day-of operations use a simplified home screen focused on conference status and Connect a phone.
 - **Advanced holds legacy tools** — Cloud status, manual publish, localhost scanner server, and desktop meal validation stay available but outside the default AdAgrA workflow.
 
-When a decision feels ambiguous, return to the principles above: fewer clicks, hidden complexity, RegFox as source of truth, FoxBridge as owner of on-site operations, and defaults that work without a manual.
+When a decision feels ambiguous, return to the principles above: fewer clicks, hidden complexity, FoxBridge as an operational layer that syncs with registration platforms (not a replacement), RegFox as source of truth for attendee data, FoxBridge as owner of on-site operations, and defaults that work without a manual.

@@ -101,3 +101,79 @@ export function validateMeal(request: ValidateMealRequest): ValidateMealResult {
     },
   }
 }
+
+export interface ImportSyncedMealValidationInput {
+  /** Prefer Cloud row UUID so re-pulls are idempotent by primary key. */
+  id: string
+  attendeeId: string
+  mealKey: string
+  mealLabel: string
+  /** Preserve Cloud timestamp — do not rewrite to "now". */
+  validatedAt: string
+  validatedBy?: string | null
+  /** Cloud source when present; defaults to sync. */
+  source?: string
+}
+
+/**
+ * Inserts a Cloud meal validation into local SQLite without overwriting locals.
+ * Policy: first write wins on UNIQUE(attendee_id, meal_key) and on primary key.
+ * Does not change `validateMeal()` desktop semantics.
+ */
+export function importSyncedMealValidation(
+  input: ImportSyncedMealValidationInput,
+): 'inserted' | 'already_exists' {
+  const db = getDatabase()
+  const id = input.id.trim()
+  const attendeeId = input.attendeeId.trim()
+  const mealKey = input.mealKey.trim()
+  const mealLabel = input.mealLabel.trim()
+  const validatedAt = input.validatedAt.trim()
+  const source = (input.source?.trim() || 'sync').slice(0, 64)
+
+  if (!id || !attendeeId || !mealKey || !mealLabel || !validatedAt) {
+    return 'already_exists'
+  }
+
+  const existingByPair = db
+    .prepare(
+      `SELECT meal_key FROM meal_validations
+       WHERE attendee_id = ? AND meal_key = ?`,
+    )
+    .get(attendeeId, mealKey) as { meal_key: string } | undefined
+
+  if (existingByPair) {
+    return 'already_exists'
+  }
+
+  const existingById = db
+    .prepare(`SELECT id FROM meal_validations WHERE id = ?`)
+    .get(id) as { id: string } | undefined
+
+  if (existingById) {
+    return 'already_exists'
+  }
+
+  try {
+    db.prepare(
+      `INSERT INTO meal_validations (
+        id, attendee_id, meal_key, meal_label, validated_at, validated_by, source
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      attendeeId,
+      mealKey,
+      mealLabel,
+      validatedAt,
+      input.validatedBy ?? null,
+      source,
+    )
+    return 'inserted'
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (message.includes('UNIQUE constraint failed')) {
+      return 'already_exists'
+    }
+    throw error
+  }
+}

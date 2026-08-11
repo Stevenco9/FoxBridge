@@ -1,6 +1,7 @@
 /**
  * Per-event organizer preferences stored in Electron userData
- * (`event-settings.json`), keyed by RegFox event id.
+ * (`event-settings.json`). Prefer FoxBridge Event id keys; RegFox page ids
+ * remain readable/writable as aliases until a later migration.
  *
  * Global / install settings stay in AppSettingsPublic. Operational history
  * stays in SQLite. This file is only event-scoped UI and workflow config.

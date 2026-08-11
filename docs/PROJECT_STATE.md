@@ -1,11 +1,12 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 20.5 — UX polish and validation)  
+Last updated: August 2026 (Sprint 21.3 — Event identity foundation)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
-**Planning:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — mobile scanner cloud design.  
+**Sync design:** [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) — canonical FoxBridge Sync architecture (Sprint 21.0).  
+**Cloud backend:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — current Supabase implementation of FoxBridge Cloud.  
 **Mobile product:** [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md) — volunteer-focused mobile scope and guardrails (`apps/mobile`).  
 **Vision:** [`VISION.md`](./VISION.md) — long-term product and architecture principles.
 
@@ -33,8 +34,12 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Event Settings UI (Sprint 20.3)** — Operations Home → Event Settings; Attendee Display ordered field list (add/remove/change, autosave); attendee details screen unchanged
 - **Attendee Quick Info (Sprint 20.4)** — details panel renders configured `attendeeDisplay` fields; hardcoded AdAgrA book UI removed
 - **Sprint 20.5 polish** — Event Settings / Quick Info spacing, long-label handling, scroll for long lists, clearer stale keys
+- **Sprint 21.0 Sync Architecture (design)** — [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md): Desktop / Cloud / phones / registration roles, sync policies; no app behavior change yet
+- **Sprint 21.1 Desktop Sync foundation** — main-process `sync()` pulls Cloud meal validations into SQLite (incremental, first-write-wins); no UI / phone / pairing changes
+- **Sprint 21.2 Local Event Store** — durable `event_attendees` table; Desktop uses local store as working dataset after import; RegFox connect/refresh unchanged
+- **Sprint 21.3 Event identity** — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event; `regfoxEventId` kept for RegFox
 
-**Not yet built:** reorder controls for display items, IPC for available-field catalog discovery, mobile offline queue, desktop pull of cloud validations into local SQLite, durable local attendee cache on desktop, silent/production Brother printing, multi-event support.
+**Not yet built:** continuous/realtime sync scheduling, seamless Cloud onboarding, phone offline queue, reorder controls for display items, silent/production Brother printing, multi-event UI switching.
 
 ---
 
@@ -102,6 +107,7 @@ FoxBridge/
 │   ├── cloudHandlers.ts
 │   ├── settingsHandlers.ts
 │   ├── eventSettingsHandlers.ts
+│   ├── sync/                   # Desktop Sync Cloud→SQLite (sync())
 │   ├── settings/
 │   │   ├── settingsService.ts
 │   │   ├── settingsStore.ts
@@ -431,7 +437,7 @@ See [`apps/mobile/README.md`](../apps/mobile/README.md) and [`MOBILE_PRODUCT.md`
 
 1. **`docs/PRODUCT.md` is partially stale** — lists QR scanning and meal tracking as out of scope, but QR generation and meal validation exist.
 2. **Dual meal schemas** — legacy `meals.session*` and new `mealPan.*` coexist in the same event dataset.
-3. **In-memory attendee cache only** — scanner server and desktop share cache from latest RegFox fetch; not persisted across restarts.
+3. **Local Event Store + Event identity (Sprint 21.2–21.3)** — attendees persist under FoxBridge `events.id` when known; `regfoxEventId` remains for RegFox APIs until a later cutover.
 4. **Scanner server is localhost-only** — phones on Wi‑Fi cannot reach it until LAN bind + pairing is added.
 
 ---
@@ -452,12 +458,75 @@ sqlite3 ~/Library/Application\ Support/foxbridge/foxbridge.db \
 
 ## Immediate next task
 
-**Pull mobile validations into desktop SQLite** and/or **mobile offline queue**, per [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md).
+**Sprint 21.4 (recommended):** continuous or event-driven Desktop `sync()` scheduling (same `sync()` entry point), and/or seamless FoxBridge Cloud onboarding.
 
-Suggested order:
-1. Desktop sync job: pull Supabase `meal_validations` into local SQLite.
+Remaining Sync backlog:
+
+1. Continuous or event-driven `sync()` scheduling (same entry point).
 2. Mobile offline cache + validation outbox.
-3. RLS hardening / scanner session scoping beyond anon read policies.
+3. Seamless FoxBridge Cloud onboarding (replace manual Supabase key paste).
+4. RLS hardening / scanner session scoping beyond anon read policies.
+
+---
+
+## Sprint 21.3 — Event identity foundation
+
+Infrastructure only. No UI, phone, pairing, or registration-workflow UX changes.
+
+| Item | Detail |
+|------|--------|
+| **Model** | `src/shared/models/Event.ts` — platform-independent FoxBridge Event |
+| **Table** | SQLite `events` (`UNIQUE(registration_platform, platform_event_id)`) |
+| **Settings** | `activeEventId` + keep `regfoxEventId` for RegFox integration |
+| **Service** | `electron/settings/eventIdentityService.ts` — `activateRegFoxEvent` / boot ensure |
+| **Associations** | Local Event Store, Event Settings (dual-key), sync cursors scoped by FoxBridge Event when known |
+| **Policy** | New code prefers FoxBridge Event id; RegFox-specific paths may still use `regfoxEventId` |
+| **Test** | `npm run test:event-identity` |
+
+---
+
+## Sprint 21.2 — Local Event Store foundation
+
+SQLite `event_attendees` is the canonical Desktop working dataset for registrations after import. No UI / phone / pairing / meal-validation semantic changes.
+
+| Item | Detail |
+|------|--------|
+| **Table** | `event_attendees` (`id`, `event_id`, `registration_id`, `source_platform`, `payload`, `synced_at`, `updated_at`) |
+| **Write** | RegFox connect / load / update → `replaceAttendeeCacheFromRegistrationSync` |
+| **Boot** | Hydrate in-memory cache from Local Event Store |
+| **Read** | `regfox:getAttendees` returns local when non-empty; otherwise downloads via RegFox |
+| **Refresh** | Operations “Refresh registrations” still calls `updateRegistrations` → RegFox → replace store |
+| **Config** | Event Settings remain in `event-settings.json` |
+| **Test** | `npm run test:local-event-store` |
+
+---
+
+## Sprint 21.1 — Desktop Sync foundation
+
+Infrastructure only. No UI, phone, pairing, or registration-import changes.
+
+| Item | Detail |
+|------|--------|
+| **Service** | `electron/sync/syncService.ts` — `sync()` / `syncBestEffort()` |
+| **Entity** | Meal validations pull Cloud → SQLite |
+| **Triggers** | After successful `publishAttendees`; after successful `testMobileService` when connected |
+| **Cursor** | `userData/desktop-sync-cursors.json` |
+| **Policy** | First write wins; preserve Cloud `validated_at` |
+| **Test** | `npm run test:desktop-sync` |
+| **Design** | [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) §13 |
+
+---
+
+## Sprint 21.0 — FoxBridge Sync Architecture (design only)
+
+Documentation sprint. No application behavior changes.
+
+| Item | Detail |
+|------|--------|
+| **Canonical design** | [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) |
+| **Supabase doc** | Reframed as **current Cloud implementation**, not the Sync architecture |
+| **Principles** | Offline-first Desktop; Cloud for pairing/coordination; RegFox authoritative for registrations; phones only talk to Cloud; scoped write-back allowed |
+| **Next build sprint** | 21.1 — durable local attendees + meal validation pull |
 
 ---
 
@@ -598,7 +667,7 @@ Per-event organizer preferences in Electron `userData`, separate from global `Ap
 | Item | Detail |
 |------|--------|
 | **File** | `{userData}/event-settings.json` |
-| **Shape** | `{ version: 1, events: { [regfoxEventId]: EventSettingsEntry } }` |
+| **Shape** | `{ version: 1, events: { [foxbridgeEventId \| legacyRegFoxPageId]: EventSettingsEntry } }` |
 | **Model** | `src/shared/models/EventSettings.ts` |
 | **Normalize** | `src/shared/settings/normalizeEventSettings.ts` (pure) |
 | **Store** | `electron/settings/eventSettingsStore.ts` |
@@ -678,16 +747,17 @@ No new features. Polish + validation of Sprint 20 Event Settings / Quick Info:
 ```
 I'm continuing work on FoxBridge, a desktop Electron + React + TypeScript app for RegFox event check-in and Brother label badge printing.
 
-Read docs/PROJECT_STATE.md, docs/MOBILE_PRODUCT.md, docs/SUPABASE_ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
+Read docs/PROJECT_STATE.md, docs/SYNC_ARCHITECTURE.md, docs/MOBILE_PRODUCT.md, docs/SUPABASE_ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
 
 Current state:
 - Desktop: guided setup wizard, operations home, RegFox sync, badges, print, SQLite meal validation, optional mobile cloud publish
 - Mobile PWA: sign-in, QR scan, online meal validation via Supabase validate_meal RPC
+- Sync design: docs/SYNC_ARCHITECTURE.md (Sprint 21.0)
 - Branch main is on GitHub
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: desktop pull of cloud validations and/or mobile offline mode.
+Next task: Sprint 21.4 — sync scheduling and/or seamless Cloud onboarding (per SYNC_ARCHITECTURE.md / PROJECT_STATE).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

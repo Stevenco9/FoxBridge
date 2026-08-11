@@ -43,6 +43,37 @@ function initSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_badge_print_logs_attendee_printed_at
       ON badge_print_logs(attendee_id, printed_at);
+
+    -- Local Event Store: registration-platform-agnostic working dataset
+    CREATE TABLE IF NOT EXISTS event_attendees (
+      id TEXT PRIMARY KEY,
+      event_id TEXT NOT NULL,
+      registration_id TEXT NOT NULL,
+      source_platform TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      synced_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_event_attendees_event_id
+      ON event_attendees(event_id);
+
+    CREATE INDEX IF NOT EXISTS idx_event_attendees_registration_id
+      ON event_attendees(registration_id);
+
+    -- FoxBridge Event identity (platform-independent)
+    CREATE TABLE IF NOT EXISTS events (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      registration_platform TEXT NOT NULL,
+      platform_event_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      last_synced_at TEXT,
+      UNIQUE (registration_platform, platform_event_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_events_platform_event
+      ON events(registration_platform, platform_event_id);
   `)
 }
 
