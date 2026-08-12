@@ -349,8 +349,56 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **21.8** | Organizer Sync enrollment UX — Setup Wizard + Operations Home share enrollment/status |
 | **21.9** | End-to-end Sync deployment readiness — checklists, packaging vars, migration 010 enrollment digest fix |
 | **21.10** | Live clean-install validation PASS — packaged Desktop desk enroll → pair → meal → Cloud→SQLite |
+| **22.0** | Device trust / self-service provisioning architecture (design only) — [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md) |
+| **22.1** | Principal Desktop provisioning backend — migration 011, `desktop-claim-principal`, main-process claim IPC |
+| **22.2** | Principal Desktop self-service Setup UX — Wizard claim, transfer confirmation, Operations Home role status |
+| **22.3** | Linked Desktop join codes + Connected Desktops management |
+| **22.4** | Principal escalation security closeout — Linked cannot silent-claim; ownership form required |
+| **22.5** | Linked UX polish — canonicalize, countdown, installation identity (migrations 013–015) |
+| **22 FINAL** | Live-validated multi-Mac universal packaging + Cloud deploy |
 
-Canonical operator runbook: [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md).
+Canonical operator runbook: [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md). Canonical device trust: [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md).
+
+### Sprint 22.3 — Linked join codes
+
+| Item | Detail |
+|------|--------|
+| **Schema** | `012_linked_desk_join_codes.sql` |
+| **Issue** | Principal-only `desktop-issue-join-code` (~15 min) |
+| **Redeem** | `desktop-redeem-join` → Linked desk, 48 h |
+| **Manage** | `desktop-list-desks` / `desktop-revoke-desk` |
+| **Test** | `npm run test:linked-desk-join` |
+
+### Sprint 22.2 — Principal Setup UX
+
+| Item | Detail |
+|------|--------|
+| **Primary path** | RegFox connected → Set up FoxBridge Sync → Principal claim (main process) |
+| **Transfer** | Explicit confirmation when another Principal exists |
+| **Fallback** | Operator enrollment code (Sprint 21) still available |
+| **Optional** | Set up later — local desk workflows remain usable |
+| **Test** | `npm run test:principal-setup-ux` |
+
+### Sprint 22.1 — Principal claim backend
+
+| Item | Detail |
+|------|--------|
+| **Migration** | `011_principal_desk_provisioning.sql` |
+| **Edge** | `desktop-claim-principal` (`confirmTransfer` / `needsTransferConfirmation`) |
+| **Legacy desks** | `role=legacy`; operator enroll preserved |
+| **Test** | `npm run test:principal-claim` |
+| **UI** | Landed in 22.2 |
+
+### Sprint 22.0 — Device trust (design)
+
+| Item | Detail |
+|------|--------|
+| **Problem** | Sprint 21 requires operator SQL conference + enrollment code for first desk |
+| **Principal** | Cloud-verified registration ownership → Principal desk credential |
+| **Linked** | Principal join code (~15 min, single-use) → Linked desk credential (48 h) |
+| **Scanner** | Unchanged Sprint 21 pairing |
+| **RegFox key in Cloud** | Ephemeral verify only; never persist |
+| **Implementation** | Not in 22.0 — see Sprint 22.1 scope in device-trust doc |
 
 ### Sprint 21.10 — Live validation
 

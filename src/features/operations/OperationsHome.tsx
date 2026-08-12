@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppLanguage, SetupStatus } from '../../shared/models/AppSettings'
-import { classifyFoxBridgeSyncIssue } from '../../shared/sync/foxbridgeSyncStatus'
+import { resolveFoxBridgeSyncHomeStatus, shouldShowConnectedDesksAction } from '../../shared/sync/foxbridgeSyncStatus'
 import { translate } from '../../i18n/messages'
 import './OperationsHome.css'
 
@@ -11,6 +11,7 @@ interface OperationsHomeProps {
   onOpenEventSettings: () => void
   onOpenSettings: () => void
   onOpenFoxBridgeSync: () => void
+  onOpenConnectedDesks?: () => void
   refreshToken?: number | string
 }
 
@@ -29,6 +30,7 @@ export default function OperationsHome({
   onOpenEventSettings,
   onOpenSettings,
   onOpenFoxBridgeSync,
+  onOpenConnectedDesks,
   refreshToken,
 }: OperationsHomeProps) {
   const [status, setStatus] = useState<SetupStatus | null>(null)
@@ -85,14 +87,30 @@ export default function OperationsHome({
       ? t('home.status.attendees', { count: status.attendeeCount })
       : t('home.status.registration')
 
-  const syncIssue = classifyFoxBridgeSyncIssue(status?.foxbridgeSyncConnectionError)
-  const syncStatusLabel = status?.foxbridgeSyncConnected
-    ? t('home.status.syncConnected')
-    : status?.foxbridgeSyncEnrolled ||
-        syncIssue === 'revoked' ||
-        syncIssue === 'needs_reenrollment'
-      ? t('home.status.syncReconnect')
-      : t('home.status.syncNeeded')
+  const syncHomeStatus = resolveFoxBridgeSyncHomeStatus({
+    connected: Boolean(status?.foxbridgeSyncConnected),
+    enrolled: Boolean(status?.foxbridgeSyncEnrolled),
+    deskRole: status?.foxbridgeSyncDeskRole,
+    deskExpiresAt: status?.foxbridgeSyncDeskExpiresAt,
+    connectionError: status?.foxbridgeSyncConnectionError,
+  })
+  const syncStatusLabel =
+    syncHomeStatus === 'connected_principal'
+      ? t('home.status.syncConnectedPrincipal')
+      : syncHomeStatus === 'connected_linked'
+        ? t('home.status.syncConnectedLinked')
+        : syncHomeStatus === 'connected_legacy'
+          ? t('home.status.syncConnectedLegacy')
+          : syncHomeStatus === 'connected'
+            ? t('home.status.syncConnected')
+            : syncHomeStatus === 'reconnect'
+              ? t('home.status.syncReconnect')
+              : t('home.status.syncNeeded')
+
+  const showConnectedDesks = shouldShowConnectedDesksAction({
+    foxbridgeSyncConnected: status?.foxbridgeSyncConnected,
+    foxbridgeSyncDeskRole: status?.foxbridgeSyncDeskRole,
+  })
 
   return (
     <section className="operations-home">
@@ -149,6 +167,15 @@ export default function OperationsHome({
         >
           {t('home.action.foxbridgeSync')}
         </button>
+        {showConnectedDesks && onOpenConnectedDesks && (
+          <button
+            type="button"
+            className="operations-home__action operations-home__action--secondary"
+            onClick={onOpenConnectedDesks}
+          >
+            {t('home.action.connectedDesks')}
+          </button>
+        )}
         <button
           type="button"
           className="operations-home__action operations-home__action--secondary"

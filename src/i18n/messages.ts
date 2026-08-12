@@ -113,21 +113,75 @@ export type MessageKey =
   | 'sync.codeLabel'
   | 'sync.codePlaceholder'
   | 'sync.connect'
+  | 'sync.setup'
+  | 'sync.retry'
+  | 'sync.joinExisting'
+  | 'sync.joinHelp'
+  | 'sync.joinCodeLabel'
+  | 'sync.joinConnect'
+  | 'sync.deviceNameLabel'
+  | 'sync.deviceNamePlaceholder'
+  | 'sync.setupMyEvent'
+  | 'sync.ownershipHelp'
+  | 'sync.ownershipApiKey'
+  | 'sync.ownershipEventId'
+  | 'sync.backToSetup'
   | 'sync.reconnect'
   | 'sync.checking'
   | 'sync.connecting'
   | 'sync.connected'
   | 'sync.connectedCheck'
+  | 'sync.connectedPrincipal'
+  | 'sync.connectedLegacy'
+  | 'sync.connectedLinked'
+  | 'sync.connectedUntil'
+  | 'sync.upgrade.action'
+  | 'sync.upgrade.explain'
   | 'sync.setupLater'
+  | 'sync.transfer.explain'
+  | 'sync.transfer.warning'
+  | 'sync.transfer.confirm'
+  | 'sync.transfer.cancel'
   | 'sync.error.invalidCode'
   | 'sync.error.expiredCode'
   | 'sync.error.revoked'
   | 'sync.error.needsReconnect'
   | 'sync.error.unavailable'
+  | 'sync.error.verificationFailed'
+  | 'sync.error.cloudUnavailable'
+  | 'sync.error.needsRetry'
   | 'home.status.syncConnected'
+  | 'home.status.syncConnectedPrincipal'
+  | 'home.status.syncConnectedLegacy'
+  | 'home.status.syncConnectedLinked'
   | 'home.status.syncNeeded'
   | 'home.status.syncReconnect'
   | 'home.action.foxbridgeSync'
+  | 'home.action.connectedDesks'
+  | 'desks.title'
+  | 'desks.text'
+  | 'desks.loading'
+  | 'desks.principalOnly'
+  | 'desks.unnamed'
+  | 'desks.thisComputer'
+  | 'desks.role.principal'
+  | 'desks.role.linked'
+  | 'desks.role.legacy'
+  | 'desks.state.active'
+  | 'desks.state.until'
+  | 'desks.state.expired'
+  | 'desks.state.revoked'
+  | 'desks.revoke'
+  | 'desks.revoking'
+  | 'desks.inviteTitle'
+  | 'desks.generateCode'
+  | 'desks.issuing'
+  | 'desks.codeInstruction'
+  | 'desks.codeExpiresIn'
+  | 'desks.codeExpired'
+  | 'desks.error.load'
+  | 'desks.error.issue'
+  | 'desks.error.revoke'
   | 'ready.syncReady'
   | 'ready.syncLater'
   | 'connect.close'
@@ -207,32 +261,94 @@ const en: Record<MessageKey, string> = {
   'home.action.mealDashboard': 'Meal Dashboard',
   'home.action.eventSettings': 'Event Settings',
   'home.action.foxbridgeSync': 'FoxBridge Sync',
+  'home.action.connectedDesks': 'Connected Desktops',
   'home.action.update': 'Update registrations',
   'home.updating': 'Updating…',
   'home.status.syncConnected': 'FoxBridge Sync connected',
+  'home.status.syncConnectedPrincipal': 'Connected — Principal Desktop',
+  'home.status.syncConnectedLegacy': 'Connected — legacy desk',
+  'home.status.syncConnectedLinked': 'Connected — temporary desk',
   'home.status.syncNeeded': 'FoxBridge Sync not connected',
   'home.status.syncReconnect': 'FoxBridge Sync needs to reconnect',
   'sync.title': 'FoxBridge Sync',
   'sync.text':
-    'Connect this computer so phones and other desks stay in sync for this event. You only need a short enrollment code.',
-  'sync.enterCodeHelp': 'Enter the enrollment code for this event.',
+    'Connect this computer so phones and other desks stay in sync for this event. Join with a connection code, or set up your event as the Principal Desktop by proving RegFox ownership.',
+  'sync.enterCodeHelp':
+    'Enter the connection code from the Principal Desktop for this event.',
   'sync.codeLabel': 'Enrollment code',
   'sync.codePlaceholder': 'ABCD-EFGH-IJKL',
   'sync.connect': 'Connect',
+  'sync.setup': 'Set up FoxBridge Sync',
+  'sync.retry': 'Try again',
+  'sync.joinExisting': 'Join an existing FoxBridge Event',
+  'sync.joinHelp':
+    'Enter the one-time connection code from the Principal Desktop for this event.',
+  'sync.joinCodeLabel': 'Connection code',
+  'sync.joinConnect': 'Join event',
+  'sync.deviceNameLabel': 'Computer name (optional)',
+  'sync.deviceNamePlaceholder': 'Registration desk 2',
+  'sync.setupMyEvent': 'Set up my event',
+  'sync.ownershipHelp':
+    'To become the Principal Desktop, enter your RegFox API key and event ID. FoxBridge Cloud verifies access to that exact event before granting Principal.',
+  'sync.ownershipApiKey': 'RegFox API key',
+  'sync.ownershipEventId': 'RegFox event ID',
+  'sync.backToSetup': 'Back',
   'sync.reconnect': 'Enter a new code',
   'sync.checking': 'Checking connection…',
   'sync.connecting': 'Connecting…',
   'sync.connected': 'Connected',
   'sync.connectedCheck': '✓ Connected',
+  'sync.connectedPrincipal': '✓ Connected — Principal Desktop',
+  'sync.connectedLegacy': '✓ Connected — legacy desk',
+  'sync.connectedLinked': '✓ Connected — temporary desk',
+  'sync.connectedUntil': 'Connected until {when}',
+  'sync.upgrade.action': 'Make this the Principal Desktop',
+  'sync.upgrade.explain':
+    'Principal Desktop can connect and manage other computers for this event. FoxBridge will verify your RegFox access for this event.',
   'sync.setupLater': 'Set up later',
+  'sync.transfer.explain':
+    'Another computer is already set as the Principal Desktop for this event.',
+  'sync.transfer.warning':
+    'If you continue, this computer becomes the Principal Desktop and the previous one loses Principal status. Transfer confirmation is not ownership proof — RegFox access was already verified.',
+  'sync.transfer.confirm': 'Make this computer the Principal',
+  'sync.transfer.cancel': 'Cancel',
   'sync.error.invalidCode':
     'That code did not work. Check the code and try again, or ask for a new one.',
-  'sync.error.expiredCode': 'That code has expired. Ask for a new enrollment code and try again.',
+  'sync.error.expiredCode': 'That code has expired. Ask for a new connection code and try again.',
   'sync.error.revoked':
-    'This computer’s conference connection was revoked. Enter a new enrollment code to reconnect.',
+    'This computer’s conference connection was revoked. Join again with a new connection code, or set up your event by proving RegFox ownership.',
   'sync.error.needsReconnect':
-    'This computer needs to reconnect to FoxBridge Sync. Enter a new enrollment code.',
+    'This computer needs to reconnect to FoxBridge Sync. Join with a connection code, or set up your event as Principal.',
   'sync.error.unavailable': 'Unable to connect to FoxBridge Sync right now. Try again in a moment.',
+  'sync.error.verificationFailed':
+    'FoxBridge could not verify RegFox access for this event. Check your RegFox API key and event ID and try again.',
+  'sync.error.cloudUnavailable':
+    'FoxBridge Sync is temporarily unavailable. Try again in a moment.',
+  'sync.error.needsRetry': 'Something went wrong. Try again in a moment.',
+  'desks.title': 'Connected Desktops',
+  'desks.text': 'Manage computers connected to FoxBridge Sync for this event.',
+  'desks.loading': 'Loading connected computers…',
+  'desks.principalOnly': 'Only the Principal Desktop can manage connected computers.',
+  'desks.unnamed': 'Unnamed computer',
+  'desks.thisComputer': 'this computer',
+  'desks.role.principal': 'Principal',
+  'desks.role.linked': 'Temporary',
+  'desks.role.legacy': 'Legacy',
+  'desks.state.active': 'Active',
+  'desks.state.until': 'Until {when}',
+  'desks.state.expired': 'Expired',
+  'desks.state.revoked': 'Disconnected',
+  'desks.revoke': 'Disconnect',
+  'desks.revoking': 'Disconnecting…',
+  'desks.inviteTitle': 'Connect another computer',
+  'desks.generateCode': 'Create connection code',
+  'desks.issuing': 'Creating code…',
+  'desks.codeInstruction': 'Enter this code on the computer you want to connect.',
+  'desks.codeExpiresIn': 'Expires in {time}',
+  'desks.codeExpired': 'This connection code has expired. Create a new one.',
+  'desks.error.load': 'Unable to load connected computers.',
+  'desks.error.issue': 'Unable to create a connection code.',
+  'desks.error.revoke': 'Unable to disconnect that computer.',
   'ready.syncReady': 'FoxBridge Sync connected',
   'ready.syncLater': 'FoxBridge Sync can be connected later from the home screen',
   'connect.title': 'Connect a phone',
@@ -276,9 +392,9 @@ const en: Record<MessageKey, string> = {
   'settings.phoneServiceTitle': 'FoxBridge Cloud (development / migration)',
   'settings.cloudOverrideHelp':
     'Ordinary production desks enroll with a one-time FoxBridge Cloud code. Use the legacy URL/key fields below only for local development or migrating an older install. Do not put a service-role key in a distributed desktop build.',
-  'settings.cloudEnrollTitle': 'FoxBridge Sync (fallback)',
+  'settings.cloudEnrollTitle': 'FoxBridge Sync (operator enrollment)',
   'settings.cloudEnrollHelp':
-    'Prefer Connect FoxBridge Sync from the home screen or Setup. Use this only if those surfaces are unavailable.',
+    'Legacy support/dev fallback. Ordinary organizers should Join an existing event or Set up my event from FoxBridge Sync. Operator enrollment codes create a legacy desk and never grant Principal by themselves.',
   'settings.cloudEnrollmentCode': 'Enrollment code',
   'settings.cloudEnrollButton': 'Connect',
   'settings.cloudEnrolled': 'This computer is connected to FoxBridge Sync.',
@@ -356,34 +472,96 @@ const es: Record<MessageKey, string> = {
   'home.action.mealDashboard': 'Panel de comidas',
   'home.action.eventSettings': 'Configuración del evento',
   'home.action.foxbridgeSync': 'FoxBridge Sync',
+  'home.action.connectedDesks': 'Escritorios conectados',
   'home.action.update': 'Actualizar registros',
   'home.updating': 'Actualizando…',
   'home.status.syncConnected': 'FoxBridge Sync conectado',
+  'home.status.syncConnectedPrincipal': 'Conectado — Escritorio principal',
+  'home.status.syncConnectedLegacy': 'Conectado — escritorio heredado',
+  'home.status.syncConnectedLinked': 'Conectado — escritorio temporal',
   'home.status.syncNeeded': 'FoxBridge Sync no conectado',
   'home.status.syncReconnect': 'FoxBridge Sync necesita reconectarse',
   'sync.title': 'FoxBridge Sync',
   'sync.text':
-    'Conecte esta computadora para que los teléfonos y otros escritorios se mantengan sincronizados en este evento. Solo necesita un código de inscripción corto.',
-  'sync.enterCodeHelp': 'Ingrese el código de inscripción de este evento.',
+    'Conecte esta computadora para que los teléfonos y otros escritorios se mantengan sincronizados en este evento. Únase con un código de conexión, o configure su evento como Escritorio principal demostrando propiedad de RegFox.',
+  'sync.enterCodeHelp':
+    'Ingrese el código de conexión del Escritorio principal de este evento.',
   'sync.codeLabel': 'Código de inscripción',
   'sync.codePlaceholder': 'ABCD-EFGH-IJKL',
   'sync.connect': 'Conectar',
+  'sync.setup': 'Configurar FoxBridge Sync',
+  'sync.retry': 'Intentar de nuevo',
+  'sync.joinExisting': 'Unirse a un evento FoxBridge existente',
+  'sync.joinHelp':
+    'Ingrese el código de conexión de un solo uso del Escritorio principal de este evento.',
+  'sync.joinCodeLabel': 'Código de conexión',
+  'sync.joinConnect': 'Unirse al evento',
+  'sync.deviceNameLabel': 'Nombre de la computadora (opcional)',
+  'sync.deviceNamePlaceholder': 'Mesa de registro 2',
+  'sync.setupMyEvent': 'Configurar mi evento',
+  'sync.ownershipHelp':
+    'Para convertirse en el Escritorio principal, ingrese su clave API de RegFox y el ID del evento. FoxBridge Cloud verifica el acceso a ese evento exacto antes de conceder Principal.',
+  'sync.ownershipApiKey': 'Clave API de RegFox',
+  'sync.ownershipEventId': 'ID de evento de RegFox',
+  'sync.backToSetup': 'Atrás',
   'sync.reconnect': 'Ingresar un código nuevo',
   'sync.checking': 'Comprobando conexión…',
   'sync.connecting': 'Conectando…',
   'sync.connected': 'Conectado',
   'sync.connectedCheck': '✓ Conectado',
+  'sync.connectedPrincipal': '✓ Conectado — Escritorio principal',
+  'sync.connectedLegacy': '✓ Conectado — escritorio heredado',
+  'sync.connectedLinked': '✓ Conectado — escritorio temporal',
+  'sync.connectedUntil': 'Conectado hasta {when}',
+  'sync.upgrade.action': 'Convertir esta en el Escritorio principal',
+  'sync.upgrade.explain':
+    'El Escritorio principal puede conectar y administrar otras computadoras de este evento. FoxBridge verificará su acceso a RegFox para este evento.',
   'sync.setupLater': 'Configurar después',
+  'sync.transfer.explain':
+    'Otra computadora ya está configurada como el Escritorio principal de este evento.',
+  'sync.transfer.warning':
+    'Si continúa, esta computadora se convierte en el Escritorio principal y la anterior pierde ese estado. La confirmación de transferencia no es prueba de propiedad — el acceso a RegFox ya fue verificado.',
+  'sync.transfer.confirm': 'Hacer de esta el Escritorio principal',
+  'sync.transfer.cancel': 'Cancelar',
   'sync.error.invalidCode':
     'Ese código no funcionó. Revise el código e intente de nuevo, o pida uno nuevo.',
   'sync.error.expiredCode':
-    'Ese código venció. Pida un código de inscripción nuevo e intente de nuevo.',
+    'Ese código venció. Pida un código de conexión nuevo e intente de nuevo.',
   'sync.error.revoked':
-    'Se revocó la conexión de esta computadora. Ingrese un código de inscripción nuevo para reconectar.',
+    'Se revocó la conexión de esta computadora. Únase de nuevo con un código nuevo, o configure su evento demostrando propiedad de RegFox.',
   'sync.error.needsReconnect':
-    'Esta computadora necesita reconectarse a FoxBridge Sync. Ingrese un código de inscripción nuevo.',
+    'Esta computadora necesita reconectarse a FoxBridge Sync. Únase con un código de conexión, o configure su evento como Principal.',
   'sync.error.unavailable':
     'No se pudo conectar a FoxBridge Sync ahora. Intente de nuevo en un momento.',
+  'sync.error.verificationFailed':
+    'FoxBridge no pudo verificar el acceso a RegFox para este evento. Revise su clave API e ID de evento e intente de nuevo.',
+  'sync.error.cloudUnavailable':
+    'FoxBridge Sync no está disponible temporalmente. Intente de nuevo en un momento.',
+  'sync.error.needsRetry': 'Algo salió mal. Intente de nuevo en un momento.',
+  'desks.title': 'Escritorios conectados',
+  'desks.text': 'Administre las computadoras conectadas a FoxBridge Sync para este evento.',
+  'desks.loading': 'Cargando computadoras conectadas…',
+  'desks.principalOnly': 'Solo el Escritorio principal puede administrar computadoras conectadas.',
+  'desks.unnamed': 'Computadora sin nombre',
+  'desks.thisComputer': 'esta computadora',
+  'desks.role.principal': 'Principal',
+  'desks.role.linked': 'Temporal',
+  'desks.role.legacy': 'Heredado',
+  'desks.state.active': 'Activo',
+  'desks.state.until': 'Hasta {when}',
+  'desks.state.expired': 'Vencido',
+  'desks.state.revoked': 'Desconectado',
+  'desks.revoke': 'Desconectar',
+  'desks.revoking': 'Desconectando…',
+  'desks.inviteTitle': 'Conectar otra computadora',
+  'desks.generateCode': 'Crear código de conexión',
+  'desks.issuing': 'Creando código…',
+  'desks.codeInstruction': 'Ingrese este código en la computadora que desea conectar.',
+  'desks.codeExpiresIn': 'Vence en {time}',
+  'desks.codeExpired': 'Este código de conexión venció. Cree uno nuevo.',
+  'desks.error.load': 'No se pudieron cargar las computadoras conectadas.',
+  'desks.error.issue': 'No se pudo crear un código de conexión.',
+  'desks.error.revoke': 'No se pudo desconectar esa computadora.',
   'ready.syncReady': 'FoxBridge Sync conectado',
   'ready.syncLater': 'FoxBridge Sync se puede conectar después desde la pantalla principal',
   'connect.title': 'Conectar un teléfono',
@@ -429,9 +607,9 @@ const es: Record<MessageKey, string> = {
   'settings.phoneServiceTitle': 'FoxBridge Cloud (desarrollo / migración)',
   'settings.cloudOverrideHelp':
     'Las computadoras de producción se inscriben con un código de FoxBridge Cloud de un solo uso. Use los campos de URL/clave heredados solo para desarrollo local o para migrar una instalación anterior. No ponga una clave de servicio en una compilación de escritorio distribuida.',
-  'settings.cloudEnrollTitle': 'FoxBridge Sync (alternativa)',
+  'settings.cloudEnrollTitle': 'FoxBridge Sync (inscripción de operador)',
   'settings.cloudEnrollHelp':
-    'Prefiera Conectar FoxBridge Sync desde la pantalla principal o la configuración inicial. Use esto solo si esas pantallas no están disponibles.',
+    'Respaldo legado para soporte/desarrollo. Los organizadores deben Unirse a un evento existente o Configurar mi evento desde FoxBridge Sync. Los códigos de inscripción de operador crean un escritorio heredado y nunca conceden Principal por sí solos.',
   'settings.cloudEnrollmentCode': 'Código de inscripción',
   'settings.cloudEnrollButton': 'Conectar',
   'settings.cloudEnrolled': 'Esta computadora está conectada a FoxBridge Sync.',

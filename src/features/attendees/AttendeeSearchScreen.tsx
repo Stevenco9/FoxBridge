@@ -10,12 +10,14 @@ import AttendeeQuickInfoPanel from './AttendeeQuickInfoPanel'
 import { DEFAULT_BADGE_LAYOUT, type BadgeLayoutSelection } from '../badge/badgeFields'
 import ConnectPhonePanel from '../operations/ConnectPhonePanel'
 import ConnectFoxBridgeSyncPanel from '../operations/ConnectFoxBridgeSyncPanel'
+import ConnectedDesktopsPanel from '../operations/ConnectedDesktopsPanel'
 import OperationsHome from '../operations/OperationsHome'
 import EventSettingsPanel from '../eventSettings/EventSettingsPanel'
 import MealDashboardPanel from '../meals/MealDashboardPanel'
 import MealValidationPanel from '../meals/MealValidationPanel'
 import SettingsModal from '../settings/SettingsModal'
 import { getAttendeeFullName, searchAttendees } from './searchAttendees'
+import { buildOperationsHomeRefreshToken } from '../../shared/sync/foxbridgeSyncStatus'
 import './AttendeeSearchScreen.css'
 
 interface AttendeeSearchScreenProps {
@@ -34,6 +36,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [connectPhoneOpen, setConnectPhoneOpen] = useState(false)
   const [foxbridgeSyncOpen, setFoxbridgeSyncOpen] = useState(false)
+  const [connectedDesksOpen, setConnectedDesksOpen] = useState(false)
   const [mealDashboardOpen, setMealDashboardOpen] = useState(false)
   const [eventSettingsOpen, setEventSettingsOpen] = useState(false)
   const [connectRefreshToken, setConnectRefreshToken] = useState(0)
@@ -121,9 +124,13 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
 
       <OperationsHome
         language={language}
-        refreshToken={attendees.length}
+        refreshToken={buildOperationsHomeRefreshToken({
+          attendeeCount: attendees.length,
+          syncCredentialEpoch: connectRefreshToken,
+        })}
         onConnectPhone={() => setConnectPhoneOpen(true)}
         onOpenFoxBridgeSync={() => setFoxbridgeSyncOpen(true)}
+        onOpenConnectedDesks={() => setConnectedDesksOpen(true)}
         onOpenMealDashboard={() => setMealDashboardOpen(true)}
         onOpenEventSettings={() => setEventSettingsOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -246,11 +253,24 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         language={language}
         open={foxbridgeSyncOpen}
         refreshToken={connectRefreshToken}
-        onClose={() => setFoxbridgeSyncOpen(false)}
+        onClose={() => {
+          setFoxbridgeSyncOpen(false)
+          // Always re-read Sync status on close so a failed join cannot leave a
+          // stale Connected label from an earlier session state.
+          void refreshMeta()
+          setConnectRefreshToken((token) => token + 1)
+        }}
         onChanged={() => {
           void refreshMeta()
           setConnectRefreshToken((token) => token + 1)
         }}
+      />
+
+      <ConnectedDesktopsPanel
+        language={language}
+        open={connectedDesksOpen}
+        refreshToken={connectRefreshToken}
+        onClose={() => setConnectedDesksOpen(false)}
       />
 
       <MealDashboardPanel

@@ -86,6 +86,56 @@ const electronAPI = {
     conferenceName: string | null
     message: string | null
   }> => ipcRenderer.invoke('cloud:enrollDesktop', payload),
+  claimFoxBridgeCloudPrincipal: (payload?: {
+    label?: string | null
+    confirmTransfer?: boolean
+    ownershipRegFoxApiKey?: string | null
+    ownershipRegFoxEventId?: string | null
+  }): Promise<{
+    success: boolean
+    conferenceId: string | null
+    conferenceName: string | null
+    transferred: boolean
+    needsTransferConfirmation: boolean
+    message: string | null
+  }> => ipcRenderer.invoke('cloud:claimPrincipal', payload ?? {}),
+  redeemFoxBridgeLinkedJoin: (payload: {
+    joinCode: string
+    label?: string | null
+  }): Promise<{
+    success: boolean
+    conferenceId: string | null
+    conferenceName: string | null
+    expiresAt: string | null
+    message: string | null
+  }> => ipcRenderer.invoke('cloud:redeemJoin', payload),
+  issueFoxBridgeJoinCode: (payload?: {
+    label?: string | null
+    ttlMinutes?: number
+  }): Promise<{
+    joinCode: string
+    joinCodeId: string
+    conferenceId: string
+    expiresAt: string
+    ttlMinutes: number
+  }> => ipcRenderer.invoke('cloud:issueJoinCode', payload ?? {}),
+  listFoxBridgeConnectedDesks: (): Promise<{
+    conferenceId: string
+    desks: Array<{
+      id: string
+      label: string | null
+      role: string
+      createdAt: string
+      expiresAt: string | null
+      revokedAt: string | null
+      lastUsedAt: string | null
+      isCurrent: boolean
+    }>
+  }> => ipcRenderer.invoke('cloud:listDesks'),
+  revokeFoxBridgeLinkedDesktop: (payload: {
+    deskDeviceId: string
+  }): Promise<{ deskDeviceId: string; revokedAt: string }> =>
+    ipcRenderer.invoke('cloud:revokeDesk', payload),
   setupMobileScanner: (): Promise<MobileScannerSetupResult> =>
     ipcRenderer.invoke('cloud:setupMobileScanner'),
   getConnectPhoneInfo: (): Promise<ConnectPhoneInfo> =>

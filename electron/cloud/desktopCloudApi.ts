@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { normalizeEnrollmentCode } from '../../src/shared/cloud/deskCredentialPolicy'
+import { canonicalizeJoinCode, normalizeEnrollmentCode } from '../../src/shared/cloud/deskCredentialPolicy'
+import { readOrCreateInstallationIdSync } from './installationIdStore'
 import { resolveFoxBridgeCloudPublicConfig } from './cloudConfig'
 import { readDeskCredentialSync, type StoredDeskCredential } from './deskCredentialStore'
 import { patchSecrets } from '../settings/secretStore'
@@ -94,6 +95,8 @@ export async function enrollDesktopWithCode(
       foxbridgeDeskToken: result.deskToken,
       foxbridgeDeskDeviceId: result.deskDeviceId,
       foxbridgeDeskConferenceId: result.conferenceId,
+      foxbridgeDeskRole: 'legacy',
+      foxbridgeDeskExpiresAt: null,
     })
 
     await patchPublicSettings({
@@ -119,13 +122,157 @@ export async function enrollDesktopWithCode(
   }
 }
 
+export interface PrincipalClaimResult {
+  success: boolean
+  conferenceId: string | null
+  conferenceName: string | null
+  transferred: boolean
+  needsTransferConfirmation: boolean
+  message: string | null
+}
+
+/**
+ * Sprint 22.1/22.4 — claim Principal Desktop using RegFox ownership credentials.
+ * Sends the API key only to the trusted Edge Function over HTTPS; never logs it.
+ * Does not send desk tokens (Linked possession must not participate in claim).
+ * When another Principal exists, returns needsTransferConfirmation unless confirmTransfer.
+ */
+export async function claimPrincipalDesktopWithRegFox(input: {
+  regfoxApiKey: string
+  externalEventId: string
+  label?: string | null
+  confirmTransfer?: boolean
+}): Promise<PrincipalClaimResult> {
+  const apiKey = input.regfoxApiKey.trim()
+  const externalEventId = input.externalEventId.trim()
+
+  if (!apiKey || !externalEventId) {
+    return {
+      success: false,
+      conferenceId: null,
+      conferenceName: null,
+      transferred: false,
+      needsTransferConfirmation: false,
+      message: 'Connect RegFox before setting up FoxBridge Sync.',
+    }
+  }
+
+  try {
+    const { cloudUrl, publishableKey } = requirePublicConfig()
+    const response = await fetch(`${cloudUrl}/functions/v1/desktop-claim-principal`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: publishableKey,
+        Authorization: `Bearer ${publishableKey}`,
+      },
+      body: JSON.stringify({
+        registrationPlatform: 'regfox',
+        externalEventId,
+        regfoxApiKey: apiKey,
+        label: input.label?.trim() || null,
+        confirmTransfer: input.confirmTransfer === true,
+      }),
+    })
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string
+      needsTransferConfirmation?: boolean
+      deskToken?: string
+      deskDeviceId?: string
+      conferenceId?: string
+      conferenceName?: string | null
+      regfoxEventId?: string | null
+      transferred?: boolean
+      role?: string
+    }
+
+    if (response.status === 409 && payload.needsTransferConfirmation) {
+      return {
+        success: false,
+        conferenceId: payload.conferenceId ?? null,
+        conferenceName: payload.conferenceName ?? null,
+        transferred: false,
+        needsTransferConfirmation: true,
+        message:
+          payload.error ||
+          'Another computer is already the Principal for this event. Confirm to transfer.',
+      }
+    }
+
+    if (!response.ok) {
+      return {
+        success: false,
+        conferenceId: null,
+        conferenceName: null,
+        transferred: false,
+        needsTransferConfirmation: false,
+        message: payload.error || `FoxBridge Cloud request failed (${response.status}).`,
+      }
+    }
+
+    if (!payload.deskToken || !payload.deskDeviceId || !payload.conferenceId) {
+      return {
+        success: false,
+        conferenceId: null,
+        conferenceName: null,
+        transferred: false,
+        needsTransferConfirmation: false,
+        message: 'FoxBridge Cloud did not return a desk credential.',
+      }
+    }
+
+    await patchSecrets({
+      foxbridgeDeskToken: payload.deskToken,
+      foxbridgeDeskDeviceId: payload.deskDeviceId,
+      foxbridgeDeskConferenceId: payload.conferenceId,
+      foxbridgeDeskRole: 'principal',
+      foxbridgeDeskExpiresAt: null,
+    })
+
+    await patchPublicSettings({
+      conferenceId: payload.conferenceId,
+      conferenceName: payload.conferenceName ?? null,
+      regfoxEventId: payload.regfoxEventId ?? externalEventId,
+    })
+
+    return {
+      success: true,
+      conferenceId: payload.conferenceId,
+      conferenceName: payload.conferenceName ?? null,
+      transferred: Boolean(payload.transferred),
+      needsTransferConfirmation: false,
+      message: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      conferenceId: null,
+      conferenceName: null,
+      transferred: false,
+      needsTransferConfirmation: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Unable to connect FoxBridge Sync right now.',
+    }
+  }
+}
+
 export async function resolveConferenceViaDesk(input?: {
   regfoxEventId?: string | null
-}): Promise<{ id: string; name: string }> {
+}): Promise<{
+  id: string
+  name: string
+  deskRole: string | null
+  deskExpiresAt: string | null
+}> {
   const desk = requireDeskCredential()
   const result = await invokeDesktopFunction<{
     conferenceId: string
     conferenceName: string
+    deskRole?: string
+    deskExpiresAt?: string | null
   }>(
     'desktop-resolve-conference',
     {
@@ -135,12 +282,184 @@ export async function resolveConferenceViaDesk(input?: {
     desk.deskToken,
   )
 
+  const secretPatch: {
+    foxbridgeDeskRole?: string
+    foxbridgeDeskExpiresAt?: string | null
+  } = {}
+  if (result.deskRole === 'principal' || result.deskRole === 'linked' || result.deskRole === 'legacy') {
+    secretPatch.foxbridgeDeskRole = result.deskRole
+  }
+  if (result.deskExpiresAt !== undefined) {
+    secretPatch.foxbridgeDeskExpiresAt = result.deskExpiresAt
+  } else if (result.deskRole === 'principal' || result.deskRole === 'legacy') {
+    secretPatch.foxbridgeDeskExpiresAt = null
+  }
+  if (Object.keys(secretPatch).length > 0) {
+    await patchSecrets(secretPatch)
+  }
+
   await patchPublicSettings({
     conferenceId: result.conferenceId,
     conferenceName: result.conferenceName,
   })
 
-  return { id: result.conferenceId, name: result.conferenceName }
+  return {
+    id: result.conferenceId,
+    name: result.conferenceName,
+    deskRole: result.deskRole ?? null,
+    deskExpiresAt: result.deskExpiresAt ?? null,
+  }
+}
+
+export interface LinkedJoinResult {
+  success: boolean
+  conferenceId: string | null
+  conferenceName: string | null
+  expiresAt: string | null
+  message: string | null
+}
+
+/** Sprint 22.3/22.5 — redeem a Principal-issued Linked Desktop join code. */
+export async function redeemLinkedDesktopJoin(input: {
+  joinCode: string
+  label?: string | null
+}): Promise<LinkedJoinResult> {
+  try {
+    const code = canonicalizeJoinCode(input.joinCode)
+    if (!code) {
+      return {
+        success: false,
+        conferenceId: null,
+        conferenceName: null,
+        expiresAt: null,
+        message: 'Enter the connection code from the Principal Desktop.',
+      }
+    }
+
+    const installationId = readOrCreateInstallationIdSync()
+
+    const result = await invokeDesktopFunction<{
+      deskToken: string
+      deskDeviceId: string
+      conferenceId: string
+      conferenceName: string | null
+      regfoxEventId: string | null
+      role?: string
+      expiresAt: string
+      rejoined?: boolean
+    }>('desktop-redeem-join', {
+      joinCode: code,
+      label: input.label?.trim() || null,
+      installationId,
+    })
+
+    if (!result.deskToken || !result.deskDeviceId || !result.conferenceId || !result.expiresAt) {
+      return {
+        success: false,
+        conferenceId: null,
+        conferenceName: null,
+        expiresAt: null,
+        message: 'Unable to connect with that code.',
+      }
+    }
+
+    // Persist credential only after a successful Cloud redeem payload.
+    await patchSecrets({
+      foxbridgeDeskToken: result.deskToken,
+      foxbridgeDeskDeviceId: result.deskDeviceId,
+      foxbridgeDeskConferenceId: result.conferenceId,
+      foxbridgeDeskRole: 'linked',
+      foxbridgeDeskExpiresAt: result.expiresAt,
+    })
+
+    try {
+      await patchPublicSettings({
+        conferenceId: result.conferenceId,
+        conferenceName: result.conferenceName,
+        // Do not copy regfoxEventId from Cloud into local settings on Linked join.
+        // Event identity from a join code must never satisfy Principal ownership proof.
+      })
+    } catch {
+      // Desk credential is already stored; connection can still succeed.
+    }
+
+    return {
+      success: true,
+      conferenceId: result.conferenceId,
+      conferenceName: result.conferenceName,
+      expiresAt: result.expiresAt,
+      message: null,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      conferenceId: null,
+      conferenceName: null,
+      expiresAt: null,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Unable to join with that connection code.',
+    }
+  }
+}
+
+export interface IssuedJoinCode {
+  joinCode: string
+  joinCodeId: string
+  conferenceId: string
+  expiresAt: string
+  ttlMinutes: number
+}
+
+export async function issueLinkedDesktopJoinCode(input?: {
+  label?: string | null
+  ttlMinutes?: number
+}): Promise<IssuedJoinCode> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction<IssuedJoinCode>(
+    'desktop-issue-join-code',
+    {
+      label: input?.label?.trim() || null,
+      ttlMinutes: input?.ttlMinutes ?? 15,
+    },
+    desk.deskToken,
+  )
+}
+
+export interface ConnectedDeskRow {
+  id: string
+  label: string | null
+  role: string
+  createdAt: string
+  expiresAt: string | null
+  revokedAt: string | null
+  lastUsedAt: string | null
+  isCurrent: boolean
+}
+
+export async function listConnectedDesks(): Promise<{
+  conferenceId: string
+  desks: ConnectedDeskRow[]
+}> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-list-desks',
+    {},
+    desk.deskToken,
+  )
+}
+
+export async function revokeLinkedDesktop(deskDeviceId: string): Promise<{
+  deskDeviceId: string
+  revokedAt: string
+}> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-revoke-desk',
+    { deskDeviceId },
+    desk.deskToken,
+  )
 }
 
 export async function publishAttendeesViaDesk(input: {

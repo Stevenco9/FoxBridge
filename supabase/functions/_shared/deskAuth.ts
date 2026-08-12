@@ -6,6 +6,8 @@ export interface DeskDeviceRow {
   revoked_at: string | null
   expires_at: string | null
   label: string | null
+  /** principal | linked | legacy (Sprint 22.1). */
+  role: string
 }
 
 export const corsHeaders: Record<string, string> = {
@@ -73,7 +75,7 @@ export async function requireDeskDevice(
   const tokenHash = await sha256Hex(deskToken)
   const { data, error } = await client
     .from('desk_devices')
-    .select('id, conference_id, revoked_at, expires_at, label')
+    .select('id, conference_id, revoked_at, expires_at, label, role')
     .eq('token_hash', tokenHash)
     .maybeSingle()
 
@@ -105,12 +107,41 @@ export async function requireDeskDevice(
     })
   }
 
+  const role = typeof data.role === 'string' && data.role.trim() ? data.role.trim() : 'legacy'
+  if (role !== 'principal' && role !== 'linked' && role !== 'legacy') {
+    throw new Response(JSON.stringify({ error: 'Desk credential role is invalid.' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   await client
     .from('desk_devices')
     .update({ last_used_at: new Date().toISOString() })
     .eq('id', data.id)
 
-  return data as DeskDeviceRow
+  return {
+    ...(data as DeskDeviceRow),
+    role,
+  }
+}
+
+/**
+ * Principal-only gate for device-management Edge Functions (Sprint 22.3).
+ * Linked and legacy desks intentionally cannot manage devices.
+ */
+export function assertPrincipalRole(desk: DeskDeviceRow): void {
+  if (desk.role !== 'principal') {
+    throw new Response(
+      JSON.stringify({
+        error: 'Only the Principal Desktop can manage conference devices.',
+      }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
+  }
 }
 
 /** Ensures callers cannot target a conference other than the desk binding. */

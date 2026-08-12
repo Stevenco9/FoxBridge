@@ -68,6 +68,55 @@ interface ElectronAPI {
     conferenceName: string | null
     message: string | null
   }>
+  claimFoxBridgeCloudPrincipal: (payload?: {
+    label?: string | null
+    confirmTransfer?: boolean
+    ownershipRegFoxApiKey?: string | null
+    ownershipRegFoxEventId?: string | null
+  }) => Promise<{
+    success: boolean
+    conferenceId: string | null
+    conferenceName: string | null
+    transferred: boolean
+    needsTransferConfirmation: boolean
+    message: string | null
+  }>
+  redeemFoxBridgeLinkedJoin: (payload: {
+    joinCode: string
+    label?: string | null
+  }) => Promise<{
+    success: boolean
+    conferenceId: string | null
+    conferenceName: string | null
+    expiresAt: string | null
+    message: string | null
+  }>
+  issueFoxBridgeJoinCode: (payload?: {
+    label?: string | null
+    ttlMinutes?: number
+  }) => Promise<{
+    joinCode: string
+    joinCodeId: string
+    conferenceId: string
+    expiresAt: string
+    ttlMinutes: number
+  }>
+  listFoxBridgeConnectedDesks: () => Promise<{
+    conferenceId: string
+    desks: Array<{
+      id: string
+      label: string | null
+      role: string
+      createdAt: string
+      expiresAt: string | null
+      revokedAt: string | null
+      lastUsedAt: string | null
+      isCurrent: boolean
+    }>
+  }>
+  revokeFoxBridgeLinkedDesktop: (payload: {
+    deskDeviceId: string
+  }) => Promise<{ deskDeviceId: string; revokedAt: string }>
   setupMobileScanner: () => Promise<MobileScannerSetupResult>
   getConnectPhoneInfo: () => Promise<ConnectPhoneInfo>
   createScannerPairing: () => Promise<PairingInfo>

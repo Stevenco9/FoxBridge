@@ -341,6 +341,8 @@ Deploy functions after migrations `009_desk_devices.sql` **and** `010_fix_issue_
 
 **Production deploy & validation checklist:** [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) (Sprint 21.9). **Sprint 21.10:** live clean-install A–O validated PASS on project `upsjnvlllkeucjarbnnx` with Scanner `https://fox-bridge.vercel.app` and no local Desktop service-role.
 
+**Sprint 22 (live-validated):** self-service Principal claim + Linked Desktops. Migrations **011–015**. Edge: `desktop-claim-principal`, `desktop-issue-join-code`, `desktop-redeem-join`, `desktop-list-desks`, `desktop-revoke-desk` (+ Sprint 21 `desktop-*`). Canonical design: [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md). RegFox API keys are verified ephemerally and never persisted in Cloud. Operator enrollment creates `legacy` desks (Advanced/support only).
+
 ---
 
 ## 6. Offline strategy

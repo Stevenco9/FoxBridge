@@ -12,6 +12,14 @@ import { resolvePhoneAccessibleUrl } from '../mobile/phoneUrlResolver'
 import { getMobileAppUrl } from '../cloud/supabaseConfig'
 import { isFoxBridgeCloudPrivilegedConfigured } from '../cloud/cloudConfig'
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
+import {
+  claimPrincipalDesktopWithRegFox,
+  enrollDesktopWithCode,
+  issueLinkedDesktopJoinCode,
+  listConnectedDesks,
+  redeemLinkedDesktopJoin,
+  revokeLinkedDesktop,
+} from '../cloud/desktopCloudApi'
 import { ensureScannerSession } from '../cloud/scannerSessionRepository'
 import { resetSupabaseServiceClient } from '../cloud/supabaseClient'
 import {
@@ -24,7 +32,7 @@ import {
   isAttendeeCacheLoaded,
   replaceAttendeeCacheFromRegistrationSync,
 } from '../scannerServer/attendeeCache'
-import { readSecrets, writeSecrets, getSafeStorageStatus } from './secretStore'
+import { readSecrets, writeSecrets, patchSecrets, getSafeStorageStatus } from './secretStore'
 import {
   migrateSettingsFromEnvIfNeeded,
   patchPublicSettings,
@@ -33,7 +41,7 @@ import {
 import { createRegFoxServiceFromSettings } from '../regfox/regfoxConfig'
 import { mergeAttendeesWithPersistedCheckIns } from '../regfox/checkInAttendee'
 import { activateRegFoxEvent } from './eventIdentityService'
-import { enrollDesktopWithCode } from '../cloud/desktopCloudApi'
+import { canSilentPrincipalClaimFromStoredRegFox, isDeskDeviceRole } from '../../src/shared/cloud/deskRolePolicy'
 
 const MOBILE_PUBLISH_WARNING =
   'Phone scanners could not be updated. Desktop registration is still available.'
@@ -81,6 +89,9 @@ export async function saveSettingsSecrets(
       patch.foxbridgeDeskDeviceId ?? current.foxbridgeDeskDeviceId,
     foxbridgeDeskConferenceId:
       patch.foxbridgeDeskConferenceId ?? current.foxbridgeDeskConferenceId,
+    foxbridgeDeskRole: patch.foxbridgeDeskRole ?? current.foxbridgeDeskRole,
+    foxbridgeDeskExpiresAt:
+      patch.foxbridgeDeskExpiresAt ?? current.foxbridgeDeskExpiresAt,
   })
   resetSupabaseServiceClient()
 }
@@ -116,6 +127,8 @@ export async function getSetupStatus(printerNames: string[]): Promise<SetupStatu
     foxbridgeSyncEnrolled,
     foxbridgeSyncConnected,
     foxbridgeSyncConnectionError: cloudStatus.connectionError,
+    foxbridgeSyncDeskRole: cloudStatus.deskRole,
+    foxbridgeSyncDeskExpiresAt: cloudStatus.deskExpiresAt,
     attendeeCount,
     preferredPrinterName,
     printerAvailable: preferredPrinterName
@@ -389,6 +402,126 @@ export async function enrollFoxBridgeCloudDesktop(
     void requestDesktopSyncBestEffort()
   }
   return result
+}
+
+/**
+ * Sprint 22.1/22.4 — Principal claim.
+ *
+ * Ownership proof credentials may be supplied explicitly (required for Linked /
+ * disconnected / fresh setup). Silent reuse of stored RegFox secrets is allowed
+ * only for legacy desk upgrade (canSilentPrincipalClaimFromStoredRegFox).
+ */
+export async function claimFoxBridgeCloudPrincipal(input?: {
+  label?: string | null
+  confirmTransfer?: boolean
+  /** Fresh RegFox API key from organizer ownership setup (never required from Linked token). */
+  ownershipRegFoxApiKey?: string | null
+  ownershipRegFoxEventId?: string | null
+}): Promise<{
+  success: boolean
+  conferenceId: string | null
+  conferenceName: string | null
+  transferred: boolean
+  needsTransferConfirmation: boolean
+  message: string | null
+}> {
+  const [secrets, settings] = await Promise.all([readSecrets(), readPublicSettings()])
+  const deskRole = isDeskDeviceRole(secrets.foxbridgeDeskRole)
+    ? secrets.foxbridgeDeskRole
+    : null
+
+  const freshKey = input?.ownershipRegFoxApiKey?.trim() || ''
+  const freshEventId = input?.ownershipRegFoxEventId?.trim() || ''
+
+  let regfoxApiKey = ''
+  let externalEventId = ''
+
+  if (freshKey && freshEventId) {
+    regfoxApiKey = freshKey
+    externalEventId = freshEventId
+  } else if (
+    canSilentPrincipalClaimFromStoredRegFox(deskRole) &&
+    secrets.regfoxApiKey?.trim() &&
+    settings.regfoxEventId?.trim()
+  ) {
+    regfoxApiKey = secrets.regfoxApiKey.trim()
+    externalEventId = settings.regfoxEventId.trim()
+  } else {
+    return {
+      success: false,
+      conferenceId: null,
+      conferenceName: null,
+      transferred: false,
+      needsTransferConfirmation: false,
+      message:
+        'Connect RegFox with your API key and event ID to prove ownership before becoming the Principal Desktop.',
+    }
+  }
+
+  // Belt-and-suspenders: Linked role cannot silent-claim even if secrets exist.
+  if (deskRole === 'linked' && !(freshKey && freshEventId)) {
+    return {
+      success: false,
+      conferenceId: null,
+      conferenceName: null,
+      transferred: false,
+      needsTransferConfirmation: false,
+      message:
+        'A temporary desk cannot become Principal from its Linked connection. Enter RegFox credentials to prove ownership.',
+    }
+  }
+
+  const result = await claimPrincipalDesktopWithRegFox({
+    regfoxApiKey,
+    externalEventId,
+    label: input?.label,
+    confirmTransfer: input?.confirmTransfer === true,
+  })
+
+  if (result.success && freshKey && freshEventId) {
+    await patchSecrets({ regfoxApiKey: freshKey })
+    await patchPublicSettings({ regfoxEventId: freshEventId })
+  }
+
+  if (result.success) {
+    const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
+    void requestDesktopSyncBestEffort()
+  }
+  return result
+}
+
+/** Sprint 22.3 — redeem Principal-issued Linked Desktop join code. */
+export async function redeemFoxBridgeLinkedJoin(input: {
+  joinCode: string
+  label?: string | null
+}): Promise<{
+  success: boolean
+  conferenceId: string | null
+  conferenceName: string | null
+  expiresAt: string | null
+  message: string | null
+}> {
+  const result = await redeemLinkedDesktopJoin(input)
+  if (result.success) {
+    const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
+    void requestDesktopSyncBestEffort()
+  }
+  return result
+}
+
+export async function issueFoxBridgeJoinCode(input?: {
+  label?: string | null
+  ttlMinutes?: number
+}) {
+  return issueLinkedDesktopJoinCode(input)
+}
+
+export async function listFoxBridgeConnectedDesks() {
+  return listConnectedDesks()
+}
+
+export async function revokeFoxBridgeLinkedDesktop(deskDeviceId: string) {
+  return revokeLinkedDesktop(deskDeviceId)
 }
 
 export async function setupMobileScanner(): Promise<MobileScannerSetupResult> {

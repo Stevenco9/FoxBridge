@@ -12,6 +12,11 @@ import {
   setupMobileScanner,
   testMobileService,
   enrollFoxBridgeCloudDesktop,
+  claimFoxBridgeCloudPrincipal,
+  redeemFoxBridgeLinkedJoin,
+  issueFoxBridgeJoinCode,
+  listFoxBridgeConnectedDesks,
+  revokeFoxBridgeLinkedDesktop,
 } from './settings/settingsService'
 
 export function registerCloudHandlers(): void {
@@ -67,6 +72,44 @@ export function registerCloudHandlers(): void {
     'cloud:enrollDesktop',
     async (_event, payload: { enrollmentCode: string; label?: string | null }) =>
       enrollFoxBridgeCloudDesktop(payload.enrollmentCode, payload.label),
+  )
+
+  ipcMain.removeHandler('cloud:claimPrincipal')
+  ipcMain.handle(
+    'cloud:claimPrincipal',
+    async (
+      _event,
+      payload?: {
+        label?: string | null
+        confirmTransfer?: boolean
+        ownershipRegFoxApiKey?: string | null
+        ownershipRegFoxEventId?: string | null
+      },
+    ) => claimFoxBridgeCloudPrincipal(payload),
+  )
+
+  ipcMain.removeHandler('cloud:redeemJoin')
+  ipcMain.handle(
+    'cloud:redeemJoin',
+    async (_event, payload: { joinCode: string; label?: string | null }) =>
+      redeemFoxBridgeLinkedJoin(payload),
+  )
+
+  ipcMain.removeHandler('cloud:issueJoinCode')
+  ipcMain.handle(
+    'cloud:issueJoinCode',
+    async (_event, payload?: { label?: string | null; ttlMinutes?: number }) =>
+      issueFoxBridgeJoinCode(payload),
+  )
+
+  ipcMain.removeHandler('cloud:listDesks')
+  ipcMain.handle('cloud:listDesks', async () => listFoxBridgeConnectedDesks())
+
+  ipcMain.removeHandler('cloud:revokeDesk')
+  ipcMain.handle(
+    'cloud:revokeDesk',
+    async (_event, payload: { deskDeviceId: string }) =>
+      revokeFoxBridgeLinkedDesktop(payload.deskDeviceId),
   )
 
   ipcMain.removeHandler('cloud:setupMobileScanner')

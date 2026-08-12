@@ -2,10 +2,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
 
+export type DeskDeviceRole = 'principal' | 'linked' | 'legacy'
+
 export interface StoredDeskCredential {
   deskToken: string
   deskDeviceId: string
   conferenceId: string
+  role: DeskDeviceRole | null
+  expiresAt: string | null
 }
 
 interface SecretsFileShape {
@@ -14,10 +18,19 @@ interface SecretsFileShape {
   foxbridgeDeskToken?: string | null
   foxbridgeDeskDeviceId?: string | null
   foxbridgeDeskConferenceId?: string | null
+  foxbridgeDeskRole?: string | null
+  foxbridgeDeskExpiresAt?: string | null
 }
 
 function settingsDir(): string {
   return path.join(app.getPath('userData'), 'settings')
+}
+
+function normalizeDeskRole(value: string | null | undefined): DeskDeviceRole | null {
+  if (value === 'principal' || value === 'linked' || value === 'legacy') {
+    return value
+  }
+  return null
 }
 
 /**
@@ -52,5 +65,11 @@ export function readDeskCredentialSync(): StoredDeskCredential | null {
     return null
   }
 
-  return { deskToken, deskDeviceId, conferenceId }
+  return {
+    deskToken,
+    deskDeviceId,
+    conferenceId,
+    role: normalizeDeskRole(parsed?.foxbridgeDeskRole),
+    expiresAt: parsed?.foxbridgeDeskExpiresAt?.trim() || null,
+  }
 }

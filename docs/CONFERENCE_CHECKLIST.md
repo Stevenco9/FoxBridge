@@ -13,8 +13,9 @@ Operational checklist for event organizers and volunteers running registration a
 - [ ] Install and open FoxBridge on the registration laptop
 - [ ] Complete the **guided setup wizard** (or confirm setup already finished)
 - [ ] On **Connect registration**, enter RegFox API key and page ID — attendees should load automatically
-- [ ] On **FoxBridge Sync**, enter the one-time enrollment code from your setup person (or choose Set up later and connect from the home screen)
-- [ ] Confirm FoxBridge Sync shows **Connected** (or reconnect from Operations Home if needed)
+- [ ] On **FoxBridge Sync**, choose **Join an existing FoxBridge Event** (connection code from the Principal Desktop) **or** **Set up my event** (RegFox API key + event ID to become Principal). Prefer these over Advanced enrollment codes.
+- [ ] Confirm FoxBridge Sync shows **Connected** (Principal or temporary Linked status as appropriate)
+- [ ] If this is the Principal Desktop, open **Connected Desktops** to issue a connection code for a second computer (code expires in ~15 minutes)
 - [ ] Confirm attendee count looks reasonable after setup
 - [ ] Spot-check a few registrants against RegFox (names, meal choices, registration type)
 - [ ] Test search functionality (name, email, organization)

@@ -43,6 +43,10 @@ export interface AppSettingsSecrets {
   foxbridgeDeskToken: string | null
   foxbridgeDeskDeviceId: string | null
   foxbridgeDeskConferenceId: string | null
+  /** principal | linked | legacy — set on claim/enroll/redeem (Sprint 22.2/22.3). */
+  foxbridgeDeskRole: string | null
+  /** ISO expiry for Linked desks; null for Principal/legacy. */
+  foxbridgeDeskExpiresAt: string | null
 }
 
 export interface SafeStorageStatus {
@@ -61,6 +65,10 @@ export interface SetupStatus {
   foxbridgeSyncConnected: boolean
   /** Raw connection/enroll diagnostic; map before organizer display. */
   foxbridgeSyncConnectionError: string | null
+  /** Local desk role when known (principal / linked / legacy). */
+  foxbridgeSyncDeskRole: 'principal' | 'linked' | 'legacy' | null
+  /** Linked desk expiry (ISO); null when not applicable. */
+  foxbridgeSyncDeskExpiresAt: string | null
   attendeeCount: number
   preferredPrinterName: string | null
   printerAvailable: boolean

@@ -17,6 +17,7 @@ assert.equal(
   resolveFoxBridgeSyncPhase({
     isConnecting: true,
     codeEntryVisible: true,
+    needsTransferConfirmation: false,
     deskCredentialConfigured: false,
     connected: false,
     connectionError: null,
@@ -29,6 +30,7 @@ assert.equal(
   resolveFoxBridgeSyncPhase({
     isConnecting: false,
     codeEntryVisible: false,
+    needsTransferConfirmation: false,
     deskCredentialConfigured: true,
     connected: true,
     connectionError: null,
@@ -41,6 +43,7 @@ assert.equal(
   resolveFoxBridgeSyncPhase({
     isConnecting: false,
     codeEntryVisible: true,
+    needsTransferConfirmation: false,
     deskCredentialConfigured: false,
     connected: false,
     connectionError: null,
@@ -53,6 +56,7 @@ assert.equal(
   resolveFoxBridgeSyncPhase({
     isConnecting: false,
     codeEntryVisible: false,
+    needsTransferConfirmation: false,
     deskCredentialConfigured: true,
     connected: false,
     connectionError: 'Desk credential has been revoked.',
@@ -65,6 +69,7 @@ assert.equal(
   resolveFoxBridgeSyncPhase({
     isConnecting: false,
     codeEntryVisible: false,
+    needsTransferConfirmation: false,
     deskCredentialConfigured: true,
     connected: false,
     connectionError: 'Desk credential expired.',
@@ -77,12 +82,26 @@ assert.equal(
   resolveFoxBridgeSyncPhase({
     isConnecting: false,
     codeEntryVisible: true,
+    needsTransferConfirmation: false,
     deskCredentialConfigured: false,
     connected: false,
     connectionError: null,
     enrollError: 'Invalid enrollment code.',
   }),
   'invalid_code',
+)
+
+assert.equal(
+  resolveFoxBridgeSyncPhase({
+    isConnecting: false,
+    codeEntryVisible: false,
+    needsTransferConfirmation: false,
+    deskCredentialConfigured: false,
+    connected: false,
+    connectionError: null,
+    enrollError: null,
+  }),
+  'ready_to_setup',
 )
 
 assert.ok(foxBridgeSyncIssueFallbackMessage('invalid_code').length > 0)

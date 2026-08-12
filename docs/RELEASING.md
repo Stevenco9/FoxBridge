@@ -106,6 +106,8 @@ An unpacked `.app` for local smoke testing can be produced with:
 npm run pack:mac
 ```
 
+**Important:** `pack:mac` builds for the **host architecture only**. On Apple Silicon that yields an **ARM64-only** app that Intel Macs reject. For multi-Mac validation and production-style packages, always use **`npm run dist:mac`** (universal: `x86_64` + `arm64`).
+
 ---
 
 ## Building the Windows installer

@@ -1,0 +1,144 @@
+.connected-desks {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+}
+
+.connected-desks__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(17, 24, 39, 0.45);
+  cursor: pointer;
+}
+
+.connected-desks__panel {
+  position: relative;
+  z-index: 1;
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+}
+
+.connected-desks__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.connected-desks__subtitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.connected-desks__text,
+.connected-desks__meta,
+.connected-desks__instruction,
+.connected-desks__countdown,
+.connected-desks__status {
+  margin: 0;
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.connected-desks__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.connected-desks__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+}
+
+.connected-desks__name {
+  margin: 0 0 0.2rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.connected-desks__invite {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.connected-desks__code-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.9rem;
+  border-radius: 0.75rem;
+  background: #f3f4f6;
+}
+
+.connected-desks__code-box--expired {
+  background: #fef2f2;
+}
+
+.connected-desks__expired {
+  margin: 0;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.connected-desks__code {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #111827;
+  text-align: center;
+}
+
+.connected-desks__button,
+.connected-desks__close,
+.connected-desks__revoke {
+  padding: 0.65rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 2px solid #111827;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.connected-desks__revoke {
+  border-color: #b91c1c;
+  background: #ffffff;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.connected-desks__close {
+  border-color: #d1d5db;
+  background: #ffffff;
+  color: #111827;
+}
+
+.connected-desks__error {
+  margin: 0;
+  color: #b91c1c;
+  font-weight: 600;
+}

@@ -29,6 +29,7 @@ const requiredMigrations = [
   '008_fix_pairing_token_digest.sql',
   '009_desk_devices.sql',
   '010_fix_issue_desk_enrollment_digest.sql',
+  '011_principal_desk_provisioning.sql',
 ]
 
 for (const name of requiredMigrations) {
@@ -56,6 +57,7 @@ assert.ok(/SET\s+search_path\s*=\s*public\s*,\s*extensions/i.test(migration008))
 // --- Edge Functions required for production Sync ---
 const requiredFunctions = [
   'desktop-enroll',
+  'desktop-claim-principal',
   'desktop-resolve-conference',
   'desktop-publish',
   'desktop-create-pairing',

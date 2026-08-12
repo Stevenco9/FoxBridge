@@ -30,9 +30,13 @@ This is **not** an automatic deploy. Run the commands below against your Cloud p
 
 ## 1. Backend deployment checklist (exact order)
 
-Complete these **before** issuing enrollment codes to organizers.
+**Sprint 22 FINAL (live-validated):** Principal self-service + Linked Desktops + Connected Desktops. Apply migrations **011–015**. Prefer Principal claim / Join existing event for organizers; operator enrollment is Advanced/support only.
 
-### 1.1 Apply SQL migrations (001 → 010)
+**Sprint 22.5 update:** Migrations **013–015** (installation identity, rejoined audit, ambiguous `conference_id` fix). Redeploy `desktop-redeem-join`. Use **`npm run dist:mac`** (universal) for multi-Mac validation — not `pack:mac` (host-arch only).
+
+Complete these **before** issuing enrollment codes to organizers (or before relying on Principal claim / Linked join).
+
+### 1.1 Apply SQL migrations (001 → 015)
 
 Apply every file in `supabase/migrations/` in numeric order, including:
 
@@ -43,8 +47,15 @@ Apply every file in `supabase/migrations/` in numeric order, including:
 | `007` | `validate_meal` PL/pgSQL ambiguity fix |
 | `009` | `desk_devices`, `desk_enrollment_codes`, enrollment tables |
 | **`010`** | **hosted-safe `issue_desk_enrollment_code` (`search_path = public, extensions`)** |
+| **`011`** | Principal roles + canonical event identity + `provision_principal_desk_device` (Sprint 22.1) |
+| **`012`** | Linked join codes + revoke RPC + Linked audit actions (Sprint 22.3) |
+| **`013`** | Linked `installation_id` + rejoin reactivation (Sprint 22.5) |
+| **`014`** | Allow audit action `linked_desktop_rejoined` |
+| **`015`** | Fix ambiguous `conference_id` in `redeem_desk_join_code` |
 
-**Migration 010 is required.** Without it, operator enrollment-code issuance can fail on hosted Supabase with `function digest(text, unknown) does not exist` (same class of failure fixed for pairing in `008`).
+**Migration 010 is required** for operator enrollment-code issuance on hosted Supabase.  
+**Migration 011 is required** before deploying `desktop-claim-principal`. If duplicate `(registration_platform, external_event_id)` groups exist, 011 raises an error — resolve duplicates manually (do not auto-merge).  
+**Migrations 012–015 are required** for Linked join / Connected Desktops / stable rejoin.
 
 CLI (if the project is linked):
 
@@ -63,7 +74,12 @@ Deploy these functions (service role stays in Cloud function secrets only):
 
 | Function | Role |
 |----------|------|
-| `desktop-enroll` | Exchange one-time enrollment code → desk credential |
+| `desktop-enroll` | Exchange one-time enrollment code → desk credential (`legacy` role after 011) |
+| `desktop-claim-principal` | Self-service Principal claim via ephemeral RegFox verify (Sprint 22.1) |
+| `desktop-issue-join-code` | Principal issues Linked connection code (~15 min) (Sprint 22.3) |
+| `desktop-redeem-join` | Redeem join code → Linked desk (48 h) |
+| `desktop-list-desks` | Principal lists desks (safe metadata only) |
+| `desktop-revoke-desk` | Principal revokes a Linked desk |
 | `desktop-resolve-conference` | Desk status / conference resolve |
 | `desktop-publish` | Publish attendees + meal entitlements |
 | `desktop-create-pairing` | Create pairing token (hash stored) |
@@ -72,6 +88,11 @@ Deploy these functions (service role stays in Cloud function secrets only):
 
 ```bash
 npx supabase functions deploy desktop-enroll
+npx supabase functions deploy desktop-claim-principal
+npx supabase functions deploy desktop-issue-join-code
+npx supabase functions deploy desktop-redeem-join
+npx supabase functions deploy desktop-list-desks
+npx supabase functions deploy desktop-revoke-desk
 npx supabase functions deploy desktop-resolve-conference
 npx supabase functions deploy desktop-publish
 npx supabase functions deploy desktop-create-pairing

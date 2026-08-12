@@ -12,6 +12,8 @@ const EMPTY_STATUS: CloudStatus = {
   lastPublishError: null,
   deskCredentialConfigured: false,
   connectionError: null,
+  deskRole: null,
+  deskExpiresAt: null,
 }
 
 interface CloudStatusPanelProps {

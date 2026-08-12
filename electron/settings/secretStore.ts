@@ -17,6 +17,10 @@ export interface StoredSecrets {
   foxbridgeDeskToken: string | null
   foxbridgeDeskDeviceId: string | null
   foxbridgeDeskConferenceId: string | null
+  /** principal | linked | legacy — set on claim/enroll/redeem (Sprint 22.2/22.3). */
+  foxbridgeDeskRole: string | null
+  /** ISO expiry for Linked desks; null for Principal/legacy. */
+  foxbridgeDeskExpiresAt: string | null
 }
 
 const EMPTY_SECRETS: StoredSecrets = {
@@ -25,6 +29,8 @@ const EMPTY_SECRETS: StoredSecrets = {
   foxbridgeDeskToken: null,
   foxbridgeDeskDeviceId: null,
   foxbridgeDeskConferenceId: null,
+  foxbridgeDeskRole: null,
+  foxbridgeDeskExpiresAt: null,
 }
 
 export function getSafeStorageStatus(): { available: boolean; usingFallback: boolean } {
@@ -50,6 +56,8 @@ function normalizeSecrets(parsed: Partial<StoredSecrets> | null | undefined): St
     foxbridgeDeskToken: parsed?.foxbridgeDeskToken ?? null,
     foxbridgeDeskDeviceId: parsed?.foxbridgeDeskDeviceId ?? null,
     foxbridgeDeskConferenceId: parsed?.foxbridgeDeskConferenceId ?? null,
+    foxbridgeDeskRole: parsed?.foxbridgeDeskRole ?? null,
+    foxbridgeDeskExpiresAt: parsed?.foxbridgeDeskExpiresAt ?? null,
   }
 }
 

@@ -31,18 +31,37 @@ function deskCredentialConfigured(): boolean {
   return Boolean(readDeskCredentialSync()?.deskToken)
 }
 
+function localDeskRole(): CloudStatus['deskRole'] {
+  return readDeskCredentialSync()?.role ?? null
+}
+
+function localDeskExpiresAt(): string | null {
+  return readDeskCredentialSync()?.expiresAt ?? null
+}
+
 function withPublishFields(
   publishState: Awaited<ReturnType<typeof getCloudPublishState>>,
   fields: Omit<
     CloudStatus,
-    'lastPublishAt' | 'lastPublishAttendeeCount' | 'lastPublishError' | 'deskCredentialConfigured'
-  > & { deskCredentialConfigured?: boolean },
+    | 'lastPublishAt'
+    | 'lastPublishAttendeeCount'
+    | 'lastPublishError'
+    | 'deskCredentialConfigured'
+    | 'deskRole'
+    | 'deskExpiresAt'
+  > & {
+    deskCredentialConfigured?: boolean
+    deskRole?: CloudStatus['deskRole']
+    deskExpiresAt?: string | null
+  },
 ): CloudStatus {
   return {
     lastPublishAt: publishState.lastPublishAt,
     lastPublishAttendeeCount: publishState.lastPublishAttendeeCount,
     lastPublishError: publishState.lastPublishError,
     deskCredentialConfigured: fields.deskCredentialConfigured ?? deskCredentialConfigured(),
+    deskRole: fields.deskRole ?? localDeskRole(),
+    deskExpiresAt: fields.deskExpiresAt ?? localDeskExpiresAt(),
     configured: fields.configured,
     connected: fields.connected,
     conferenceId: fields.conferenceId,
@@ -75,6 +94,13 @@ export async function getCloudStatus(): Promise<CloudStatus> {
         conferenceName: conference.name,
         connectionError: null,
         deskCredentialConfigured: true,
+        deskRole:
+          conference.deskRole === 'principal' ||
+          conference.deskRole === 'linked' ||
+          conference.deskRole === 'legacy'
+            ? conference.deskRole
+            : localDeskRole(),
+        deskExpiresAt: conference.deskExpiresAt ?? localDeskExpiresAt(),
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to verify desk enrollment.'
@@ -87,6 +113,8 @@ export async function getCloudStatus(): Promise<CloudStatus> {
         conferenceName: null,
         connectionError: message,
         deskCredentialConfigured: true,
+        deskRole: desk?.role ?? null,
+        deskExpiresAt: desk?.expiresAt ?? null,
       })
     }
   }

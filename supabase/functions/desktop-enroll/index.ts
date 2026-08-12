@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
         conference_id: codeRow.conference_id,
         token_hash: tokenHash,
         label,
+        role: 'legacy',
       })
       .select('id, conference_id')
       .single()

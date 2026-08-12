@@ -60,6 +60,9 @@ Deno.serve(async (req) => {
       regfoxEventId: conference.regfox_event_id,
       lastDesktopSyncAt: conference.last_desktop_sync_at,
       deskDeviceId: desk.id,
+      deskRole: desk.role,
+      deskExpiresAt: desk.expires_at,
+      deskLabel: desk.label,
     })
   } catch (error) {
     if (error instanceof Response) {

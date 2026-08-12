@@ -35,6 +35,15 @@ Registration answers, purchases, custom fields, and official payment status come
 **FoxBridge Event identity is platform-independent (Sprint 21.3).**  
 A FoxBridge Event is distinct from a RegFox page id. Associations (Local Event Store, Event Settings, sync state) prefer the FoxBridge Event id. `regfoxEventId` remains for existing RegFox integration until a later migration — this is not a full source-of-truth cutover.
 
+**Device trust hierarchy (Sprint 22 — live-validated).**
+Principal Desktop proves registration-platform control of an event (RegFox: ephemeral server-side verify of API key against `GET /forms/{id}` — key not stored in Cloud). Linked Desktops join with Principal-issued codes (~15 min, single-use) and receive 48‑hour revocable credentials. Principal claim/transfer requires fresh independent RegFox ownership proof — Linked/revoked history, cached event IDs, and transfer confirmation alone never authorize Principal. Operator enrollment codes remain Advanced/support only (`legacy` desks). See [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md).
+
+**Organizers should not need Cloud credentials for first Sync setup (Sprint 22.2).**  
+After a successful RegFox connection, normal organizers choose **Join an existing FoxBridge Event** (connection code) or **Set up my event** (RegFox API key + event ID → Cloud ownership verify). They should not paste Supabase URLs, publishable keys, service-role keys, desk tokens, or operator enrollment codes unless using Advanced / support paths.
+
+**Extra desks join with a Principal connection code (Sprint 22.3).**  
+A second computer joins with a short code from the Principal Desktop — no RegFox API key and no Cloud console access required. Codes accept dashed or undashed entry. After revoke/expiry, the same FoxBridge installation rejoins as one logical Linked Desktop when it presents its opaque installation ID with a fresh code (Sprint 22.5).
+
 **FoxBridge owns operational data.**  
 Meal redemption, badge printing history, check-in actions, and other on-site activity live in FoxBridge. That separation keeps registration data authoritative in RegFox while giving staff a clear record of what happened at the event.
 
