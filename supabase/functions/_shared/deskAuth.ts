@@ -127,14 +127,17 @@ export async function requireDeskDevice(
 }
 
 /**
- * Principal-only gate for device-management Edge Functions (Sprint 22.3).
- * Linked and legacy desks intentionally cannot manage devices.
+ * Principal-only gate for privileged Edge Functions (device management, attendee publish).
+ * Linked and legacy desks intentionally cannot perform these ops.
  */
-export function assertPrincipalRole(desk: DeskDeviceRow): void {
+export function assertPrincipalRole(
+  desk: DeskDeviceRow,
+  message = 'Only the Principal Desktop can manage conference devices.',
+): void {
   if (desk.role !== 'principal') {
     throw new Response(
       JSON.stringify({
-        error: 'Only the Principal Desktop can manage conference devices.',
+        error: message,
       }),
       {
         status: 403,

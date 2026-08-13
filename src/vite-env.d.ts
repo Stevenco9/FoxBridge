@@ -29,12 +29,14 @@ import type {
   EventSettingsEntry,
   EventSettingsPatch,
 } from './shared/models/EventSettings'
+import type { EventAccessStatus } from './shared/models/EventAccessSession'
 
 interface ElectronAPI {
   getAttendees: () => Promise<Attendee[]>
   connectRegFox: (payload: { apiKey: string; eventId: string }) => Promise<RegFoxConnectResult>
   updateRegistrations: () => Promise<RegFoxUpdateResult>
   checkInAttendee: (attendeeId: string) => Promise<AttendeeCheckInResult>
+  onAttendeesChanged: (callback: () => void) => () => void
   printBadgePreview: (attendeeId: string) => Promise<void>
   printTestBadge: () => Promise<void>
   getBadgePrintStatus: (attendeeId: string) => Promise<BadgePrintStatus>
@@ -48,6 +50,8 @@ interface ElectronAPI {
   stopScannerServer: () => Promise<ScannerServerStatus>
   getCloudStatus: () => Promise<CloudStatus>
   getFoxBridgeCloudConfigInfo: () => Promise<FoxBridgeCloudConfigInfo>
+  getEventAccessStatus: () => Promise<EventAccessStatus>
+  lockEventAccess: () => Promise<EventAccessStatus>
   getMealDashboard: () => Promise<MealDashboardResult>
   getMealDashboardDetail: (mealKey: string) => Promise<MealDetailResult>
   getAttendeeMealValidations: (attendeeIds: string[]) => Promise<AttendeeMealValidationsResult>
@@ -114,6 +118,15 @@ interface ElectronAPI {
       isCurrent: boolean
     }>
   }>
+  getUpstreamCheckInHealth: () => Promise<{
+    conferenceId: string
+    pending: number
+    failedRetryable: number
+    terminalOrExhausted: number
+    notApplicable: number
+    synced: number
+    oldestWaitingAt: string | null
+  } | null>
   revokeFoxBridgeLinkedDesktop: (payload: {
     deskDeviceId: string
   }) => Promise<{ deskDeviceId: string; revokedAt: string }>

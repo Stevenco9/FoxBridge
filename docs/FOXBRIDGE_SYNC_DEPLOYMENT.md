@@ -1,10 +1,12 @@
 # FoxBridge Sync — Production Deployment & Validation
 
-**Sprint 21.9.** Maintainer/operator runbook for preparing FoxBridge Cloud and validating Sync end-to-end on a clean, production-style Desktop install.
+**Sprint 21.9 runbook; updated through Sprint 23 (migrations through 019).** Maintainer/operator checklist for preparing FoxBridge Cloud and validating Sync end-to-end on a clean, production-style Desktop install.
 
-Organizers running the event do **not** need this document. They use Setup Wizard → FoxBridge Sync + Operations Home.
+Organizers running the event do **not** need this document. They use Setup Wizard → Connect to your event + Operations Home.
 
 This is **not** an automatic deploy. Run the commands below against your Cloud project manually.
+
+**Sprint 23 CLOSED — live-validated:** EventAccessSession, Linked operational parity, Cloud-first check-in, Principal upstream reconciliation (RegFox adapter #1), durable retry, audit/health. See [`CHECK_IN_ARCHITECTURE.md`](./CHECK_IN_ARCHITECTURE.md).
 
 ---
 
@@ -36,7 +38,7 @@ This is **not** an automatic deploy. Run the commands below against your Cloud p
 
 Complete these **before** issuing enrollment codes to organizers (or before relying on Principal claim / Linked join).
 
-### 1.1 Apply SQL migrations (001 → 015)
+### 1.1 Apply SQL migrations (001 → 019)
 
 Apply every file in `supabase/migrations/` in numeric order, including:
 
@@ -50,12 +52,17 @@ Apply every file in `supabase/migrations/` in numeric order, including:
 | **`011`** | Principal roles + canonical event identity + `provision_principal_desk_device` (Sprint 22.1) |
 | **`012`** | Linked join codes + revoke RPC + Linked audit actions (Sprint 22.3) |
 | **`013`** | Linked `installation_id` + rejoin reactivation (Sprint 22.5) |
-| **`014`** | Allow audit action `linked_desktop_rejoined` |
-| **`015`** | Fix ambiguous `conference_id` in `redeem_desk_join_code` |
+| **`014`** | `linked_desktop_rejoined` audit action fix |
+| **`015`** | Redeem join ambiguous `conference_id` fix |
+| **`016`** | Operational attendee snapshot columns (Sprint 23.4a) |
+| **`017`** | Operational multi-desk check-in table (Sprint 23.5a) |
+| **`018`** | Durable upstream retry metadata (Sprint 23.5b1) |
+| **`019`** | Check-in / upstream audit table (Sprint 23.5b2) |
 
 **Migration 010 is required** for operator enrollment-code issuance on hosted Supabase.  
 **Migration 011 is required** before deploying `desktop-claim-principal`. If duplicate `(registration_platform, external_event_id)` groups exist, 011 raises an error — resolve duplicates manually (do not auto-merge).  
-**Migrations 012–015 are required** for Linked join / Connected Desktops / stable rejoin.
+**Migrations 012–015 are required** for Linked join / Connected Desktops / stable rejoin.  
+**Migrations 016–019 are required** for Sprint 23 operational snapshot, Cloud check-in, upstream retry, and audit.
 
 CLI (if the project is linked):
 
@@ -75,13 +82,19 @@ Deploy these functions (service role stays in Cloud function secrets only):
 | Function | Role |
 |----------|------|
 | `desktop-enroll` | Exchange one-time enrollment code → desk credential (`legacy` role after 011) |
-| `desktop-claim-principal` | Self-service Principal claim via ephemeral RegFox verify (Sprint 22.1) |
+| `desktop-claim-principal` | Self-service Principal claim via ephemeral RegFox verify (Sprint 22.1). Sprint **23.2:** same-install reactivation via `reactivateDeskToken` after RegFox proof. **Redeploy** after verified-rotate fix (must `.select` updated Principal row; do not return a rotated raw token unless `token_hash` changed). |
 | `desktop-issue-join-code` | Principal issues Linked connection code (~15 min) (Sprint 22.3) |
 | `desktop-redeem-join` | Redeem join code → Linked desk (48 h) |
 | `desktop-list-desks` | Principal lists desks (safe metadata only) |
 | `desktop-revoke-desk` | Principal revokes a Linked desk |
-| `desktop-resolve-conference` | Desk status / conference resolve |
-| `desktop-publish` | Publish attendees + meal entitlements |
+| `desktop-resolve-conference` | Desk status / conference resolve (**read-only** conference identity — do not rewrite `regfox_event_id` from Desktop settings) |
+| `desktop-publish` | Publish attendees + meal entitlements (**Principal-only**; conference-scoped snapshot replace; operational snapshot v1 — migration **016**) |
+| `desktop-pull-attendees` | Desk-authenticated **paginated** pull of Principal-published **operational** attendees + entitlements (Linked hydration + Sync Manager `attendee_snapshot`) |
+| `desktop-check-in` | Sprint **23.5a** — desk-auth operational check-in write (Principal + Linked); no RegFox |
+| `desktop-pull-check-ins` | Sprint **23.5a** — incremental operational check-in pull for Sync |
+| `desktop-pull-pending-check-ins` | Sprint **23.5b1** — Principal-only eligible upstream reconciliation pull |
+| `desktop-update-check-in-upstream-status` | Sprint **23.5b1** — Principal-only upstream status writeback |
+| `desktop-upstream-check-in-health` | Sprint **23.5b2** — Principal-only upstream health counts (no PII) |
 | `desktop-create-pairing` | Create pairing token (hash stored) |
 | `desktop-pairing-status` | Poll whether phone redeemed pairing |
 | `desktop-ensure-scanner-session` | Legacy/fallback scanner session ensure |
@@ -95,6 +108,12 @@ npx supabase functions deploy desktop-list-desks
 npx supabase functions deploy desktop-revoke-desk
 npx supabase functions deploy desktop-resolve-conference
 npx supabase functions deploy desktop-publish
+npx supabase functions deploy desktop-pull-attendees
+npx supabase functions deploy desktop-check-in
+npx supabase functions deploy desktop-pull-check-ins
+npx supabase functions deploy desktop-pull-pending-check-ins
+npx supabase functions deploy desktop-update-check-in-upstream-status
+npx supabase functions deploy desktop-upstream-check-in-health
 npx supabase functions deploy desktop-create-pairing
 npx supabase functions deploy desktop-pairing-status
 npx supabase functions deploy desktop-ensure-scanner-session
@@ -294,9 +313,9 @@ No Sync architecture redesign was required for this sprint beyond migration **01
 
 ## 7. Operator commands still required (not automated by this repo)
 
-1. `npx supabase db push` (or SQL editor apply **001–010**, including **010**).
-2. Deploy all six `desktop-*` Edge Functions.
-3. Insert `conferences` row; run `issue_desk_enrollment_code`.
+1. `npx supabase db push` (or SQL editor apply **001–019** in order).
+2. Deploy all required `desktop-*` Edge Functions (see §1.2 inventory, including Sprint 23 check-in/upstream).
+3. Insert `conferences` row; run Principal claim / join / enrollment as appropriate.
 4. Package Desktop with `FOXBRIDGE_CLOUD_*` + `FOXBRIDGE_SCANNER_URL`.
 5. Build & host Mobile Scanner with `VITE_SUPABASE_*` at that HTTPS origin.
 6. Run clean-install checklist §3 and failure cases §4.

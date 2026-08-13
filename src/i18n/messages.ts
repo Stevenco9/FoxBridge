@@ -150,6 +150,9 @@ export type MessageKey =
   | 'sync.error.verificationFailed'
   | 'sync.error.cloudUnavailable'
   | 'sync.error.needsRetry'
+  | 'sync.upstream.ok'
+  | 'sync.upstream.pending'
+  | 'sync.upstream.attention'
   | 'home.status.syncConnected'
   | 'home.status.syncConnectedPrincipal'
   | 'home.status.syncConnectedLegacy'
@@ -182,6 +185,19 @@ export type MessageKey =
   | 'desks.error.load'
   | 'desks.error.issue'
   | 'desks.error.revoke'
+  | 'eventConnect.title'
+  | 'eventConnect.text'
+  | 'eventConnect.setupMyEventHelp'
+  | 'eventConnect.joinHelp'
+  | 'eventConnect.principalFieldsRequired'
+  | 'eventConnect.principalFailed'
+  | 'eventConnect.joinCodeRequired'
+  | 'eventConnect.joinFailed'
+  | 'ready.syncLinked'
+  | 'settings.lockEventTitle'
+  | 'settings.lockEventBody'
+  | 'settings.lockEventCancel'
+  | 'settings.lockEventConfirm'
   | 'ready.syncReady'
   | 'ready.syncLater'
   | 'connect.close'
@@ -325,6 +341,9 @@ const en: Record<MessageKey, string> = {
   'sync.error.cloudUnavailable':
     'FoxBridge Sync is temporarily unavailable. Try again in a moment.',
   'sync.error.needsRetry': 'Something went wrong. Try again in a moment.',
+  'sync.upstream.ok': 'Upstream sync: OK',
+  'sync.upstream.pending': '{count} check-ins waiting for registration sync',
+  'sync.upstream.attention': '{count} check-ins need attention',
   'desks.title': 'Connected Desktops',
   'desks.text': 'Manage computers connected to FoxBridge Sync for this event.',
   'desks.loading': 'Loading connected computers…',
@@ -351,6 +370,22 @@ const en: Record<MessageKey, string> = {
   'desks.error.revoke': 'Unable to disconnect that computer.',
   'ready.syncReady': 'FoxBridge Sync connected',
   'ready.syncLater': 'FoxBridge Sync can be connected later from the home screen',
+  'ready.syncLinked': 'Joined as a temporary Linked Desktop',
+  'eventConnect.title': 'Connect to your event',
+  'eventConnect.text': 'Choose how this computer connects to a FoxBridge Event.',
+  'eventConnect.setupMyEventHelp':
+    'For the organizer setting up the main FoxBridge computer.',
+  'eventConnect.joinHelp':
+    'For another computer joining an event already set up in FoxBridge. Ask the Principal Desktop for a connection code.',
+  'eventConnect.principalFieldsRequired': 'Enter both the RegFox API key and page ID.',
+  'eventConnect.principalFailed': 'Could not set up this event. Check your credentials and try again.',
+  'eventConnect.joinCodeRequired': 'Enter the connection code from the Principal Desktop.',
+  'eventConnect.joinFailed': 'Could not join with that connection code.',
+  'settings.lockEventTitle': 'Return to event setup?',
+  'settings.lockEventBody':
+    'Continuing will lock the current event on this computer.\n\nYour saved attendee data, meal history, badge history, and event settings will remain saved.\n\nTo access the event again, you will need either:\n• your registration-platform credentials, or\n• a new connection code from the Principal Desktop.',
+  'settings.lockEventCancel': 'Cancel',
+  'settings.lockEventConfirm': 'Lock Event & Continue',
   'connect.title': 'Connect a phone',
   'connect.loading': 'Creating pairing code…',
   'connect.setupNeeded': 'Phone scanning is not available yet.',
@@ -538,6 +573,10 @@ const es: Record<MessageKey, string> = {
   'sync.error.cloudUnavailable':
     'FoxBridge Sync no está disponible temporalmente. Intente de nuevo en un momento.',
   'sync.error.needsRetry': 'Algo salió mal. Intente de nuevo en un momento.',
+  'sync.upstream.ok': 'Sincronización upstream: OK',
+  'sync.upstream.pending':
+    '{count} registros pendientes de sincronización con la plataforma',
+  'sync.upstream.attention': '{count} registros necesitan atención',
   'desks.title': 'Escritorios conectados',
   'desks.text': 'Administre las computadoras conectadas a FoxBridge Sync para este evento.',
   'desks.loading': 'Cargando computadoras conectadas…',
@@ -564,6 +603,23 @@ const es: Record<MessageKey, string> = {
   'desks.error.revoke': 'No se pudo desconectar esa computadora.',
   'ready.syncReady': 'FoxBridge Sync conectado',
   'ready.syncLater': 'FoxBridge Sync se puede conectar después desde la pantalla principal',
+  'ready.syncLinked': 'Unido como escritorio vinculado temporal',
+  'eventConnect.title': 'Conectar a tu evento',
+  'eventConnect.text': 'Elija cómo esta computadora se conecta a un evento FoxBridge.',
+  'eventConnect.setupMyEventHelp':
+    'Para el organizador que configura la computadora principal de FoxBridge.',
+  'eventConnect.joinHelp':
+    'Para otra computadora que se une a un evento ya configurado en FoxBridge. Pida un código de conexión al escritorio Principal.',
+  'eventConnect.principalFieldsRequired': 'Ingrese la clave API de RegFox y el ID de página.',
+  'eventConnect.principalFailed':
+    'No se pudo configurar este evento. Verifique sus credenciales e intente de nuevo.',
+  'eventConnect.joinCodeRequired': 'Ingrese el código de conexión del escritorio Principal.',
+  'eventConnect.joinFailed': 'No se pudo unir con ese código de conexión.',
+  'settings.lockEventTitle': '¿Volver a la configuración del evento?',
+  'settings.lockEventBody':
+    'Continuar bloqueará el evento actual en esta computadora.\n\nLos datos de asistentes, historial de comidas, historial de gafetes y la configuración del evento se conservarán.\n\nPara acceder de nuevo necesitará:\n• las credenciales de la plataforma de registro, o\n• un nuevo código de conexión del escritorio Principal.',
+  'settings.lockEventCancel': 'Cancelar',
+  'settings.lockEventConfirm': 'Bloquear evento y continuar',
   'connect.title': 'Conectar un teléfono',
   'connect.loading': 'Creando código de emparejamiento…',
   'connect.setupNeeded': 'El escaneo por teléfono aún no está disponible.',

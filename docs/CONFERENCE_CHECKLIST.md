@@ -11,10 +11,10 @@ Operational checklist for event organizers and volunteers running registration a
 ### RegFox & FoxBridge setup
 
 - [ ] Install and open FoxBridge on the registration laptop
-- [ ] Complete the **guided setup wizard** (or confirm setup already finished)
-- [ ] On **Connect registration**, enter RegFox API key and page ID — attendees should load automatically
-- [ ] On **FoxBridge Sync**, choose **Join an existing FoxBridge Event** (connection code from the Principal Desktop) **or** **Set up my event** (RegFox API key + event ID to become Principal). Prefer these over Advanced enrollment codes.
-- [ ] Confirm FoxBridge Sync shows **Connected** (Principal or temporary Linked status as appropriate)
+- [ ] Complete the **guided setup wizard** (or unlock a returning install)
+- [ ] On **Connect to your event**, choose **Join an existing FoxBridge Event** (connection code from the Principal Desktop) **or** **Set up my event** (enter RegFox API key + event ID — required every unlock). Prefer these over Advanced enrollment codes.
+- [ ] Confirm the event unlocks (Principal or temporary Linked status as appropriate)
+- [ ] True app quit locks the event; sleep / window close does not. **Reopen setup wizard** asks before locking.
 - [ ] If this is the Principal Desktop, open **Connected Desktops** to issue a connection code for a second computer (code expires in ~15 minutes)
 - [ ] Confirm attendee count looks reasonable after setup
 - [ ] Spot-check a few registrants against RegFox (names, meal choices, registration type)
@@ -142,7 +142,7 @@ Quick workflow for each attendee:
 | **QR won't scan** | Ensure QR is not smudged; increase contrast (reprint if needed); verify phone camera focus; paste attendee id manually at meal station |
 | **RegFox connection lost** | Check Wi‑Fi; click **Update registrations**; confirm API key/page ID in Settings → Reopen setup if needed |
 | **Mobile scanner not working** | Operations home → **Connect a phone**; confirm scanner code; use **Update registrations** |
-| **Need to change printer or credentials** | Settings (gear) → **Reopen setup wizard** |
+| **Need to change printer or re-authenticate** | Settings → **Reopen setup wizard** → confirm **Lock Event & Continue** (data kept; unlock again with RegFox or a join code) |
 | **Duplicate attendee names** | Use email or organization in search; confirm identity verbally before printing |
 | **Meal validation missing meals** | Confirm attendee’s registration in RegFox includes meal selections; refresh attendee list |
 

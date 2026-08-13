@@ -1,35 +1,56 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppLanguage, AppSettingsPublic, SetupStatus } from '../../shared/models/AppSettings'
 import { translate } from '../../i18n/messages'
-import FoxBridgeSyncEnrollment from '../sync/FoxBridgeSyncEnrollment'
 import './SetupWizard.css'
 
-type WizardStep = 'welcome' | 'language' | 'regfox' | 'foxbridgeSync' | 'printer' | 'mobile' | 'ready'
+type WizardStep =
+  | 'welcome'
+  | 'language'
+  | 'connect'
+  | 'setupMyEvent'
+  | 'joinExisting'
+  | 'printer'
+  | 'mobile'
+  | 'ready'
+
+type UnlockPath = 'principal' | 'linked' | null
 
 interface SetupWizardProps {
   onComplete: () => void
+  /** Called after Principal claim or Linked redeem establishes process access. */
+  onEventUnlocked?: () => void
+  /**
+   * When true (returning install / reopen lock), skip welcome and start at Connect.
+   * Language preference is already persisted.
+   */
+  returningUser?: boolean
 }
 
-export default function SetupWizard({ onComplete }: SetupWizardProps) {
-  const [step, setStep] = useState<WizardStep>('welcome')
+export default function SetupWizard({
+  onComplete,
+  onEventUnlocked,
+  returningUser = false,
+}: SetupWizardProps) {
+  const [step, setStep] = useState<WizardStep | null>(null)
   const [language, setLanguage] = useState<AppLanguage>('en')
   const [settings, setSettings] = useState<AppSettingsPublic | null>(null)
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isBusy, setIsBusy] = useState(false)
-  const [syncRefreshToken, setSyncRefreshToken] = useState(0)
-  const [syncConnectedInWizard, setSyncConnectedInWizard] = useState(false)
+  const [unlockPath, setUnlockPath] = useState<UnlockPath>(null)
+  const [needsTransferConfirmation, setNeedsTransferConfirmation] = useState(false)
 
+  // Principal — never prefilled from secrets; both required each unlock.
   const [apiKey, setApiKey] = useState('')
   const [eventId, setEventId] = useState('')
   const [attendeeCount, setAttendeeCount] = useState(0)
-  const [regfoxConnected, setRegfoxConnected] = useState(false)
+
+  // Linked
+  const [joinCode, setJoinCode] = useState('')
 
   const [printers, setPrinters] = useState<Array<{ name: string; isDefault: boolean }>>([])
   const [selectedPrinter, setSelectedPrinter] = useState('')
   const [printerSkipped, setPrinterSkipped] = useState(false)
-
-  const [mobileReady, setMobileReady] = useState(false)
 
   const t = useCallback(
     (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
@@ -49,25 +70,23 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     setSettings(nextSettings)
     setSetupStatus(nextStatus)
     setLanguage(nextSettings.language)
-    setEventId(nextSettings.regfoxEventId ?? '')
-    setMobileReady(nextStatus.mobileConnected)
-    setAttendeeCount(nextStatus.attendeeCount)
-    setRegfoxConnected(nextStatus.regfoxConfigured && nextStatus.attendeeCount > 0)
-    setSyncConnectedInWizard(nextStatus.foxbridgeSyncConnected)
+    // Do NOT prefill RegFox API key or event ID from persisted settings (Sprint 23.2).
   }, [])
 
   useEffect(() => {
     async function bootstrap(): Promise<void> {
       if (!window.electronAPI?.initializeSettings) {
+        setStep(returningUser ? 'connect' : 'welcome')
         return
       }
 
       await window.electronAPI.initializeSettings()
       await refreshStatus()
+      setStep(returningUser ? 'connect' : 'welcome')
     }
 
     void bootstrap()
-  }, [refreshStatus])
+  }, [refreshStatus, returningUser])
 
   const loadPrinters = useCallback(async (): Promise<void> => {
     if (!window.electronAPI?.listPrinters) {
@@ -93,12 +112,18 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   }, [step, loadPrinters])
 
-  useEffect(() => {
-    if (step === 'foxbridgeSync') {
-      setSyncRefreshToken((token) => token + 1)
-      void refreshStatus()
-    }
-  }, [step, refreshStatus])
+  const continueAfterUnlock = useCallback(
+    (path: UnlockPath): void => {
+      setUnlockPath(path)
+      onEventUnlocked?.()
+      if (returningUser) {
+        onComplete()
+        return
+      }
+      setStep('printer')
+    },
+    [onComplete, onEventUnlocked, returningUser],
+  )
 
   const handleLanguageContinue = async (): Promise<void> => {
     if (!window.electronAPI?.savePublicSettings) {
@@ -106,11 +131,18 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
 
     await window.electronAPI.savePublicSettings({ language })
-    setStep('regfox')
+    setStep('connect')
   }
 
-  const handleRegFoxConnect = async (): Promise<void> => {
-    if (!window.electronAPI?.connectRegFox) {
+  const handlePrincipalUnlock = async (confirmTransfer = false): Promise<void> => {
+    if (!window.electronAPI?.connectRegFox || !window.electronAPI?.claimFoxBridgeCloudPrincipal) {
+      return
+    }
+
+    const trimmedKey = apiKey.trim()
+    const trimmedEventId = eventId.trim()
+    if (!trimmedKey || !trimmedEventId) {
+      setError(t('eventConnect.principalFieldsRequired'))
       return
     }
 
@@ -118,22 +150,77 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     setError(null)
 
     try {
-      const result = await window.electronAPI.connectRegFox({ apiKey, eventId })
-      if (!result.success) {
-        setError(result.message ?? 'Could not connect to RegFox.')
+      const connectResult = await window.electronAPI.connectRegFox({
+        apiKey: trimmedKey,
+        eventId: trimmedEventId,
+      })
+      if (!connectResult.success) {
+        setNeedsTransferConfirmation(false)
+        setError(connectResult.message ?? t('eventConnect.principalFailed'))
         return
       }
 
-      setRegfoxConnected(true)
-      setAttendeeCount(result.attendeeCount)
+      setAttendeeCount(connectResult.attendeeCount)
+
+      const claimResult = await window.electronAPI.claimFoxBridgeCloudPrincipal({
+        confirmTransfer,
+        ownershipRegFoxApiKey: trimmedKey,
+        ownershipRegFoxEventId: trimmedEventId,
+      })
+
+      if (claimResult.needsTransferConfirmation) {
+        setNeedsTransferConfirmation(true)
+        setError(null)
+        return
+      }
+
+      if (!claimResult.success) {
+        setNeedsTransferConfirmation(false)
+        setError(claimResult.message ?? t('eventConnect.principalFailed'))
+        // Remain locked — connectRegFox does not establish a session.
+        return
+      }
+
+      setNeedsTransferConfirmation(false)
+      setApiKey('')
       await refreshStatus()
-      setStep('foxbridgeSync')
-    } catch (connectError) {
+      continueAfterUnlock('principal')
+    } catch (unlockError) {
+      setNeedsTransferConfirmation(false)
       setError(
-        connectError instanceof Error
-          ? connectError.message
-          : 'Could not connect to RegFox.',
+        unlockError instanceof Error ? unlockError.message : t('eventConnect.principalFailed'),
       )
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  const handleLinkedJoin = async (): Promise<void> => {
+    if (!window.electronAPI?.redeemFoxBridgeLinkedJoin) {
+      return
+    }
+
+    const code = joinCode.trim()
+    if (!code) {
+      setError(t('eventConnect.joinCodeRequired'))
+      return
+    }
+
+    setIsBusy(true)
+    setError(null)
+
+    try {
+      const result = await window.electronAPI.redeemFoxBridgeLinkedJoin({ joinCode: code })
+      if (!result.success) {
+        setError(result.message ?? t('eventConnect.joinFailed'))
+        return
+      }
+
+      setJoinCode('')
+      await refreshStatus()
+      continueAfterUnlock('linked')
+    } catch (joinError) {
+      setError(joinError instanceof Error ? joinError.message : t('eventConnect.joinFailed'))
     } finally {
       setIsBusy(false)
     }
@@ -145,6 +232,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
 
     setPrinterSkipped(!selectedPrinter)
+    if (unlockPath === 'linked') {
+      setStep('ready')
+      return
+    }
     setStep('mobile')
   }
 
@@ -178,9 +269,20 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     onComplete()
   }
 
+  const principalFieldsReady = Boolean(apiKey.trim() && eventId.trim())
   const conferenceLabel = settings?.conferenceName ?? setupStatus?.conferenceName ?? 'Conference'
-  const syncReady =
-    syncConnectedInWizard || Boolean(setupStatus?.foxbridgeSyncConnected)
+
+  if (step === null) {
+    return (
+      <div className="setup-wizard">
+        <div className="setup-wizard__card">
+          <p className="setup-wizard__text" role="status">
+            Loading…
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="setup-wizard">
@@ -234,10 +336,56 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           </>
         )}
 
-        {step === 'regfox' && (
+        {step === 'connect' && (
           <>
-            <h1 className="setup-wizard__title">{t('regfox.title')}</h1>
-            <p className="setup-wizard__text">{t('regfox.text')}</p>
+            <h1 className="setup-wizard__title">{t('eventConnect.title')}</h1>
+            <p className="setup-wizard__text">{t('eventConnect.text')}</p>
+            <div className="setup-wizard__choices setup-wizard__choices--stack">
+              <button
+                type="button"
+                className="setup-wizard__choice setup-wizard__choice--block"
+                onClick={() => {
+                  setError(null)
+                  setNeedsTransferConfirmation(false)
+                  setApiKey('')
+                  setEventId('')
+                  setStep('setupMyEvent')
+                }}
+              >
+                <strong>{t('sync.setupMyEvent')}</strong>
+                <span className="setup-wizard__choice-help">{t('eventConnect.setupMyEventHelp')}</span>
+              </button>
+              <button
+                type="button"
+                className="setup-wizard__choice setup-wizard__choice--block"
+                onClick={() => {
+                  setError(null)
+                  setJoinCode('')
+                  setStep('joinExisting')
+                }}
+              >
+                <strong>{t('sync.joinExisting')}</strong>
+                <span className="setup-wizard__choice-help">{t('eventConnect.joinHelp')}</span>
+              </button>
+            </div>
+            {!returningUser && (
+              <div className="setup-wizard__actions">
+                <button
+                  type="button"
+                  className="setup-wizard__button"
+                  onClick={() => setStep('language')}
+                >
+                  {t('common.back')}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {step === 'setupMyEvent' && (
+          <>
+            <h1 className="setup-wizard__title">{t('sync.setupMyEvent')}</h1>
+            <p className="setup-wizard__text">{t('eventConnect.setupMyEventHelp')}</p>
             <label className="setup-wizard__field">
               <span>{t('regfox.apiKey')}</span>
               <input
@@ -245,6 +393,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 value={apiKey}
                 onChange={(event) => setApiKey(event.target.value)}
                 autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </label>
             <label className="setup-wizard__field">
@@ -254,69 +404,106 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 value={eventId}
                 onChange={(event) => setEventId(event.target.value)}
                 autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </label>
-            {regfoxConnected && (
-              <p className="setup-wizard__success">{t('regfox.connected', { count: attendeeCount })}</p>
+            {needsTransferConfirmation && (
+              <div className="setup-wizard__transfer" role="status">
+                <p className="setup-wizard__text">{t('sync.transfer.explain')}</p>
+                <div className="setup-wizard__actions">
+                  <button
+                    type="button"
+                    className="setup-wizard__button"
+                    disabled={isBusy}
+                    onClick={() => setNeedsTransferConfirmation(false)}
+                  >
+                    {t('sync.transfer.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className="setup-wizard__button setup-wizard__button--primary"
+                    disabled={isBusy || !principalFieldsReady}
+                    onClick={() => void handlePrincipalUnlock(true)}
+                  >
+                    {isBusy ? '…' : t('sync.transfer.confirm')}
+                  </button>
+                </div>
+              </div>
             )}
             {error && (
               <p className="setup-wizard__error" role="alert">
                 {error}
               </p>
             )}
+            {!needsTransferConfirmation && (
+              <div className="setup-wizard__actions">
+                <button
+                  type="button"
+                  className="setup-wizard__button"
+                  onClick={() => {
+                    setError(null)
+                    setApiKey('')
+                    setEventId('')
+                    setStep('connect')
+                  }}
+                >
+                  {t('common.back')}
+                </button>
+                <button
+                  type="button"
+                  className="setup-wizard__button setup-wizard__button--primary"
+                  disabled={isBusy || !principalFieldsReady}
+                  onClick={() => void handlePrincipalUnlock(false)}
+                >
+                  {isBusy ? '…' : t('regfox.connect')}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {step === 'joinExisting' && (
+          <>
+            <h1 className="setup-wizard__title">{t('sync.joinExisting')}</h1>
+            <p className="setup-wizard__text">{t('eventConnect.joinHelp')}</p>
+            <label className="setup-wizard__field">
+              <span>{t('sync.joinCodeLabel')}</span>
+              <input
+                type="text"
+                value={joinCode}
+                onChange={(event) => setJoinCode(event.target.value)}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="XXXX-XXXX-XXXX"
+              />
+            </label>
+            {error && (
+              <p className="setup-wizard__error" role="alert">
+                {error}
+              </p>
+            )}
             <div className="setup-wizard__actions">
-              <button type="button" className="setup-wizard__button" onClick={() => setStep('language')}>
-                {t('regfox.back')}
+              <button
+                type="button"
+                className="setup-wizard__button"
+                onClick={() => {
+                  setError(null)
+                  setJoinCode('')
+                  setStep('connect')
+                }}
+              >
+                {t('common.back')}
               </button>
               <button
                 type="button"
                 className="setup-wizard__button setup-wizard__button--primary"
-                onClick={() => {
-                  if (regfoxConnected) {
-                    setStep('foxbridgeSync')
-                    return
-                  }
-                  void handleRegFoxConnect()
-                }}
-                disabled={isBusy}
+                disabled={isBusy || !joinCode.trim()}
+                onClick={() => void handleLinkedJoin()}
               >
-                {isBusy ? '…' : regfoxConnected ? t('common.next') : t('regfox.connect')}
+                {isBusy ? '…' : t('sync.joinConnect')}
               </button>
-            </div>
-          </>
-        )}
-
-        {step === 'foxbridgeSync' && (
-          <>
-            <h1 className="setup-wizard__title">{t('sync.title')}</h1>
-            <p className="setup-wizard__text">{t('sync.text')}</p>
-            <FoxBridgeSyncEnrollment
-              language={language}
-              variant="wizard"
-              refreshToken={syncRefreshToken}
-              showSkip={!syncReady}
-              onSkip={() => setStep('printer')}
-              onStatusResolved={(connected) => {
-                setSyncConnectedInWizard(connected)
-              }}
-              onEnrolled={() => {
-                setSyncConnectedInWizard(true)
-                void refreshStatus()
-              }}
-            />
-            <div className="setup-wizard__actions">
-              <button type="button" className="setup-wizard__button" onClick={() => setStep('regfox')}>
-                {t('common.back')}
-              </button>
-              {syncReady && (
-                <button
-                  type="button"
-                  className="setup-wizard__button setup-wizard__button--primary"
-                  onClick={() => setStep('printer')}
-                >
-                  {t('common.next')}
-                </button>
-              )}
             </div>
           </>
         )}
@@ -361,11 +548,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               >
                 {selectedPrinter ? t('printer.continue') : t('printer.skip')}
               </button>
-              <button
-                type="button"
-                className="setup-wizard__button"
-                onClick={() => setStep('foxbridgeSync')}
-              >
+              <button type="button" className="setup-wizard__button" onClick={() => setStep('connect')}>
                 {t('printer.back')}
               </button>
             </div>
@@ -376,15 +559,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           <>
             <h1 className="setup-wizard__title">{t('mobile.title')}</h1>
             <p className="setup-wizard__text">{t('mobile.simpleText')}</p>
-
-            {mobileReady && <p className="setup-wizard__success">{t('mobile.ready')}</p>}
-
             {error && (
               <p className="setup-wizard__error" role="alert">
                 {error}
               </p>
             )}
-
             <div className="setup-wizard__actions">
               <button type="button" className="setup-wizard__button" onClick={() => setStep('printer')}>
                 {t('mobile.back')}
@@ -408,9 +587,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               <li>{conferenceLabel}</li>
               <li>{t('ready.attendees', { count: setupStatus?.attendeeCount ?? attendeeCount })}</li>
               <li>
-                {setupStatus?.foxbridgeSyncConnected || syncConnectedInWizard
-                  ? t('ready.syncReady')
-                  : t('ready.syncLater')}
+                {unlockPath === 'linked' ? t('ready.syncLinked') : t('ready.syncReady')}
               </li>
               <li>
                 {setupStatus?.preferredPrinterName && setupStatus.printerAvailable
@@ -419,11 +596,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                     ? t('ready.printerUnavailable')
                     : t('ready.printerReady')}
               </li>
-              <li>
-                {setupStatus?.mobileConnected || mobileReady
-                  ? t('ready.mobileReady')
-                  : t('ready.mobileLater')}
-              </li>
+              {unlockPath !== 'linked' && (
+                <li>
+                  {setupStatus?.mobileConnected ? t('ready.mobileReady') : t('ready.mobileLater')}
+                </li>
+              )}
             </ul>
             <button
               type="button"

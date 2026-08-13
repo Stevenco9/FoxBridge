@@ -30,6 +30,10 @@ const requiredMigrations = [
   '009_desk_devices.sql',
   '010_fix_issue_desk_enrollment_digest.sql',
   '011_principal_desk_provisioning.sql',
+  '016_operational_attendee_snapshot.sql',
+  '017_conference_attendee_check_ins.sql',
+  '018_upstream_check_in_retry_metadata.sql',
+  '019_conference_attendee_check_in_audit.sql',
 ]
 
 for (const name of requiredMigrations) {
@@ -60,6 +64,12 @@ const requiredFunctions = [
   'desktop-claim-principal',
   'desktop-resolve-conference',
   'desktop-publish',
+  'desktop-pull-attendees',
+  'desktop-check-in',
+  'desktop-pull-check-ins',
+  'desktop-pull-pending-check-ins',
+  'desktop-update-check-in-upstream-status',
+  'desktop-upstream-check-in-health',
   'desktop-create-pairing',
   'desktop-pairing-status',
   'desktop-ensure-scanner-session',

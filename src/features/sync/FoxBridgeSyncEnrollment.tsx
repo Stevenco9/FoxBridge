@@ -9,6 +9,11 @@ import {
   resolveFoxBridgeSyncPhase,
   type FoxBridgeSyncUiPhase,
 } from '../../shared/sync/foxbridgeSyncStatus'
+import {
+  formatUpstreamCheckInHealthMessage,
+  resolveUpstreamCheckInHealthLevel,
+  type UpstreamCheckInHealthCounts,
+} from '../../shared/sync/upstreamCheckInHealth'
 import { shouldOfferPrincipalUpgradeAction } from '../../shared/cloud/deskRolePolicy'
 import { translate } from '../../i18n/messages'
 import './FoxBridgeSyncEnrollment.css'
@@ -105,6 +110,9 @@ export default function FoxBridgeSyncEnrollment({
   const [isConnecting, setIsConnecting] = useState(false)
   const [needsTransferConfirmation, setNeedsTransferConfirmation] = useState(false)
   const [enrollError, setEnrollError] = useState<string | null>(null)
+  const [upstreamHealth, setUpstreamHealth] = useState<UpstreamCheckInHealthCounts | null>(
+    null,
+  )
   const onStatusResolvedRef = useRef(onStatusResolved)
   onStatusResolvedRef.current = onStatusResolved
 
@@ -113,6 +121,28 @@ export default function FoxBridgeSyncEnrollment({
       translate(language, key, values),
     [language],
   )
+
+  const refreshUpstreamHealth = useCallback(async (deskRole: string | null): Promise<void> => {
+    if (deskRole !== 'principal' || !window.electronAPI?.getUpstreamCheckInHealth) {
+      setUpstreamHealth(null)
+      return
+    }
+    try {
+      const health = await window.electronAPI.getUpstreamCheckInHealth()
+      if (!health) {
+        setUpstreamHealth(null)
+        return
+      }
+      setUpstreamHealth({
+        pending: health.pending,
+        failedRetryable: health.failedRetryable,
+        terminalOrExhausted: health.terminalOrExhausted,
+        oldestWaitingAt: health.oldestWaitingAt,
+      })
+    } catch {
+      setUpstreamHealth(null)
+    }
+  }, [])
 
   const refreshStatus = useCallback(async (): Promise<CloudStatus | null> => {
     if (!window.electronAPI?.getCloudStatus) {
@@ -126,15 +156,17 @@ export default function FoxBridgeSyncEnrollment({
       const next = await window.electronAPI.getCloudStatus()
       setStatus(next)
       onStatusResolvedRef.current?.(Boolean(next.deskCredentialConfigured && next.connected))
+      await refreshUpstreamHealth(next.deskRole)
       return next
     } catch {
       setStatus(EMPTY_STATUS)
+      setUpstreamHealth(null)
       onStatusResolvedRef.current?.(false)
       return null
     } finally {
       setIsLoadingStatus(false)
     }
-  }, [])
+  }, [refreshUpstreamHealth])
 
   useEffect(() => {
     void refreshStatus()
@@ -166,6 +198,17 @@ export default function FoxBridgeSyncEnrollment({
     status.deskExpiresAt,
     language === 'es' ? 'es' : 'en',
   )
+
+  const upstreamHealthLevel =
+    connectedRoleLabel === 'principal' && upstreamHealth
+      ? resolveUpstreamCheckInHealthLevel(upstreamHealth)
+      : 'hidden'
+  const upstreamHealthMessage =
+    connectedRoleLabel === 'principal' && upstreamHealth
+      ? formatUpstreamCheckInHealthMessage(upstreamHealthLevel, upstreamHealth, (key, values) =>
+          t(key as Parameters<typeof translate>[1], values),
+        )
+      : null
 
   const clearOwnershipFields = (): void => {
     setOwnershipApiKey('')
@@ -387,6 +430,19 @@ export default function FoxBridgeSyncEnrollment({
           {connectedRoleLabel === 'linked' && linkedUntil && (
             <p className="foxbridge-sync__until">
               {t('sync.connectedUntil', { when: linkedUntil })}
+            </p>
+          )}
+          {connectedRoleLabel === 'principal' && upstreamHealthMessage && (
+            <p
+              className={
+                upstreamHealthLevel === 'attention'
+                  ? 'foxbridge-sync__upstream foxbridge-sync__upstream--attention'
+                  : upstreamHealthLevel === 'soft_pending'
+                    ? 'foxbridge-sync__upstream foxbridge-sync__upstream--pending'
+                    : 'foxbridge-sync__upstream'
+              }
+            >
+              {upstreamHealthMessage}
             </p>
           )}
         </div>

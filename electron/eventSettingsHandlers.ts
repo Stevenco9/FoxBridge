@@ -8,6 +8,7 @@ import {
   getEventSettings,
   patchEventSettings,
 } from './settings/eventSettingsStore'
+import { assertEventAccessUnlocked } from './session/eventAccessSession'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -43,6 +44,7 @@ export function registerEventSettingsHandlers(): void {
   ipcMain.handle(
     'eventSettings:get',
     async (_event, eventId: string): Promise<EventSettingsEntry> => {
+      assertEventAccessUnlocked()
       if (typeof eventId !== 'string' || !eventId.trim()) {
         return createDefaultEventSettingsEntry()
       }
@@ -59,6 +61,7 @@ export function registerEventSettingsHandlers(): void {
       eventId: string,
       patch: unknown,
     ): Promise<EventSettingsEntry> => {
+      assertEventAccessUnlocked()
       if (typeof eventId !== 'string' || !eventId.trim()) {
         return createDefaultEventSettingsEntry()
       }

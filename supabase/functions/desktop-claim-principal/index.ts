@@ -20,6 +20,12 @@ interface ClaimBody {
    * Ordinary setup must not silently transfer ownership (Sprint 22.2).
    */
   confirmTransfer?: boolean
+  /**
+   * Optional existing Principal desk token for same-installation reactivation
+   * (Sprint 23.2). Must match the active Principal for this conference.
+   * Linked tokens are still rejected above. Never sufficient without RegFox proof.
+   */
+  reactivateDeskToken?: string
 }
 
 function sanitizeMessage(message: string): string {
@@ -245,6 +251,89 @@ Deno.serve(async (req) => {
     }
 
     const confirmTransfer = body.confirmTransfer === true
+    const reactivateDeskToken = body.reactivateDeskToken?.trim() || null
+    body.reactivateDeskToken = undefined
+
+    /**
+     * Same-installation Principal relaunch (Sprint 23.2):
+     * After independent RegFox ownership proof, if the caller still holds the
+     * active Principal desk token for this conference, rotate the token on the
+     * same desk row — do not transfer / create a duplicate Principal.
+     */
+    if (reactivateDeskToken) {
+      const existingHash = await sha256Hex(reactivateDeskToken)
+      const conferenceIdKey = String(conferenceId)
+      const { data: matchingPrincipal, error: matchError } = await client
+        .from('desk_devices')
+        .select('id, role, revoked_at, conference_id')
+        .eq('token_hash', existingHash)
+        .eq('conference_id', conferenceIdKey)
+        .maybeSingle()
+
+      if (matchError) {
+        return errorResponse(sanitizeMessage(matchError.message), 500)
+      }
+
+      if (
+        matchingPrincipal &&
+        matchingPrincipal.role === 'principal' &&
+        matchingPrincipal.revoked_at == null &&
+        String(matchingPrincipal.conference_id) === conferenceIdKey
+      ) {
+        const deskTokenBytes = new Uint8Array(32)
+        crypto.getRandomValues(deskTokenBytes)
+        const deskToken = [...deskTokenBytes]
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join('')
+        const tokenHash = await sha256Hex(deskToken)
+        const deviceLabel = label || `Principal ${new Date().toISOString().slice(0, 10)}`
+
+        // Require a returned row so a silent 0-row update cannot mint a client
+        // token that Cloud will never accept (Sprint 23.2 live-validation blocker).
+        const { data: rotated, error: rotateError } = await client
+          .from('desk_devices')
+          .update({
+            token_hash: tokenHash,
+            label: deviceLabel,
+            last_used_at: new Date().toISOString(),
+          })
+          .eq('id', matchingPrincipal.id)
+          .eq('role', 'principal')
+          .is('revoked_at', null)
+          .select('id, role, conference_id')
+          .maybeSingle()
+
+        if (rotateError) {
+          return errorResponse(sanitizeMessage(rotateError.message), 500)
+        }
+        if (!rotated?.id || rotated.role !== 'principal') {
+          return errorResponse(
+            'Unable to reactivate Principal desk credential. Try again.',
+            500,
+          )
+        }
+
+        await client.from('desk_device_audit').insert({
+          conference_id: conferenceIdKey,
+          desk_device_id: matchingPrincipal.id,
+          action: 'principal_claimed',
+          details: { reason: 'principal_reactivated', revoked_count: 0 },
+        })
+
+        return jsonResponse({
+          deskToken,
+          deskDeviceId: matchingPrincipal.id,
+          conferenceId: conferenceIdKey,
+          conferenceName: conferenceNameOut,
+          regfoxEventId: externalEventId,
+          registrationPlatform: 'regfox',
+          role: 'principal',
+          transferred: false,
+          reactivated: true,
+          revokedCount: 0,
+        })
+      }
+    }
 
     const { data: activePrincipal, error: principalLookupError } = await client
       .from('desk_devices')

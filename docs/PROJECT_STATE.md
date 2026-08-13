@@ -1,13 +1,15 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (Sprint 22 — **live-validated closeout**)  
+Last updated: August 2026 (**Sprint 23 CLOSED — live-validated**)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
-**Sync design:** [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) — canonical FoxBridge Sync architecture (Sprint 21.0).  
+**Sync design:** [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) — canonical FoxBridge Sync architecture.  
 **Device trust / self-service provisioning:** [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md) — Sprint 22 **complete / live-validated**.  
-**Sync deploy/validation:** [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) — operator checklist through migration **015**.  
+**Event access session / multi-desktop ops:** [`EVENT_SESSION_ARCHITECTURE.md`](./EVENT_SESSION_ARCHITECTURE.md) — Sprint **23 complete / live-validated**.  
+**Operational check-in:** [`CHECK_IN_ARCHITECTURE.md`](./CHECK_IN_ARCHITECTURE.md) — Cloud-first multi-desk check-in + Principal upstream reconciliation.  
+**Sync deploy/validation:** [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) — operator checklist through migration **019**.  
 **Cloud backend:** [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md) — current Supabase implementation of FoxBridge Cloud.  
 **Mobile product:** [`MOBILE_PRODUCT.md`](./MOBILE_PRODUCT.md) — volunteer-focused mobile scope and guardrails (`apps/mobile`).  
 **Vision:** [`VISION.md`](./VISION.md) — long-term product and architecture principles.
@@ -36,28 +38,13 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Event Settings UI (Sprint 20.3)** — Operations Home → Event Settings; Attendee Display ordered field list (add/remove/change, autosave); attendee details screen unchanged
 - **Attendee Quick Info (Sprint 20.4)** — details panel renders configured `attendeeDisplay` fields; hardcoded AdAgrA book UI removed
 - **Sprint 20.5 polish** — Event Settings / Quick Info spacing, long-label handling, scroll for long lists, clearer stale keys
-- **Sprint 21.0 Sync Architecture (design)** — [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md): Desktop / Cloud / phones / registration roles, sync policies; no app behavior change yet
-- **Sprint 21.1 Desktop Sync foundation** — main-process `sync()` pulls Cloud meal validations into SQLite (incremental, first-write-wins); no UI / phone / pairing changes
-- **Sprint 21.2 Local Event Store** — durable `event_attendees` table; Desktop uses local store as working dataset after import; RegFox connect/refresh unchanged
-- **Sprint 21.3 Event identity** — SQLite `events` + `activeEventId`; Local Event Store / Event Settings / sync cursors associate with FoxBridge Event; `regfoxEventId` kept for RegFox
-- **Sprint 21.4 Sync lifecycle** — Sync Manager: initial + every-5-minute best-effort `sync()`; overlap gated; non-blocking
-- **Sprint 21.5 Cloud config foundation** — FoxBridge Cloud public defaults + config abstraction; privileged keys stay local/dev-only (not packaged)
-- **Sprint 21.6 Trusted Cloud ops** — event-scoped desk enrollment + Edge Functions; production Desktop needs no local service-role
-- **Sprint 21.7 Simplified phone pairing** — one-scan HTTPS QR (`/pair?token=…`) with clear Desktop states; soft publish warning; non-technical organizer errors
-- **Sprint 21.8 Organizer Sync enrollment UX** — Setup Wizard Sync step + Operations Home status/connect card; shared enrollment logic; Advanced remains fallback only
-- **Sprint 21.9 Sync deployment readiness** — production deploy/validation checklists; migration 010 enrollment `digest`/`search_path` fix; automated packaging readiness test
-- **Sprint 21.10 Live clean-install validation** — packaged Desktop + desk enroll + pair + meal validate + Cloud→SQLite Sync **PASS** (no local service-role)
-- **Sprint 22.0 Device trust architecture (design)** — Principal / Linked Desktop / Scanner hierarchy; self-service claim via ephemeral RegFox verify; no implementation yet
-- **Sprint 22.1 Principal provisioning backend** — migration 011, `desktop-claim-principal`, main-process claim IPC; operator enroll fallback preserved; no Wizard/Linked UI yet
-- **Sprint 22.2 Principal Desktop self-service Setup UX** — Wizard “Set up FoxBridge Sync” via Principal claim; transfer confirmation; Operations Home Principal/legacy status; enrollment-code fallback preserved; Linked join UX not included
-- **Sprint 22.3 Linked Desktop join codes & Connected Desktops** — Principal issues 15‑min connection codes; Linked desks (48 h); Principal list/revoke UI; join path without RegFox credentials
-- **Sprint 22.4 Principal escalation security closeout** — Linked/revoked desks cannot silent-claim Principal; Set up my event requires RegFox ownership form; operator enrollment moved to Advanced only; Linked join no longer writes local `regfoxEventId`. Live re-test confirmed escalation path closed.
-- **Sprint 22.5 Linked Desktop UX polish** — join-code canonicalize; live countdown; opaque installation ID (migrations **013–015**). Live redeem fixed (014 audit + 015 ambiguous `conference_id`).
-- **Sprint 22 FINAL — live-validated** — Principal self-service, Connected Desktops, Linked join/revoke/rejoin, secure Principal claim, universal `dist:mac` packaging validated on Intel + Apple Silicon. See [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md).
+- **Sprint 21.0–21.10 Sync** — architecture through live clean-install validation (desk enroll, pair, meal validate, Cloud→SQLite)
+- **Sprint 22 FINAL — live-validated** — Principal self-service, Connected Desktops, Linked join/revoke/rejoin, secure Principal claim. See [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md).
+- **Sprint 23 FINAL — live-validated** — EventAccessSession lock/unlock; Principal/Linked operational parity; event isolation (A→B→A); operational attendee snapshot; Cloud-first multi-desk check-in; Principal upstream reconciliation (RegFox adapter #1); durable retry; audit + Principal health. See [`EVENT_SESSION_ARCHITECTURE.md`](./EVENT_SESSION_ARCHITECTURE.md) + [`CHECK_IN_ARCHITECTURE.md`](./CHECK_IN_ARCHITECTURE.md).
 
-**Follow-up (non-blocking):** Pre-22.5 Linked rows without `installation_id` may duplicate once on first upgrade rejoin; join-code rate limits; tighter anon RLS; phone offline queue; Brother silent printing; multi-event UI.
+**Follow-up (non-blocking / backlog — not Sprint 23 blockers):** additional registration-platform adapters; offline Cloud check-in queue; check-out / undo check-in; mobile registration check-in; tighter historical anon RLS; richer admin diagnostics; multi-event UI; Brother silent printing; join-code rate limits; Pre-22.5 Linked rows without `installation_id` may duplicate once on first upgrade rejoin.
 
-**Not yet built:** Sprint 23+ features (not started).
+**Not yet built:** Sprint 24 (await explicit scope).
 
 ---
 
@@ -959,18 +946,17 @@ No new features. Polish + validation of Sprint 20 Event Settings / Quick Info:
 ```
 I'm continuing work on FoxBridge, a desktop Electron + React + TypeScript app for RegFox event check-in and Brother label badge printing.
 
-Read docs/PROJECT_STATE.md, docs/SYNC_ARCHITECTURE.md, docs/FOXBRIDGE_SYNC_DEPLOYMENT.md, docs/MOBILE_PRODUCT.md, docs/SUPABASE_ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
+Read docs/PROJECT_STATE.md, docs/EVENT_SESSION_ARCHITECTURE.md, docs/CHECK_IN_ARCHITECTURE.md, docs/SYNC_ARCHITECTURE.md, docs/FOXBRIDGE_SYNC_DEPLOYMENT.md, docs/DEVICE_TRUST_ARCHITECTURE.md, docs/MOBILE_PRODUCT.md, docs/SUPABASE_ARCHITECTURE.md, and docs/PRODUCT_DECISIONS.md in the repo.
 
 Current state:
-- Desktop: guided setup wizard (RegFox → self-service FoxBridge Sync Principal claim or Set up later), operations home, RegFox sync, badges, print, SQLite meal validation, optional mobile cloud publish
+- Desktop: EventAccessSession lock/unlock; Principal + Linked operational parity; Cloud-first multi-desk check-in; Principal RegFox upstream reconciliation
 - Mobile PWA: sign-in, QR scan, online meal validation via Supabase validate_meal RPC
-- Sync design: docs/SYNC_ARCHITECTURE.md + docs/DEVICE_TRUST_ARCHITECTURE.md
-- Sync deploy/validation: docs/FOXBRIDGE_SYNC_DEPLOYMENT.md
+- Sprint 22 + Sprint 23 CLOSED / live-validated
 - Branch main is on GitHub
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: Sprint 22 closed (live-validated). Await explicit Sprint 23 scope — do not start Sprint 23 unprompted.
+Next task: **Sprint 23 CLOSED — live-validated.** Await explicit Sprint 24 scope. Do not start Sprint 24 unprompted.
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

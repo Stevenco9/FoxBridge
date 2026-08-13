@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { canonicalizeJoinCode, normalizeEnrollmentCode } from '../../src/shared/cloud/deskCredentialPolicy'
+import {
+  principalCredentialPersistedMatches,
+  selectReactivateDeskToken,
+} from '../../src/shared/cloud/principalReactivation'
 import { readOrCreateInstallationIdSync } from './installationIdStore'
 import { resolveFoxBridgeCloudPublicConfig } from './cloudConfig'
 import { readDeskCredentialSync, type StoredDeskCredential } from './deskCredentialStore'
@@ -159,6 +163,14 @@ export async function claimPrincipalDesktopWithRegFox(input: {
 
   try {
     const { cloudUrl, publishableKey } = requirePublicConfig()
+    // Same-install Principal relaunch: offer the local desk token for reactivation
+    // after RegFox proof. Never send Linked tokens (possession must not escalate).
+    const existingDesk = readDeskCredentialSync()
+    const reactivateDeskToken = selectReactivateDeskToken({
+      deskToken: existingDesk?.deskToken,
+      role: existingDesk?.role ?? null,
+    })
+
     const response = await fetch(`${cloudUrl}/functions/v1/desktop-claim-principal`, {
       method: 'POST',
       headers: {
@@ -172,6 +184,7 @@ export async function claimPrincipalDesktopWithRegFox(input: {
         regfoxApiKey: apiKey,
         label: input.label?.trim() || null,
         confirmTransfer: input.confirmTransfer === true,
+        ...(reactivateDeskToken ? { reactivateDeskToken } : {}),
       }),
     })
 
@@ -184,6 +197,7 @@ export async function claimPrincipalDesktopWithRegFox(input: {
       conferenceName?: string | null
       regfoxEventId?: string | null
       transferred?: boolean
+      reactivated?: boolean
       role?: string
     }
 
@@ -222,6 +236,7 @@ export async function claimPrincipalDesktopWithRegFox(input: {
       }
     }
 
+    // Always replace with the Cloud-returned credential (rotated on reactivation).
     await patchSecrets({
       foxbridgeDeskToken: payload.deskToken,
       foxbridgeDeskDeviceId: payload.deskDeviceId,
@@ -229,6 +244,25 @@ export async function claimPrincipalDesktopWithRegFox(input: {
       foxbridgeDeskRole: 'principal',
       foxbridgeDeskExpiresAt: null,
     })
+
+    const persisted = readDeskCredentialSync()
+    if (
+      !principalCredentialPersistedMatches(persisted, {
+        deskToken: payload.deskToken,
+        deskDeviceId: payload.deskDeviceId,
+        conferenceId: payload.conferenceId,
+      })
+    ) {
+      return {
+        success: false,
+        conferenceId: null,
+        conferenceName: null,
+        transferred: false,
+        needsTransferConfirmation: false,
+        message:
+          'FoxBridge could not store the Principal desk credential on this computer. Try again.',
+      }
+    }
 
     await patchPublicSettings({
       conferenceId: payload.conferenceId,
@@ -266,6 +300,7 @@ export async function resolveConferenceViaDesk(input?: {
   name: string
   deskRole: string | null
   deskExpiresAt: string | null
+  lastDesktopSyncAt: string | null
 }> {
   const desk = requireDeskCredential()
   const result = await invokeDesktopFunction<{
@@ -273,10 +308,13 @@ export async function resolveConferenceViaDesk(input?: {
     conferenceName: string
     deskRole?: string
     deskExpiresAt?: string | null
+    lastDesktopSyncAt?: string | null
   }>(
     'desktop-resolve-conference',
     {
       conferenceId: desk.conferenceId,
+      // Intentionally omitted for Linked / stale settings — Edge resolve is
+      // read-only and must not rewrite conference.regfox_event_id.
       regfoxEventId: input?.regfoxEventId ?? null,
     },
     desk.deskToken,
@@ -308,6 +346,7 @@ export async function resolveConferenceViaDesk(input?: {
     name: result.conferenceName,
     deskRole: result.deskRole ?? null,
     deskExpiresAt: result.deskExpiresAt ?? null,
+    lastDesktopSyncAt: result.lastDesktopSyncAt ?? null,
   }
 }
 
@@ -445,6 +484,184 @@ export async function listConnectedDesks(): Promise<{
   const desk = requireDeskCredential()
   return invokeDesktopFunction(
     'desktop-list-desks',
+    {},
+    desk.deskToken,
+  )
+}
+
+export interface PulledCloudAttendeeRow {
+  attendee_id: string
+  registration_id: string
+  display_name: string
+  email?: string | null
+  qr_identifier: string
+  updated_at?: string | null
+  phone?: string | null
+  organization?: string | null
+  job_title?: string | null
+  department?: string | null
+  confirmation_code?: string | null
+  payment_status?: string | null
+  payment_total?: number | null
+  payment_paid?: number | null
+  payment_balance?: number | null
+  payment_currency?: string | null
+  payment_upstream_status?: string | null
+  checked_in?: boolean | null
+  checked_in_at?: string | null
+  snapshot_version?: number | null
+  operational_json?: Record<string, unknown> | null
+}
+
+export interface PulledCloudEntitlementRow {
+  attendee_id: string
+  meal_key: string
+  meal_label: string
+  source?: string | null
+  source_plan_id?: string | null
+}
+
+/** Desk-authenticated Cloud → Desktop attendee snapshot for the desk's conference only. */
+export async function pullAttendeesViaDesk(): Promise<{
+  conferenceId: string
+  conferenceName: string | null
+  lastDesktopSyncAt: string | null
+  attendees: PulledCloudAttendeeRow[]
+  mealEntitlements: PulledCloudEntitlementRow[]
+}> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-pull-attendees',
+    { conferenceId: desk.conferenceId },
+    desk.deskToken,
+  )
+}
+
+export interface CloudCheckInResult {
+  conferenceId: string
+  attendeeId: string
+  registrationId: string
+  checkedIn: boolean
+  checkedInAt: string
+  alreadyCheckedIn: boolean
+  checkedInByDeskDeviceId: string | null
+  source: string
+  updatedAt: string
+  upstreamSyncStatus: string
+}
+
+/** Sprint 23.5a — desk-authenticated operational check-in (Principal + Linked). */
+export async function checkInAttendeeViaDesk(attendeeId: string): Promise<CloudCheckInResult> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-check-in',
+    { attendeeId: attendeeId.trim() },
+    desk.deskToken,
+  )
+}
+
+export interface PulledCloudCheckInRow {
+  attendeeId: string
+  registrationId: string
+  checkedIn: boolean
+  checkedInAt: string
+  checkedInByDeskDeviceId: string | null
+  source: string
+  updatedAt: string
+  upstreamSyncStatus: string
+}
+
+/** Sprint 23.5a — incremental operational check-in pull for Sync. */
+export async function pullCheckInsViaDesk(input?: {
+  updatedAfter?: string | null
+  afterAttendeeId?: string | null
+  limit?: number
+}): Promise<{
+  conferenceId: string
+  checkIns: PulledCloudCheckInRow[]
+  count: number
+}> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-pull-check-ins',
+    {
+      conferenceId: desk.conferenceId,
+      updatedAfter: input?.updatedAfter ?? null,
+      afterAttendeeId: input?.afterAttendeeId ?? null,
+      limit: input?.limit,
+    },
+    desk.deskToken,
+  )
+}
+
+export interface PendingUpstreamCheckInRow {
+  attendeeId: string
+  registrationId: string
+  checkedInAt: string
+  upstreamSyncStatus: string
+  upstreamLastErrorCode: string | null
+  upstreamAttemptCount: number
+  upstreamNextAttemptAt: string | null
+  upstreamRetryEligible: boolean
+  updatedAt: string
+}
+
+/** Sprint 23.5b1 — Principal-only eligible pending/failed-retryable check-ins. */
+export async function pullPendingCheckInsViaDesk(input?: {
+  limit?: number
+}): Promise<{
+  conferenceId: string
+  checkIns: PendingUpstreamCheckInRow[]
+  count: number
+}> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-pull-pending-check-ins',
+    { limit: input?.limit },
+    desk.deskToken,
+  )
+}
+
+export interface UpstreamStatusWriteback {
+  attendeeId: string
+  upstreamSyncStatus: 'synced' | 'failed' | 'not_applicable' | 'pending'
+  upstreamLastErrorCode?: string | null
+  upstreamRetryEligible?: boolean
+  upstreamAttemptCount?: number
+  upstreamNextAttemptAt?: string | null
+}
+
+/** Sprint 23.5b1 — Principal-only upstream reconciliation result writeback. */
+export async function updateCheckInUpstreamStatusViaDesk(
+  results: UpstreamStatusWriteback[],
+  options?: { platformId?: string | null },
+): Promise<{ conferenceId: string; updated: number }> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-update-check-in-upstream-status',
+    {
+      results,
+      platformId: options?.platformId ?? null,
+    },
+    desk.deskToken,
+  )
+}
+
+export interface UpstreamCheckInHealthSummary {
+  conferenceId: string
+  pending: number
+  failedRetryable: number
+  terminalOrExhausted: number
+  notApplicable: number
+  synced: number
+  oldestWaitingAt: string | null
+}
+
+/** Sprint 23.5b2 — Principal-only upstream reconciliation health counts. */
+export async function pullUpstreamCheckInHealthViaDesk(): Promise<UpstreamCheckInHealthSummary> {
+  const desk = requireDeskCredential()
+  return invokeDesktopFunction(
+    'desktop-upstream-check-in-health',
     {},
     desk.deskToken,
   )

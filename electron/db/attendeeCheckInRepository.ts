@@ -1,45 +1,87 @@
 import type { Attendee } from '../../src/shared/models'
 import { getDatabase } from './database'
 
-interface AttendeeCheckInRow {
+interface EventAttendeeCheckInRow {
+  event_id: string
   attendee_id: string
   registration_id: string
+  checked_in: number
   checked_in_at: string
+  source: string
+  updated_at: string
 }
 
 export interface PersistedAttendeeCheckIn {
+  eventId: string
   attendeeId: string
   registrationId: string
+  checkedIn: boolean
   checkedInAt: string
+  source?: string
+  updatedAt?: string
 }
 
-export function persistAttendeeCheckIn(record: PersistedAttendeeCheckIn): void {
+/**
+ * Upsert operational check-in overlay for one event + attendee.
+ * Does not rewrite rich Local Event Store attendee payloads.
+ */
+export function persistEventAttendeeCheckIn(record: PersistedAttendeeCheckIn): void {
+  const eventId = record.eventId.trim()
+  const attendeeId = record.attendeeId.trim()
+  if (!eventId || !attendeeId) {
+    return
+  }
+
+  const updatedAt = record.updatedAt?.trim() || record.checkedInAt
   const db = getDatabase()
   db.prepare(
-    `INSERT INTO attendee_check_ins (attendee_id, registration_id, checked_in_at, source)
-     VALUES (?, ?, ?, 'desktop')
-     ON CONFLICT(attendee_id) DO UPDATE SET
+    `INSERT INTO event_attendee_check_ins (
+       event_id, attendee_id, registration_id, checked_in, checked_in_at, source, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(event_id, attendee_id) DO UPDATE SET
        registration_id = excluded.registration_id,
+       checked_in = excluded.checked_in,
        checked_in_at = excluded.checked_in_at,
-       source = excluded.source`,
-  ).run(record.attendeeId, record.registrationId, record.checkedInAt)
+       source = excluded.source,
+       updated_at = excluded.updated_at`,
+  ).run(
+    eventId,
+    attendeeId,
+    record.registrationId,
+    record.checkedIn ? 1 : 0,
+    record.checkedInAt,
+    record.source ?? 'desktop',
+    updatedAt,
+  )
 }
 
-export function getAllPersistedCheckIns(): Map<string, PersistedAttendeeCheckIn> {
+export function getEventPersistedCheckIns(
+  eventId: string,
+): Map<string, PersistedAttendeeCheckIn> {
+  const trimmed = eventId.trim()
+  const map = new Map<string, PersistedAttendeeCheckIn>()
+  if (!trimmed) {
+    return map
+  }
+
   const db = getDatabase()
   const rows = db
     .prepare(
-      `SELECT attendee_id, registration_id, checked_in_at
-       FROM attendee_check_ins`,
+      `SELECT event_id, attendee_id, registration_id, checked_in, checked_in_at, source, updated_at
+       FROM event_attendee_check_ins
+       WHERE event_id = ?`,
     )
-    .all() as AttendeeCheckInRow[]
+    .all(trimmed) as EventAttendeeCheckInRow[]
 
-  const map = new Map<string, PersistedAttendeeCheckIn>()
   for (const row of rows) {
     map.set(row.attendee_id, {
+      eventId: row.event_id,
       attendeeId: row.attendee_id,
       registrationId: row.registration_id,
+      checkedIn: row.checked_in === 1,
       checkedInAt: row.checked_in_at,
+      source: row.source,
+      updatedAt: row.updated_at,
     })
   }
 
@@ -47,33 +89,58 @@ export function getAllPersistedCheckIns(): Map<string, PersistedAttendeeCheckIn>
 }
 
 /**
- * Merges locally persisted check-ins into attendees downloaded from RegFox.
- * RegFox remains authoritative when it already reports checked-in status.
+ * Effective check-in = operational overlay when present, else base snapshot.
+ * Overlay never erased by registration snapshot refresh.
  */
-export function applyPersistedCheckIns(attendees: Attendee[]): Attendee[] {
-  const persisted = getAllPersistedCheckIns()
+export function applyPersistedCheckIns(
+  attendees: Attendee[],
+  eventId?: string | null,
+): Attendee[] {
+  const scopedEventId =
+    eventId?.trim() ||
+    attendees.find((a) => a.eventId?.trim())?.eventId?.trim() ||
+    null
+
+  if (!scopedEventId) {
+    return attendees
+  }
+
+  const persisted = getEventPersistedCheckIns(scopedEventId)
   if (persisted.size === 0) {
     return attendees
   }
 
   return attendees.map((attendee) => {
+    if (attendee.eventId?.trim() && attendee.eventId.trim() !== scopedEventId) {
+      return attendee
+    }
+
     const record = persisted.get(attendee.id)
     if (!record) {
       return attendee
     }
 
-    if (attendee.checkedIn) {
-      return {
-        ...attendee,
-        checkedInAt: attendee.checkedInAt ?? record.checkedInAt,
-      }
-    }
-
     return {
       ...attendee,
-      checkedIn: true,
+      checkedIn: record.checkedIn,
       checkedInAt: record.checkedInAt,
-      updatedAt: new Date().toISOString(),
+      updatedAt: attendee.updatedAt,
     }
+  })
+}
+
+/** @deprecated Use persistEventAttendeeCheckIn with eventId. */
+export function persistAttendeeCheckIn(record: {
+  attendeeId: string
+  registrationId: string
+  checkedInAt: string
+  eventId: string
+}): void {
+  persistEventAttendeeCheckIn({
+    eventId: record.eventId,
+    attendeeId: record.attendeeId,
+    registrationId: record.registrationId,
+    checkedIn: true,
+    checkedInAt: record.checkedInAt,
   })
 }

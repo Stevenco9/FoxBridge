@@ -1,16 +1,23 @@
 import { isSupabaseConfigured } from '../cloud/supabaseConfig'
+import { isEventAccessUnlocked } from '../session/eventAccessSession'
 import { readPublicSettings } from '../settings/settingsStore'
 import {
+  CHECK_IN_SYNC_INTERVAL_MS,
   DESKTOP_SYNC_INTERVAL_MS,
   decideScheduledSyncStart,
 } from './syncManagerHelpers'
-import { syncBestEffort } from './syncService'
+import { syncBestEffort, syncCheckInStateBestEffort } from './syncService'
 
-export { DESKTOP_SYNC_INTERVAL_MS } from './syncManagerHelpers'
+export {
+  CHECK_IN_SYNC_INTERVAL_MS,
+  DESKTOP_SYNC_INTERVAL_MS,
+} from './syncManagerHelpers'
 
 let started = false
 let syncInProgress = false
+let checkInSyncInProgress = false
 let intervalHandle: ReturnType<typeof setInterval> | null = null
+let checkInIntervalHandle: ReturnType<typeof setInterval> | null = null
 
 /**
  * Desktop Sync Manager — lifecycle owner for ongoing Cloud → SQLite sync.
@@ -31,19 +38,27 @@ export function startDesktopSyncManager(): void {
 
   // Initial best-effort pull when lifecycle conditions are already met.
   void requestDesktopSyncBestEffort()
+  void requestCheckInSyncBestEffort()
 
   intervalHandle = setInterval(() => {
     void requestDesktopSyncBestEffort()
   }, DESKTOP_SYNC_INTERVAL_MS)
-
-  // Do not keep the process alive solely for sync polling.
   intervalHandle.unref?.()
+
+  checkInIntervalHandle = setInterval(() => {
+    void requestCheckInSyncBestEffort()
+  }, CHECK_IN_SYNC_INTERVAL_MS)
+  checkInIntervalHandle.unref?.()
 }
 
 export function stopDesktopSyncManager(): void {
   if (intervalHandle) {
     clearInterval(intervalHandle)
     intervalHandle = null
+  }
+  if (checkInIntervalHandle) {
+    clearInterval(checkInIntervalHandle)
+    checkInIntervalHandle = null
   }
   started = false
 }
@@ -53,7 +68,7 @@ export function isDesktopSyncManagerStarted(): boolean {
 }
 
 export function isDesktopSyncInProgress(): boolean {
-  return syncInProgress
+  return syncInProgress || checkInSyncInProgress
 }
 
 /**
@@ -67,6 +82,7 @@ export async function requestDesktopSyncBestEffort(): Promise<void> {
       syncInProgress,
       activeEventId: settings.activeEventId,
       cloudConfigured: isSupabaseConfigured(),
+      eventAccessUnlocked: isEventAccessUnlocked(),
     })
 
     if (decision !== 'run') {
@@ -83,6 +99,39 @@ export async function requestDesktopSyncBestEffort(): Promise<void> {
     syncInProgress = false
     console.warn(
       '[desktop-sync-manager]',
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+/**
+ * Fast check-in-only pull (12s). Independent overlap gate from full sync
+ * so attendee_snapshot stays on the 5-minute cadence.
+ */
+export async function requestCheckInSyncBestEffort(): Promise<void> {
+  try {
+    const settings = await readPublicSettings()
+    const decision = decideScheduledSyncStart({
+      syncInProgress: checkInSyncInProgress,
+      activeEventId: settings.activeEventId,
+      cloudConfigured: isSupabaseConfigured(),
+      eventAccessUnlocked: isEventAccessUnlocked(),
+    })
+
+    if (decision !== 'run') {
+      return
+    }
+
+    checkInSyncInProgress = true
+    try {
+      await syncCheckInStateBestEffort()
+    } finally {
+      checkInSyncInProgress = false
+    }
+  } catch (error) {
+    checkInSyncInProgress = false
+    console.warn(
+      '[desktop-check-in-sync]',
       error instanceof Error ? error.message : String(error),
     )
   }

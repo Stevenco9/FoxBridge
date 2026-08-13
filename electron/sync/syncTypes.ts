@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * Registered Desktop Sync entity types.
  * Add new literals here when introducing handlers (notes, badge history, …).
  */
-export type SyncEntityType = 'meal_validations'
+export type SyncEntityType = 'attendee_snapshot' | 'meal_validations' | 'check_in_state'
 
 export interface SyncContext {
   conferenceId: string

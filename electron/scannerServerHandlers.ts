@@ -5,6 +5,7 @@ import {
   startScannerServer,
   stopScannerServer,
 } from './scannerServer/scannerServer'
+import { assertEventAccessUnlocked } from './session/eventAccessSession'
 
 export function registerScannerServerHandlers(): void {
   ipcMain.removeHandler('scannerServer:getStatus')
@@ -12,6 +13,7 @@ export function registerScannerServerHandlers(): void {
 
   ipcMain.removeHandler('scannerServer:start')
   ipcMain.handle('scannerServer:start', async (_event, port?: number) => {
+    assertEventAccessUnlocked()
     if (port != null && (!Number.isInteger(port) || port < 1 || port > 65535)) {
       throw new Error('Port must be an integer between 1 and 65535.')
     }

@@ -36,7 +36,7 @@ export default function AttendeeCheckInPanel({
 
   const handleCheckIn = async (): Promise<void> => {
     if (!window.electronAPI?.checkInAttendee) {
-      setError('RegFox could not confirm this check-in. Please try again.')
+      setError('Unable to check in right now. Please try again.')
       return
     }
 
@@ -47,19 +47,19 @@ export default function AttendeeCheckInPanel({
     try {
       const result = await window.electronAPI.checkInAttendee(attendee.id)
       if (!result.success || !result.attendee) {
-        setError(result.message ?? 'RegFox could not confirm this check-in. Please try again.')
+        setError(result.message ?? 'Unable to check in right now. Please try again.')
         return
       }
 
       if (result.alreadyCheckedIn) {
         setAlreadyCheckedInNotice(
-          result.message ?? 'This attendee was already checked in in RegFox.',
+          result.message ?? 'This attendee was already checked in.',
         )
       }
 
       onCheckedIn(result.attendee)
     } catch {
-      setError('RegFox could not confirm this check-in. Please try again.')
+      setError('Unable to check in right now. Please try again.')
     } finally {
       setIsCheckingIn(false)
     }

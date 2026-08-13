@@ -275,12 +275,18 @@ FoxBridge does **not** ship a general-purpose conflict engine. Each data class h
 
 ### 10.2 Data sync matrix
 
+**Sprint 23.5a:** Cloud operational check-in table + desk-auth `desktop-check-in` / `desktop-pull-check-ins`. Principal and Linked share Cloud-first write path. Sync entity `check_in_state` polls ~12s. Local overlay `event_attendee_check_ins` merges over registration snapshot.
+
+**Sprint 23.5b1:** Principal-only upstream reconciliation manager + RegFox adapter. Durable retry metadata (migration **018**: `upstream_retry_eligible`, `upstream_next_attempt_at`, `upstream_attempt_count`).
+
+**Sprint 23.5b2:** Append-only check-in audit (migration **019**) + Principal-only upstream health summary in FoxBridge Sync panel. See `docs/CHECK_IN_ARCHITECTURE.md`.
+
 | Data | Source of truth | Sync directions | Conflict / merge policy | Future considerations |
 |------|-----------------|-----------------|-------------------------|------------------------|
 | **Registrations** (attendees, purchases, custom fields) | Registration platform | Platform → Desktop → Cloud (projection) | **Upstream wins** on each successful registration sync | Durable Desktop cache; Cloud projection may omit sensitive PII by policy |
 | **Meal entitlements** (derived) | Derived from registrations via shared meal rules | Desktop → Cloud (replace set per conference sync) | **Upstream-derived replace** on publish (full entitlement refresh) | Keep derivation shared; never edit entitlements on phone |
 | **Meal scans / validations** | FoxBridge ops (Desktop local and/or Cloud) | Phone → Cloud; Desktop local; **Cloud ↔ Desktop pull/push (target)** | **First write wins** per `(conference_id, attendee_id, meal_key)` | Desktop must ingest Cloud rows into SQLite for offline parity |
-| **Check-ins** | Operational intent; RegFox holds official checked-in flag after write-back | Desktop → RegFox; Desktop SQLite history; Cloud mirror optional | **First successful check-in wins**; RegFox status refreshed on registration sync | Offline check-in outbox; Cloud mirror for multi-desk visibility |
+| **Check-ins** | FoxBridge Cloud operational table (live); registration platform via Principal adapter (23.5b) | Desktop → Cloud (desk-auth); peers ← `check_in_state` (~12s) | **First successful Cloud check-in wins**; original `checked_in_at` preserved | RegFox upstream adapter in 23.5b; no fake local-only success |
 | **Badge print history** | Desktop SQLite | **No sync** (today) | N/A local append | Optional Cloud aggregate for reprint analytics |
 | **Payments** (display snapshot) | Registration platform | Platform → Desktop (and optional Cloud display fields) | **Upstream wins** | Write-back only as explicit future product; never silent |
 | **Organizer notes** | FoxBridge (unless upstream notes API exists) | Desktop ↔ Cloud (**future**) | **Last organizer edit wins** with timestamp (desktop author) | Prefer FoxBridge-owned notes over inventing RegFox fields |
@@ -357,7 +363,7 @@ Supabase remains a valid implementation of FoxBridge Cloud. Replacing Supabase l
 | **22.5** | Linked UX polish — canonicalize, countdown, installation identity (migrations 013–015) |
 | **22 FINAL** | Live-validated multi-Mac universal packaging + Cloud deploy |
 
-Canonical operator runbook: [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md). Canonical device trust: [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md).
+Canonical operator runbook: [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md). Canonical device trust: [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md). Canonical local event lock / re-auth: [`EVENT_SESSION_ARCHITECTURE.md`](./EVENT_SESSION_ARCHITECTURE.md) (Sprint **23.2** Connect wizard + Reopen lock; Sync Manager skips while locked).
 
 ### Sprint 22.3 — Linked join codes
 

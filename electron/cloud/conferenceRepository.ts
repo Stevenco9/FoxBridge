@@ -28,8 +28,10 @@ export async function resolveConferenceId(
     }
 
     // Desk credentials are bound to one Cloud conference; do not create others.
+    // Never pass Linked machines' leftover Principal regfoxEventId into resolve
+    // (historical Edge write polluted Test Event.regfox_event_id → 1012457).
     return resolveConferenceViaDesk({
-      regfoxEventId: settings.regfoxEventId,
+      regfoxEventId: desk.role === 'linked' ? null : settings.regfoxEventId,
     })
   }
 

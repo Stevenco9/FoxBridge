@@ -60,7 +60,7 @@ Desktop SQLite separates concerns:
 | Store | Contents |
 |-------|----------|
 | **`event_attendees`** | Canonical local registration working dataset (platform-agnostic `Attendee` JSON + `source_platform`) |
-| **Operational tables** | `meal_validations`, `attendee_check_ins`, `badge_print_logs` |
+| **Operational tables** | `meal_validations`, `event_attendee_check_ins` (event-scoped overlay), `badge_print_logs` |
 | **`event-settings.json`** | Event-specific UI prefs (Attendee Display field keys, future badge/meal UI config) |
 
 Registration adapters (RegFox today) map into `Attendee[]` and call `replaceAttendeeCacheFromRegistrationSync`. Desktop workflows read the local store after import; Connect / Refresh still pull from the registration platform.

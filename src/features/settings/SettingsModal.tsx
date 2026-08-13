@@ -27,6 +27,7 @@ export default function SettingsModal({
   refreshToken,
 }: SettingsModalProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false)
   const [showDesktopMealValidation, setShowDesktopMealValidation] = useState(false)
   const [scannerWebAddress, setScannerWebAddress] = useState('')
   const [serviceUrl, setServiceUrl] = useState('')
@@ -191,9 +192,41 @@ export default function SettingsModal({
           </select>
         </label>
 
-        <button type="button" className="settings-modal__button" onClick={onReopenSetup}>
+        <button
+          type="button"
+          className="settings-modal__button"
+          onClick={() => setLockConfirmOpen(true)}
+        >
           {t('settings.reopenSetup')}
         </button>
+
+        {lockConfirmOpen && (
+          <div className="settings-modal__confirm" role="alertdialog" aria-labelledby="lock-event-title">
+            <h3 id="lock-event-title" className="settings-modal__confirm-title">
+              {t('settings.lockEventTitle')}
+            </h3>
+            <p className="settings-modal__confirm-body">{t('settings.lockEventBody')}</p>
+            <div className="settings-modal__confirm-actions">
+              <button
+                type="button"
+                className="settings-modal__button"
+                onClick={() => setLockConfirmOpen(false)}
+              >
+                {t('settings.lockEventCancel')}
+              </button>
+              <button
+                type="button"
+                className="settings-modal__button settings-modal__button--danger"
+                onClick={() => {
+                  setLockConfirmOpen(false)
+                  onReopenSetup()
+                }}
+              >
+                {t('settings.lockEventConfirm')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {setupStatus?.safeStorage.usingFallback && (
           <p className="settings-modal__warning" role="status">

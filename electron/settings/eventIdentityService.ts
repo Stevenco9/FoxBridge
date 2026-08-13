@@ -80,8 +80,38 @@ export async function ensureActiveEventIdentityFromSettings(): Promise<Event | n
 
 /**
  * Prefer FoxBridge Event id for Local Event Store keys; fall back to RegFox page id.
+ * While an EventAccessSession is unlocked, callers should prefer session.eventId instead.
  */
 export async function resolveLocalEventStoreKey(): Promise<string | null> {
   const settings = await readPublicSettings()
   return settings.activeEventId?.trim() || settings.regfoxEventId?.trim() || null
+}
+
+/**
+ * Local FoxBridge Event for a Cloud conference (Linked join / Cloud-backed desks).
+ * Uses registration_platform `foxbridge-cloud` + conference UUID so RegFox page ids
+ * never satisfy Principal ownership from a join code alone.
+ */
+export async function activateCloudConferenceEvent(input: {
+  conferenceId: string
+  name?: string | null
+}): Promise<Event> {
+  const conferenceId = input.conferenceId.trim()
+  if (!conferenceId) {
+    throw new Error('conferenceId is required.')
+  }
+
+  const event = ensureEvent({
+    registrationPlatform: 'foxbridge-cloud',
+    platformEventId: conferenceId,
+    name: input.name?.trim() || `FoxBridge Event ${conferenceId.slice(0, 8)}`,
+  })
+
+  await patchPublicSettings({
+    activeEventId: event.id,
+    conferenceId,
+    conferenceName: input.name?.trim() || event.name,
+  })
+
+  return event
 }

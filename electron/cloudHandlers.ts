@@ -7,6 +7,7 @@ import { getCloudStatus, publishAttendees } from './cloud/publishAttendeesReposi
 import { getFoxBridgeCloudConfigInfo } from './cloud/cloudConfig'
 import { getConnectPhoneInfo } from './mobile/connectPhoneRepository'
 import { createScannerPairing, getPairingStatus } from './mobile/pairingRepository'
+import { assertEventAccessUnlocked, isEventAccessUnlocked } from './session/eventAccessSession'
 
 import {
   setupMobileScanner,
@@ -20,30 +21,69 @@ import {
 } from './settings/settingsService'
 
 export function registerCloudHandlers(): void {
-  ipcMain.removeHandler('cloud:getStatus')
-  ipcMain.handle('cloud:getStatus', async () => getCloudStatus())
-
   ipcMain.removeHandler('cloud:getConfigInfo')
-  ipcMain.handle('cloud:getConfigInfo', async () => getFoxBridgeCloudConfigInfo())
+  ipcMain.handle('cloud:getConfigInfo', async () => {
+    const info = getFoxBridgeCloudConfigInfo()
+    if (!isEventAccessUnlocked()) {
+      return {
+        ...info,
+        deskCredentialConfigured: false,
+        readyForPrivilegedDesktopOps: false,
+        cloudOpsTransport: 'none' as const,
+      }
+    }
+    return info
+  })
+
+  // Allowed while locked for Sync unlock UX — redacted so persisted desk does not look "connected".
+  ipcMain.removeHandler('cloud:getStatus')
+  ipcMain.handle('cloud:getStatus', async () => {
+    if (!isEventAccessUnlocked()) {
+      const config = getFoxBridgeCloudConfigInfo()
+      return {
+        configured: config.publicSource !== 'none',
+        connected: false,
+        conferenceId: null,
+        conferenceName: null,
+        lastPublishAt: null,
+        lastPublishAttendeeCount: null,
+        lastPublishError: null,
+        deskCredentialConfigured: false,
+        connectionError: null,
+        deskRole: null,
+        deskExpiresAt: null,
+      }
+    }
+    return getCloudStatus()
+  })
 
   ipcMain.removeHandler('cloud:getMobileScannerInfo')
-  ipcMain.handle('cloud:getMobileScannerInfo', async () => getMobileScannerInfo())
+  ipcMain.handle('cloud:getMobileScannerInfo', async () => {
+    assertEventAccessUnlocked()
+    return getMobileScannerInfo()
+  })
 
   ipcMain.removeHandler('cloud:getMealDashboard')
-  ipcMain.handle('cloud:getMealDashboard', async () => loadMealDashboard())
+  ipcMain.handle('cloud:getMealDashboard', async () => {
+    assertEventAccessUnlocked()
+    return loadMealDashboard()
+  })
 
   ipcMain.removeHandler('cloud:getMealDashboardDetail')
-  ipcMain.handle('cloud:getMealDashboardDetail', async (_event, mealKey: string) =>
-    loadMealDashboardDetail(mealKey),
-  )
+  ipcMain.handle('cloud:getMealDashboardDetail', async (_event, mealKey: string) => {
+    assertEventAccessUnlocked()
+    return loadMealDashboardDetail(mealKey)
+  })
 
   ipcMain.removeHandler('cloud:getAttendeeMealValidations')
-  ipcMain.handle('cloud:getAttendeeMealValidations', async (_event, attendeeIds: string[]) =>
-    loadAttendeeMealValidations(attendeeIds),
-  )
+  ipcMain.handle('cloud:getAttendeeMealValidations', async (_event, attendeeIds: string[]) => {
+    assertEventAccessUnlocked()
+    return loadAttendeeMealValidations(attendeeIds)
+  })
 
   ipcMain.removeHandler('cloud:publishAttendees')
   ipcMain.handle('cloud:publishAttendees', async (_event, attendees?: Attendee[]) => {
+    assertEventAccessUnlocked()
     return publishAttendees(attendees)
   })
 
@@ -98,31 +138,68 @@ export function registerCloudHandlers(): void {
   ipcMain.removeHandler('cloud:issueJoinCode')
   ipcMain.handle(
     'cloud:issueJoinCode',
-    async (_event, payload?: { label?: string | null; ttlMinutes?: number }) =>
-      issueFoxBridgeJoinCode(payload),
+    async (_event, payload?: { label?: string | null; ttlMinutes?: number }) => {
+      assertEventAccessUnlocked()
+      return issueFoxBridgeJoinCode(payload)
+    },
   )
 
   ipcMain.removeHandler('cloud:listDesks')
-  ipcMain.handle('cloud:listDesks', async () => listFoxBridgeConnectedDesks())
+  ipcMain.handle('cloud:listDesks', async () => {
+    assertEventAccessUnlocked()
+    return listFoxBridgeConnectedDesks()
+  })
+
+  ipcMain.removeHandler('cloud:getUpstreamCheckInHealth')
+  ipcMain.handle('cloud:getUpstreamCheckInHealth', async () => {
+    assertEventAccessUnlocked()
+    const { readDeskCredentialSync } = await import('./cloud/deskCredentialStore')
+    const desk = readDeskCredentialSync()
+    if (desk?.role !== 'principal') {
+      return null
+    }
+    const { pullUpstreamCheckInHealthViaDesk } = await import('./cloud/desktopCloudApi')
+    try {
+      return await pullUpstreamCheckInHealthViaDesk()
+    } catch (error) {
+      console.warn(
+        '[upstream-check-in-health]',
+        error instanceof Error ? error.message : String(error),
+      )
+      return null
+    }
+  })
 
   ipcMain.removeHandler('cloud:revokeDesk')
   ipcMain.handle(
     'cloud:revokeDesk',
-    async (_event, payload: { deskDeviceId: string }) =>
-      revokeFoxBridgeLinkedDesktop(payload.deskDeviceId),
+    async (_event, payload: { deskDeviceId: string }) => {
+      assertEventAccessUnlocked()
+      return revokeFoxBridgeLinkedDesktop(payload.deskDeviceId)
+    },
   )
 
   ipcMain.removeHandler('cloud:setupMobileScanner')
-  ipcMain.handle('cloud:setupMobileScanner', async () => setupMobileScanner())
+  ipcMain.handle('cloud:setupMobileScanner', async () => {
+    assertEventAccessUnlocked()
+    return setupMobileScanner()
+  })
 
   ipcMain.removeHandler('cloud:getConnectPhoneInfo')
-  ipcMain.handle('cloud:getConnectPhoneInfo', async () => getConnectPhoneInfo())
+  ipcMain.handle('cloud:getConnectPhoneInfo', async () => {
+    assertEventAccessUnlocked()
+    return getConnectPhoneInfo()
+  })
 
   ipcMain.removeHandler('cloud:createScannerPairing')
-  ipcMain.handle('cloud:createScannerPairing', async () => createScannerPairing())
+  ipcMain.handle('cloud:createScannerPairing', async () => {
+    assertEventAccessUnlocked()
+    return createScannerPairing()
+  })
 
   ipcMain.removeHandler('cloud:getPairingStatus')
-  ipcMain.handle('cloud:getPairingStatus', async (_event, tokenId: string) =>
-    getPairingStatus(tokenId),
-  )
+  ipcMain.handle('cloud:getPairingStatus', async (_event, tokenId: string) => {
+    assertEventAccessUnlocked()
+    return getPairingStatus(tokenId)
+  })
 }

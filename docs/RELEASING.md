@@ -214,7 +214,7 @@ Run through this checklist on a clean machine **without** Cursor or `npm run dev
 
 For Sync-ready installers (Clean desk enrollment without Settings → Advanced):
 
-1. Follow **[`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md)** — migrations **001–010** (including **010**), deploy all `desktop-*` Edge Functions, bootstrap conference + enrollment code.
+1. Follow **[`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md)** — migrations through **019** (Sprint 23 check-in/audit), deploy all required `desktop-*` Edge Functions (including check-in + upstream reconciliation), bootstrap conference + enrollment/Principal as needed.
 2. Build Desktop with public packaging env (never service-role):
 
 ```bash

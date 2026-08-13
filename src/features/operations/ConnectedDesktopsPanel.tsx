@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppLanguage } from '../../shared/models/AppSettings'
-import { canManageLinkedDesks } from '../../shared/cloud/deskRolePolicy'
 import { formatJoinCodeRemaining } from '../../shared/cloud/deskCredentialPolicy'
 import { formatLinkedConnectedUntil } from '../../shared/sync/foxbridgeSyncStatus'
 import { translate } from '../../i18n/messages'
@@ -42,6 +41,12 @@ function deskStateLabel(
   return t('desks.state.active')
 }
 
+/** Edge assertPrincipalRole copy — map to organizer i18n, do not invent client Principal. */
+function isCloudPrincipalOnlyError(message: string): boolean {
+  const lower = message.toLowerCase()
+  return lower.includes('principal') && lower.includes('conference devices')
+}
+
 export default function ConnectedDesktopsPanel({
   language,
   open,
@@ -65,33 +70,32 @@ export default function ConnectedDesktopsPanel({
   )
 
   const refresh = useCallback(async (): Promise<void> => {
-    if (!window.electronAPI?.getCloudStatus || !window.electronAPI?.listFoxBridgeConnectedDesks) {
+    if (!window.electronAPI?.listFoxBridgeConnectedDesks) {
       setAllowed(false)
       setLoading(false)
+      setError(t('desks.error.load'))
       return
     }
 
     setLoading(true)
     setError(null)
     try {
-      const status = await window.electronAPI.getCloudStatus()
-      const role = status.deskRole
-      const canManage =
-        status.connected &&
-        role !== null &&
-        canManageLinkedDesks(role === 'principal' || role === 'linked' || role === 'legacy' ? role : 'legacy')
-
-      setAllowed(canManage)
-      if (!canManage) {
-        setDesks([])
-        return
-      }
-
+      // Cloud assertPrincipalRole is the authority — do not gate on client
+      // getCloudStatus/canManage alone (Sprint 23.2 live-validation blocker).
       const result = await window.electronAPI.listFoxBridgeConnectedDesks()
+      setAllowed(true)
       setDesks(result.desks)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('desks.error.load'))
+      const message = err instanceof Error ? err.message : t('desks.error.load')
+      setAllowed(false)
       setDesks([])
+      if (isCloudPrincipalOnlyError(message)) {
+        setError(null)
+      } else {
+        // Surface invalid/stale desk credential errors instead of a false
+        // "not Principal" message when Operations Home still looks Principal.
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
@@ -182,7 +186,7 @@ export default function ConnectedDesktopsPanel({
 
         {!loading && !allowed && (
           <p className="connected-desks__error" role="alert">
-            {t('desks.principalOnly')}
+            {error ?? t('desks.principalOnly')}
           </p>
         )}
 
@@ -267,7 +271,7 @@ export default function ConnectedDesktopsPanel({
           </>
         )}
 
-        {error && (
+        {!loading && allowed && error && (
           <p className="connected-desks__error" role="alert">
             {error}
           </p>

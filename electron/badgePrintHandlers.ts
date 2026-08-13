@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { getBadgePrintStatus } from './db/badgePrintLogRepository'
 import type { BadgePrintStatus } from '../src/shared/models/BadgePrintLog'
+import { assertEventAccessUnlocked } from './session/eventAccessSession'
 
 const EMPTY_STATUS: BadgePrintStatus = {
   count: 0,
@@ -17,6 +18,7 @@ export function registerBadgePrintHandlers(): void {
   ipcMain.handle(
     'print:getBadgePrintStatus',
     (_event, attendeeId: string): BadgePrintStatus => {
+      assertEventAccessUnlocked()
       if (!attendeeId?.trim()) {
         return EMPTY_STATUS
       }

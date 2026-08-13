@@ -86,6 +86,15 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
     void refreshMeta()
   }, [loadAttendees, refreshMeta])
 
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onAttendeesChanged?.(() => {
+      void loadAttendees()
+    })
+    return () => {
+      unsubscribe?.()
+    }
+  }, [loadAttendees])
+
   const filteredAttendees = useMemo(
     () => searchAttendees(attendees, query),
     [attendees, query],
@@ -96,10 +105,9 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
     attendees.find((attendee) => attendee.id === selectedId) ??
     null
 
-  const handleReopenSetup = async (): Promise<void> => {
-    if (window.electronAPI?.resetSetup) {
-      await window.electronAPI.resetSetup()
-    }
+  const handleReopenSetup = (): void => {
+    // Sprint 23.2: lock is performed by App after confirmation — do not resetSetup
+    // (preserves setupComplete and all persistent event data).
     setSettingsOpen(false)
     onReopenSetup()
   }

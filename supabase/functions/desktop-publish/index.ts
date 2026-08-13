@@ -1,5 +1,6 @@
 import {
   assertConferenceScope,
+  assertPrincipalRole,
   corsHeaders,
   createServiceClient,
   errorResponse,
@@ -52,6 +53,12 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as PublishBody
     const client = createServiceClient()
     const desk = await requireDeskDevice(client, readDeskToken(req, body))
+    // Sprint 23.4a — authoritative attendee snapshot is Principal-only.
+    // Linked / legacy must not replace Cloud registration projections.
+    assertPrincipalRole(
+      desk,
+      'Only the Principal Desktop can publish the event attendee snapshot.',
+    )
     const conferenceId = assertConferenceScope(desk, body.conferenceId)
 
     const attendees = Array.isArray(body.attendees) ? body.attendees : []
@@ -69,7 +76,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Full conference-scoped snapshot replacement (not additive upsert-only).
+    // meal_validations have no FK to attendees — history rows may remain for
+    // removed attendee_ids; entitlements are replaced below.
+    const { error: deleteAttendeesError } = await client
+      .from('attendees')
+      .delete()
+      .eq('conference_id', conferenceId)
+    if (deleteAttendeesError) {
+      return errorResponse(`attendees delete failed: ${deleteAttendeesError.message}`, 500)
+    }
+
     for (const batch of chunk(attendees, BATCH)) {
+      if (batch.length === 0) continue
       const { error } = await client
         .from('attendees')
         .upsert(batch, { onConflict: 'conference_id,attendee_id' })

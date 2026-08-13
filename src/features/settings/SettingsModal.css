@@ -82,6 +82,44 @@
   cursor: pointer;
 }
 
+.settings-modal__button--danger {
+  border-color: #b91c1c;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.settings-modal__confirm {
+  margin: 0 0 1rem;
+  padding: 0.875rem;
+  border: 2px solid #fbbf24;
+  border-radius: 0.75rem;
+  background: #fffbeb;
+}
+
+.settings-modal__confirm-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.settings-modal__confirm-body {
+  margin: 0 0 0.875rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-line;
+  color: #374151;
+}
+
+.settings-modal__confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.settings-modal__confirm-actions .settings-modal__button {
+  margin-bottom: 0;
+}
+
 .settings-modal__button--primary {
   color: #ffffff;
   background: #15803d;

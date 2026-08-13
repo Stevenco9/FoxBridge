@@ -19,7 +19,14 @@ import {
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
 import { getScannerWebAddress } from '../cloud/supabaseConfig'
 import { getSupabaseServiceClient } from '../cloud/supabaseClient'
-import { isAttendeeCacheLoaded, getAttendeeCache } from '../scannerServer/attendeeCache'
+import { readDeskCredentialSync } from '../cloud/deskCredentialStore'
+import {
+  getAttendeeCache,
+  getAttendeeCacheCount,
+  isAttendeeCacheLoaded,
+  ensureAttendeeCacheForEvent,
+} from '../scannerServer/attendeeCache'
+import { getEventAccessSession } from '../session/eventAccessSession'
 import { loadRegFoxAttendees } from '../settings/settingsService'
 
 function isHttpsUrl(url: string): boolean {
@@ -43,22 +50,49 @@ function failedPairing(error: string): PairingInfo {
 }
 
 /**
- * Best-effort publish so phones get attendees. Hard-fails only when there is
- * nothing useful to publish; publish glitches become a soft warning so one-scan
- * pairing can still proceed on an enrolled desk.
+ * Ensure attendees exist for phone pairing without Linked RegFox/publish footguns.
+ *
+ * Principal: may RegFox-load if empty, then publish snapshot.
+ * Linked: Cloud-hydrate only — never RegFox, never attendee publish.
  */
 async function prepareAttendeesForPairing(): Promise<{
   hardError: string | null
   warning: string | null
 }> {
+  const desk = readDeskCredentialSync()
+  const session = getEventAccessSession()
+  const sessionEventId = session?.eventId?.trim()
+
+  if (sessionEventId) {
+    ensureAttendeeCacheForEvent(sessionEventId)
+  }
+
   if (!isAttendeeCacheLoaded() || getAttendeeCache().length === 0) {
-    const loadResult = await loadRegFoxAttendees()
-    if (!loadResult.success || getAttendeeCache().length === 0) {
-      return {
-        hardError: pairingBlockMessage('no_attendees'),
-        warning: null,
+    if (desk?.role === 'linked') {
+      const { hydrateAttendeesFromCloudForSession } = await import(
+        '../cloud/hydrateAttendeesFromCloud'
+      )
+      const hydrate = await hydrateAttendeesFromCloudForSession()
+      if (!hydrate.success || getAttendeeCacheCount() === 0) {
+        return {
+          hardError: pairingBlockMessage('no_attendees'),
+          warning: null,
+        }
+      }
+    } else {
+      const loadResult = await loadRegFoxAttendees()
+      if (!loadResult.success || getAttendeeCache().length === 0) {
+        return {
+          hardError: pairingBlockMessage('no_attendees'),
+          warning: null,
+        }
       }
     }
+  }
+
+  // Linked must never publish the Cloud attendee snapshot (Principal-only).
+  if (desk?.role === 'linked') {
+    return { hardError: null, warning: null }
   }
 
   const publishResult = await publishAttendees()

@@ -92,6 +92,21 @@
   color: #047857;
 }
 
+.foxbridge-sync__upstream {
+  margin-top: 0.45rem !important;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #047857;
+}
+
+.foxbridge-sync__upstream--pending {
+  color: #92400e;
+}
+
+.foxbridge-sync__upstream--attention {
+  color: #b45309;
+}
+
 .foxbridge-sync__status {
   margin: 0;
   color: #4b5563;

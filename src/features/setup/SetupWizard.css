@@ -62,6 +62,35 @@
   margin-bottom: 1rem;
 }
 
+.setup-wizard__choices--stack {
+  grid-template-columns: 1fr;
+}
+
+.setup-wizard__choice--block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-height: auto;
+  padding: 1rem;
+  text-align: left;
+}
+
+.setup-wizard__choice-help {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.setup-wizard__transfer {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 2px solid #fbbf24;
+  border-radius: 0.75rem;
+  background: #fffbeb;
+}
+
 .setup-wizard__choice {
   min-height: 3rem;
   border: 2px solid #d1d5db;

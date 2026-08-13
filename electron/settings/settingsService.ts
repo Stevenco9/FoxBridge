@@ -12,6 +12,7 @@ import { resolvePhoneAccessibleUrl } from '../mobile/phoneUrlResolver'
 import { getMobileAppUrl } from '../cloud/supabaseConfig'
 import { isFoxBridgeCloudPrivilegedConfigured } from '../cloud/cloudConfig'
 import { getCloudStatus, publishAttendees } from '../cloud/publishAttendeesRepository'
+import { readDeskCredentialSync } from '../cloud/deskCredentialStore'
 import {
   claimPrincipalDesktopWithRegFox,
   enrollDesktopWithCode,
@@ -29,6 +30,7 @@ import {
 import { getPreferredPrinterName } from '../printing/preferredPrinterStore'
 import {
   getAttendeeCache,
+  getAttendeeCacheEventId,
   isAttendeeCacheLoaded,
   replaceAttendeeCacheFromRegistrationSync,
 } from '../scannerServer/attendeeCache'
@@ -42,6 +44,11 @@ import { createRegFoxServiceFromSettings } from '../regfox/regfoxConfig'
 import { mergeAttendeesWithPersistedCheckIns } from '../regfox/checkInAttendee'
 import { activateRegFoxEvent } from './eventIdentityService'
 import { canSilentPrincipalClaimFromStoredRegFox, isDeskDeviceRole } from '../../src/shared/cloud/deskRolePolicy'
+import {
+  establishEventAccessSession,
+  getEventAccessSession,
+  isEventAccessUnlocked,
+} from '../session/eventAccessSession'
 
 const MOBILE_PUBLISH_WARNING =
   'Phone scanners could not be updated. Desktop registration is still available.'
@@ -113,31 +120,44 @@ export async function getSetupStatus(printerNames: string[]): Promise<SetupStatu
   const regfoxConfigured = Boolean(settings.regfoxEventId && secrets.regfoxApiKey)
   const mobileConfigured = isFoxBridgeCloudPrivilegedConfigured()
 
-  const attendeeCount = isAttendeeCacheLoaded() ? getAttendeeCache().length : 0
+  const unlocked = isEventAccessUnlocked()
+  const session = unlocked ? getEventAccessSession() : null
+  // While locked, do not expose attendee counts / conference labels that would
+  // let the wizard treat the event as already connected without re-auth.
+  // While unlocked, count only the session event's cache — never another event.
+  const attendeeCount =
+    unlocked &&
+    session?.eventId &&
+    isAttendeeCacheLoaded() &&
+    getAttendeeCacheEventId() === session.eventId
+      ? getAttendeeCache().length
+      : 0
 
-  const foxbridgeSyncEnrolled = cloudStatus.deskCredentialConfigured
+  const foxbridgeSyncEnrolled = unlocked && cloudStatus.deskCredentialConfigured
   const foxbridgeSyncConnected =
-    cloudStatus.deskCredentialConfigured && cloudStatus.connected
+    unlocked && cloudStatus.deskCredentialConfigured && cloudStatus.connected
 
   return {
     setupComplete: settings.setupComplete,
-    regfoxConfigured,
+    regfoxConfigured: unlocked ? regfoxConfigured : false,
     mobileConfigured,
-    mobileConnected: cloudStatus.connected,
+    mobileConnected: unlocked ? cloudStatus.connected : false,
     foxbridgeSyncEnrolled,
     foxbridgeSyncConnected,
-    foxbridgeSyncConnectionError: cloudStatus.connectionError,
-    foxbridgeSyncDeskRole: cloudStatus.deskRole,
-    foxbridgeSyncDeskExpiresAt: cloudStatus.deskExpiresAt,
+    foxbridgeSyncConnectionError: unlocked ? cloudStatus.connectionError : null,
+    foxbridgeSyncDeskRole: unlocked ? cloudStatus.deskRole : null,
+    foxbridgeSyncDeskExpiresAt: unlocked ? cloudStatus.deskExpiresAt : null,
     attendeeCount,
     preferredPrinterName,
     printerAvailable: preferredPrinterName
       ? printerNames.includes(preferredPrinterName)
       : false,
-    conferenceName: settings.conferenceName ?? cloudStatus.conferenceName,
-    lastAttendeeUpdate: settings.lastAttendeeSyncAt,
-    lastMobilePublishAt: cloudStatus.lastPublishAt,
-    lastMobilePublishWarning: settings.lastMobilePublishWarning,
+    conferenceName: unlocked
+      ? (settings.conferenceName ?? cloudStatus.conferenceName)
+      : null,
+    lastAttendeeUpdate: unlocked ? settings.lastAttendeeSyncAt : null,
+    lastMobilePublishAt: unlocked ? cloudStatus.lastPublishAt : null,
+    lastMobilePublishWarning: unlocked ? settings.lastMobilePublishWarning : null,
     language: settings.language,
     safeStorage: getSafeStorageStatus(),
   }
@@ -156,6 +176,21 @@ export async function connectRegFox(
       attendeeCount: 0,
       message: 'Enter both the RegFox API key and page ID.',
     }
+  }
+
+  // Fail-closed during event switch: drop any prior event's in-memory snapshot
+  // before the RegFox download so unlock/publish cannot see Event A mid-switch.
+  const {
+    clearAttendeeCache,
+    getAttendeeCacheEventId,
+  } = await import('../scannerServer/attendeeCache')
+  const priorSettings = await readPublicSettings()
+  const priorPlatform = priorSettings.regfoxEventId?.trim() || null
+  if (
+    getAttendeeCacheEventId() ||
+    (priorPlatform && priorPlatform !== trimmedEventId)
+  ) {
+    clearAttendeeCache()
   }
 
   const service = new RegFoxService({ apiKey: trimmedKey, eventId: trimmedEventId })
@@ -189,9 +224,15 @@ export async function connectRegFox(
   const syncedAt = new Date().toISOString()
   const settings = await readPublicSettings()
   // Keep regfoxEventId for RegFox workflows; associate Local Event Store with FoxBridge Event id.
+  // Do not reuse a stale Event A conferenceName as the Event B FoxBridge Event name when
+  // switching — prefer a neutral name until Cloud claim returns the canonical conference name.
+  const nameForEvent =
+    priorPlatform && priorPlatform !== trimmedEventId
+      ? `RegFox ${trimmedEventId}`
+      : settings.conferenceName
   const foxEvent = await activateRegFoxEvent({
     platformEventId: trimmedEventId,
-    name: settings.conferenceName,
+    name: nameForEvent,
     markSynced: true,
     syncedAt,
   })
@@ -199,16 +240,25 @@ export async function connectRegFox(
     lastAttendeeSyncAt: syncedAt,
   })
   replaceAttendeeCacheFromRegistrationSync({
-    attendees: mergeAttendeesWithPersistedCheckIns(attendees),
+    attendees: mergeAttendeesWithPersistedCheckIns(attendees, foxEvent.id),
     eventId: foxEvent.id,
     sourcePlatform: 'regfox',
     syncedAt,
   })
 
-  const publishWarning = await publishAttendeesIfConfigured()
-  await patchPublicSettings({
-    lastMobilePublishWarning: publishWarning,
-  })
+  // Sprint 23.2: RegFox connect alone does NOT unlock. Only publish when the
+  // active session already matches this FoxBridge Event (never publish under a
+  // stale Event A session after switching RegFox credentials to Event B).
+  const session = getEventAccessSession()
+  const publishWarning =
+    isEventAccessUnlocked() && session?.eventId === foxEvent.id
+      ? await publishAttendeesIfConfigured()
+      : null
+  if (publishWarning !== null) {
+    await patchPublicSettings({
+      lastMobilePublishWarning: publishWarning,
+    })
+  }
 
   return {
     success: true,
@@ -249,7 +299,7 @@ export async function loadRegFoxAttendees(): Promise<RegFoxConnectResult> {
       syncedAt,
     })
     replaceAttendeeCacheFromRegistrationSync({
-      attendees: mergeAttendeesWithPersistedCheckIns(attendees),
+      attendees: mergeAttendeesWithPersistedCheckIns(attendees, foxEvent.id),
       eventId: foxEvent.id,
       sourcePlatform: 'regfox',
       syncedAt,
@@ -278,6 +328,45 @@ export async function loadRegFoxAttendees(): Promise<RegFoxConnectResult> {
 }
 
 export async function updateRegistrations(): Promise<RegFoxUpdateResult> {
+  const desk = readDeskCredentialSync()
+
+  // Linked Desktop: Refresh = Cloud → local for the authenticated conference.
+  // Never imply RegFox download or Principal publish (Linked has no RegFox role).
+  if (desk?.role === 'linked') {
+    const { hydrateAttendeesFromCloudForSession } = await import(
+      '../cloud/hydrateAttendeesFromCloud'
+    )
+    const hydrate = await hydrateAttendeesFromCloudForSession()
+    if (!hydrate.success) {
+      await patchPublicSettings({
+        lastMobilePublishWarning:
+          hydrate.message ??
+          'Could not download the latest registrations for this FoxBridge Event.',
+      })
+      return {
+        success: false,
+        attendeeCount: 0,
+        publishedToMobile: false,
+        publishError: null,
+        message:
+          hydrate.message ??
+          'Could not download the latest registrations for this FoxBridge Event.',
+      }
+    }
+
+    await patchPublicSettings({ lastMobilePublishWarning: null })
+    const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
+    void requestDesktopSyncBestEffort()
+
+    return {
+      success: true,
+      attendeeCount: hydrate.attendeeCount,
+      publishedToMobile: false,
+      publishError: null,
+      message: null,
+    }
+  }
+
   const loadResult = await loadRegFoxAttendees()
   if (!loadResult.success) {
     return {
@@ -305,6 +394,21 @@ export async function updateRegistrations(): Promise<RegFoxUpdateResult> {
   await patchPublicSettings({
     lastMobilePublishWarning: publishError,
   })
+
+  // Refresh order (23.5b1): RegFox → overlay merge (in load) → publish →
+  // check-in sync converge → upstream reconciliation kick.
+  const { requestDesktopSyncBestEffort, requestCheckInSyncBestEffort } = await import(
+    '../sync/syncManager'
+  )
+  await requestCheckInSyncBestEffort()
+  void requestDesktopSyncBestEffort()
+
+  if (readDeskCredentialSync()?.role === 'principal') {
+    const { requestUpstreamCheckInReconcileBestEffort } = await import(
+      '../reconcile/upstreamCheckInReconcilerManager'
+    )
+    requestUpstreamCheckInReconcileBestEffort()
+  }
 
   return {
     success: true,
@@ -397,10 +501,41 @@ export async function enrollFoxBridgeCloudDesktop(
   message: string | null
 }> {
   const result = await enrollDesktopWithCode(enrollmentCode, label)
-  if (result.success) {
-    const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
-    void requestDesktopSyncBestEffort()
+  if (!result.success || !result.conferenceId) {
+    return result
   }
+
+  const { activateCloudConferenceEvent } = await import('./eventIdentityService')
+  const {
+    clearAttendeeCache,
+    ensureAttendeeCacheForEvent,
+  } = await import('../scannerServer/attendeeCache')
+  const { hydrateAttendeesFromCloudForSession } = await import(
+    '../cloud/hydrateAttendeesFromCloud'
+  )
+
+  clearAttendeeCache()
+  const foxEvent = await activateCloudConferenceEvent({
+    conferenceId: result.conferenceId,
+    name: result.conferenceName,
+  })
+
+  establishEventAccessSession({
+    eventId: foxEvent.id,
+    conferenceId: result.conferenceId,
+    unlockMethod: 'legacy',
+  })
+
+  ensureAttendeeCacheForEvent(foxEvent.id)
+  const hydrate = await hydrateAttendeesFromCloudForSession()
+  if (!hydrate.success) {
+    clearAttendeeCache()
+    ensureAttendeeCacheForEvent(foxEvent.id)
+    console.warn('[legacy-enroll] attendee hydrate failed', hydrate.message)
+  }
+
+  const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
+  void requestDesktopSyncBestEffort()
   return result
 }
 
@@ -484,6 +619,34 @@ export async function claimFoxBridgeCloudPrincipal(input?: {
   }
 
   if (result.success) {
+    const settings = await readPublicSettings()
+    const {
+      clearAttendeeCache,
+      ensureAttendeeCacheForEvent,
+      getAttendeeCacheEventId,
+    } = await import('../scannerServer/attendeeCache')
+
+    const eventId =
+      settings.activeEventId?.trim() || result.conferenceId || externalEventId
+
+    // Principal may re-auth into a different RegFox event — drop any stale cache.
+    if (getAttendeeCacheEventId() && getAttendeeCacheEventId() !== eventId) {
+      clearAttendeeCache()
+      ensureAttendeeCacheForEvent(eventId)
+    }
+
+    establishEventAccessSession({
+      eventId,
+      conferenceId: result.conferenceId,
+      unlockMethod: 'principal',
+    })
+
+    // Publish only the session-scoped Local Event Store snapshot (identity-gated).
+    const publishWarning = await publishAttendeesIfConfigured()
+    if (publishWarning !== null) {
+      await patchPublicSettings({ lastMobilePublishWarning: publishWarning })
+    }
+
     const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
     void requestDesktopSyncBestEffort()
   }
@@ -502,10 +665,60 @@ export async function redeemFoxBridgeLinkedJoin(input: {
   message: string | null
 }> {
   const result = await redeemLinkedDesktopJoin(input)
-  if (result.success) {
-    const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
-    void requestDesktopSyncBestEffort()
+  if (!result.success || !result.conferenceId) {
+    return result
   }
+
+  const { activateCloudConferenceEvent } = await import('./eventIdentityService')
+  const {
+    clearAttendeeCache,
+    ensureAttendeeCacheForEvent,
+  } = await import('../scannerServer/attendeeCache')
+  const { hydrateAttendeesFromCloudForSession } = await import(
+    '../cloud/hydrateAttendeesFromCloud'
+  )
+
+  // Switch Local Event Store / activeEventId to the joined Cloud conference.
+  // Never keep Event A activeEventId while conference is Event B.
+  clearAttendeeCache()
+  const foxEvent = await activateCloudConferenceEvent({
+    conferenceId: result.conferenceId,
+    name: result.conferenceName,
+  })
+
+  // Linked is Cloud-conference-scoped — do not retain a prior Principal RegFox
+  // page id (pollutes resolve metadata) or a stale phone-publish warning.
+  await patchPublicSettings({
+    regfoxEventId: null,
+    lastMobilePublishWarning: null,
+  })
+
+  establishEventAccessSession({
+    eventId: foxEvent.id,
+    conferenceId: result.conferenceId,
+    unlockMethod: 'linked',
+  })
+
+  // Bind cache to Event B only (empty until Cloud hydrate). Never serve Event A.
+  ensureAttendeeCacheForEvent(foxEvent.id)
+  const hydrate = await hydrateAttendeesFromCloudForSession()
+  if (!hydrate.success) {
+    // Fail-closed: keep Event B empty cache rather than leaking Event A.
+    // Force reload from Local Event Store if a prior snapshot existed.
+    clearAttendeeCache()
+    ensureAttendeeCacheForEvent(foxEvent.id)
+    await patchPublicSettings({
+      lastMobilePublishWarning:
+        hydrate.message ??
+        'Could not download the latest registrations for this FoxBridge Event.',
+    })
+    console.warn('[linked-join] attendee hydrate failed', hydrate.message)
+  } else {
+    await patchPublicSettings({ lastMobilePublishWarning: null })
+  }
+
+  const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
+  void requestDesktopSyncBestEffort()
   return result
 }
 
@@ -556,18 +769,60 @@ export async function setupMobileScanner(): Promise<MobileScannerSetupResult> {
   }
 
   if (!isAttendeeCacheLoaded() || getAttendeeCache().length === 0) {
-    const loadResult = await loadRegFoxAttendees()
-    if (!loadResult.success) {
-      return {
-        success: false,
-        conferenceName: cloudStatus.conferenceName,
-        attendeeCount: 0,
-        publishedAt: null,
-        scannerCode: null,
-        scannerLabel: null,
-        mobileScannerUrl: resolvedUrl,
-        message: loadResult.message ?? 'Load attendees from RegFox before setting up mobile scanners.',
+    const desk = readDeskCredentialSync()
+    if (desk?.role === 'linked') {
+      const { hydrateAttendeesFromCloudForSession } = await import(
+        '../cloud/hydrateAttendeesFromCloud'
+      )
+      const hydrate = await hydrateAttendeesFromCloudForSession()
+      if (!hydrate.success || getAttendeeCache().length === 0) {
+        return {
+          success: false,
+          conferenceName: cloudStatus.conferenceName,
+          attendeeCount: 0,
+          publishedAt: null,
+          scannerCode: null,
+          scannerLabel: null,
+          mobileScannerUrl: resolvedUrl,
+          message:
+            hydrate.message ??
+            'Download event registrations from FoxBridge Cloud before setting up mobile scanners.',
+        }
       }
+    } else {
+      const loadResult = await loadRegFoxAttendees()
+      if (!loadResult.success) {
+        return {
+          success: false,
+          conferenceName: cloudStatus.conferenceName,
+          attendeeCount: 0,
+          publishedAt: null,
+          scannerCode: null,
+          scannerLabel: null,
+          mobileScannerUrl: resolvedUrl,
+          message: loadResult.message ?? 'Load attendees from RegFox before setting up mobile scanners.',
+        }
+      }
+    }
+  }
+
+  const desk = readDeskCredentialSync()
+  // Linked: Principal-published Cloud snapshot is already the phone source of truth.
+  // Do not attempt attendee publish (Principal-only).
+  if (desk?.role === 'linked') {
+    const session = await ensureScannerSession()
+    await patchPublicSettings({
+      conferenceName: cloudStatus.conferenceName,
+    })
+    return {
+      success: true,
+      conferenceName: cloudStatus.conferenceName,
+      attendeeCount: getAttendeeCache().length,
+      publishedAt: cloudStatus.lastPublishAt,
+      scannerCode: session.code,
+      scannerLabel: session.label,
+      mobileScannerUrl: resolvedUrl,
+      message: null,
     }
   }
 

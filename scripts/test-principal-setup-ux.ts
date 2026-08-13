@@ -208,7 +208,13 @@ assert.ok(enrollmentUi.includes('claimFoxBridgeCloudPrincipal'))
 assert.ok(enrollmentUi.includes('confirmTransfer'))
 assert.ok(enrollmentUi.includes('sync.setupMyEvent'))
 assert.ok(enrollmentUi.includes('sync.joinExisting'))
+// Set up later remains in the enrollment component for optional skip prop, but
+// the Setup Wizard no longer mounts Sync enrollment or offers Set up later.
 assert.ok(enrollmentUi.includes('setupLater'))
+const wizardUi = readFileSync(join(root, 'src/features/setup/SetupWizard.tsx'), 'utf8')
+assert.equal(wizardUi.includes('setupLater'), false)
+assert.equal(wizardUi.includes('FoxBridgeSyncEnrollment'), false)
+assert.ok(wizardUi.includes('eventConnect.title'))
 assert.ok(enrollmentUi.includes('ownershipRegFoxApiKey'))
 assert.equal(enrollmentUi.includes('useEnrollmentCode'), false)
 assert.equal(enrollmentUi.includes('enrollFoxBridgeCloudDesktop'), false)

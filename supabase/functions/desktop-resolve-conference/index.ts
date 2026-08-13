@@ -29,20 +29,14 @@ Deno.serve(async (req) => {
     const desk = await requireDeskDevice(client, readDeskToken(req, body))
     const conferenceId = assertConferenceScope(desk, body.conferenceId)
 
-    const regfoxEventId = body.regfoxEventId?.trim()
-    if (regfoxEventId) {
-      await client
-        .from('conferences')
-        .update({
-          regfox_event_id: regfoxEventId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', conferenceId)
-    }
+    // Resolve is read-only for conference identity. Never overwrite
+    // regfox_event_id from Desktop settings — Linked machines often retain a
+    // prior Principal RegFox page id and would pollute another conference's
+    // metadata (live: Test Event.regfox_event_id became AdAgrA's 1012457).
 
     const { data: conference, error } = await client
       .from('conferences')
-      .select('id, name, regfox_event_id, last_desktop_sync_at')
+      .select('id, name, regfox_event_id, external_event_id, last_desktop_sync_at')
       .eq('id', conferenceId)
       .maybeSingle()
 
@@ -58,6 +52,7 @@ Deno.serve(async (req) => {
       conferenceId: conference.id,
       conferenceName: conference.name,
       regfoxEventId: conference.regfox_event_id,
+      externalEventId: conference.external_event_id ?? null,
       lastDesktopSyncAt: conference.last_desktop_sync_at,
       deskDeviceId: desk.id,
       deskRole: desk.role,

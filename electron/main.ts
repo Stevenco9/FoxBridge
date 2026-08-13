@@ -9,6 +9,8 @@ import { registerMealValidationHandlers } from './mealValidationHandlers'
 import { registerPrintHandlers } from './printHandlers'
 import { registerRegFoxHandlers } from './regfoxHandlers'
 import { registerSettingsHandlers } from './settingsHandlers'
+import { registerEventAccessSessionHandlers } from './session/eventAccessHandlers'
+import { registerEventAccessSessionLifecycle } from './session/eventAccessLifecycle'
 import { initializeSettings } from './settings/settingsService'
 import {
   ensureActiveEventIdentityFromSettings,
@@ -16,14 +18,10 @@ import {
 } from './settings/eventIdentityService'
 import { hydrateAttendeeCacheFromLocalEventStore } from './scannerServer/attendeeCache'
 import {
-  maybeAutoStartScannerServer,
   registerScannerServerHandlers,
   stopScannerServer,
 } from './scannerServerHandlers'
-import {
-  startDesktopSyncManager,
-  stopDesktopSyncManager,
-} from './sync/syncManager'
+import { stopDesktopSyncManager } from './sync/syncManager'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -58,6 +56,7 @@ app.whenReady().then(async () => {
   getDatabase()
   await initializeSettings()
   try {
+    // Hydrate Local Event Store into memory for later unlock — do not expose via IPC while locked.
     await ensureActiveEventIdentityFromSettings()
     const storeKey = await resolveLocalEventStoreKey()
     hydrateAttendeeCacheFromLocalEventStore(storeKey)
@@ -67,6 +66,8 @@ app.whenReady().then(async () => {
       error instanceof Error ? error.message : String(error),
     )
   }
+  registerEventAccessSessionLifecycle()
+  registerEventAccessSessionHandlers()
   registerSettingsHandlers()
   registerEventSettingsHandlers()
   registerRegFoxHandlers()
@@ -76,9 +77,7 @@ app.whenReady().then(async () => {
   registerScannerServerHandlers()
   registerCloudHandlers()
   createWindow()
-  await maybeAutoStartScannerServer()
-  // Non-blocking Sync lifecycle: initial best-effort + periodic schedule.
-  startDesktopSyncManager()
+  // Sprint 23.1: do NOT start Sync Manager or scanner until EventAccessSession unlocks.
 })
 
 app.on('window-all-closed', () => {
@@ -90,6 +89,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     getDatabase()
+    registerEventAccessSessionHandlers()
     registerSettingsHandlers()
     registerEventSettingsHandlers()
     registerRegFoxHandlers()

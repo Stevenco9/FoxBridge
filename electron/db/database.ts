@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
 import path from 'node:path'
+import { migrateLocalDatabase } from './localDbMigrations'
 
 let database: Database.Database | null = null
 
@@ -21,12 +22,21 @@ function initSchema(db: Database.Database): void {
       UNIQUE(attendee_id, meal_key)
     );
 
-    CREATE TABLE IF NOT EXISTS attendee_check_ins (
-      attendee_id TEXT PRIMARY KEY,
+    -- Sprint 23.5a — event-scoped operational check-in overlay (Cloud-first).
+    -- Legacy global attendee_check_ins is migrated in localDbMigrations v3.
+    CREATE TABLE IF NOT EXISTS event_attendee_check_ins (
+      event_id TEXT NOT NULL,
+      attendee_id TEXT NOT NULL,
       registration_id TEXT NOT NULL,
+      checked_in INTEGER NOT NULL DEFAULT 1,
       checked_in_at TEXT NOT NULL,
-      source TEXT NOT NULL DEFAULT 'desktop'
+      source TEXT NOT NULL DEFAULT 'desktop',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (event_id, attendee_id)
     );
+
+    CREATE INDEX IF NOT EXISTS idx_event_attendee_check_ins_event_id
+      ON event_attendee_check_ins(event_id);
 
     CREATE TABLE IF NOT EXISTS badge_print_logs (
       id TEXT PRIMARY KEY,
@@ -44,15 +54,18 @@ function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_badge_print_logs_attendee_printed_at
       ON badge_print_logs(attendee_id, printed_at);
 
-    -- Local Event Store: registration-platform-agnostic working dataset
+    -- Local Event Store: registration working dataset (event-scoped PK).
+    -- id = platform attendee identity; PRIMARY KEY (event_id, id) allows the
+    -- same attendee id under multiple FoxBridge Events (multi-event Linked).
     CREATE TABLE IF NOT EXISTS event_attendees (
-      id TEXT PRIMARY KEY,
       event_id TEXT NOT NULL,
+      id TEXT NOT NULL,
       registration_id TEXT NOT NULL,
       source_platform TEXT NOT NULL,
       payload TEXT NOT NULL,
       synced_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (event_id, id)
     );
 
     CREATE INDEX IF NOT EXISTS idx_event_attendees_event_id
@@ -82,6 +95,7 @@ export function getDatabase(): Database.Database {
     database = new Database(getDatabasePath())
     database.pragma('journal_mode = WAL')
     initSchema(database)
+    migrateLocalDatabase(database)
   }
 
   return database
@@ -92,4 +106,9 @@ export function closeDatabase(): void {
     database.close()
     database = null
   }
+}
+
+/** Test helper — reset singleton after closing a temp DB. */
+export function resetDatabaseSingletonForTests(): void {
+  closeDatabase()
 }

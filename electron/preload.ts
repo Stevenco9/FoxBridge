@@ -30,6 +30,7 @@ import type {
   EventSettingsEntry,
   EventSettingsPatch,
 } from '../src/shared/models/EventSettings'
+import type { EventAccessStatus } from '../src/shared/models/EventAccessSession'
 
 const electronAPI = {
   getAttendees: (): Promise<Attendee[]> => ipcRenderer.invoke('regfox:getAttendees'),
@@ -39,6 +40,15 @@ const electronAPI = {
     ipcRenderer.invoke('regfox:updateRegistrations'),
   checkInAttendee: (attendeeId: string): Promise<AttendeeCheckInResult> =>
     ipcRenderer.invoke('regfox:checkInAttendee', attendeeId),
+  onAttendeesChanged: (callback: () => void): (() => void) => {
+    const listener = (): void => {
+      callback()
+    }
+    ipcRenderer.on('attendees:changed', listener)
+    return () => {
+      ipcRenderer.removeListener('attendees:changed', listener)
+    }
+  },
   printBadgePreview: (attendeeId: string): Promise<void> =>
     ipcRenderer.invoke('print:badgePreview', attendeeId),
   printTestBadge: (): Promise<void> => ipcRenderer.invoke('print:testBadge'),
@@ -132,6 +142,15 @@ const electronAPI = {
       isCurrent: boolean
     }>
   }> => ipcRenderer.invoke('cloud:listDesks'),
+  getUpstreamCheckInHealth: (): Promise<{
+    conferenceId: string
+    pending: number
+    failedRetryable: number
+    terminalOrExhausted: number
+    notApplicable: number
+    synced: number
+    oldestWaitingAt: string | null
+  } | null> => ipcRenderer.invoke('cloud:getUpstreamCheckInHealth'),
   revokeFoxBridgeLinkedDesktop: (payload: {
     deskDeviceId: string
   }): Promise<{ deskDeviceId: string; revokedAt: string }> =>
@@ -144,6 +163,10 @@ const electronAPI = {
     ipcRenderer.invoke('cloud:createScannerPairing'),
   getPairingStatus: (tokenId: string): Promise<PairingStatus> =>
     ipcRenderer.invoke('cloud:getPairingStatus', tokenId),
+  getEventAccessStatus: (): Promise<EventAccessStatus> =>
+    ipcRenderer.invoke('session:getEventAccessStatus'),
+  lockEventAccess: (): Promise<EventAccessStatus> =>
+    ipcRenderer.invoke('session:lockEventAccess'),
   initializeSettings: (): Promise<AppSettingsPublic> => ipcRenderer.invoke('settings:initialize'),
   getPublicSettings: (): Promise<AppSettingsPublic> => ipcRenderer.invoke('settings:getPublic'),
   savePublicSettings: (patch: Partial<AppSettingsPublic>): Promise<AppSettingsPublic> =>

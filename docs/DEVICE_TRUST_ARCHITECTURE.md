@@ -3,7 +3,13 @@
 **Sprint:** 22.0–**22.5** — **COMPLETE / LIVE-VALIDATED** (August 2026)  
 **Status:** Principal self-service + Linked Desktops + Connected Desktops + security/UX closeouts  
 **Depends on:** Sprint 21 FoxBridge Sync (desk enrollment, Edge Functions, pairing)  
-**Related:** [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md), [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md), [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md)
+**Related:** [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md), [`SUPABASE_ARCHITECTURE.md`](./SUPABASE_ARCHITECTURE.md), [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md), [`EVENT_SESSION_ARCHITECTURE.md`](./EVENT_SESSION_ARCHITECTURE.md) (Sprint 23 — local lock / re-auth; does not replace this device-trust model)
+
+**Sprint 23 note:** Cloud Principal / Linked authorization records are **not** the same as the Desktop process-scoped **EventAccessSession**. A valid desk credential must not auto-unlock event UI after quit; see event-session architecture. Same-install Principal relaunch (23.2) may rotate the Principal token on the existing desk row after fresh RegFox proof (`reactivateDeskToken`) without treating relaunch as a transfer. After rotation, Desktop must persist and read-back the **new** raw desk token before Principal-only Cloud ops; UI must not treat EventAccessSession/local status as Principal if the desk credential Cloud accepts is not an active Principal.
+
+**Cross-event isolation:** While unlocked, `EventAccessSession.eventId` is the only authority for Local Event Store / in-memory attendee cache reads. Linked join must activate a FoxBridge Event for the joined Cloud conference, clear prior cache, and hydrate via desk-authenticated `desktop-pull-attendees` for that conference only. Event A local history may remain on disk but must never be returned for Event B.
+
+**Known Cloud RLS debt (flagged, not expanded):** migration `003` `anon_read_attendees` / `anon_read_meal_entitlements` use `USING (true)` (cross-conference readable to anon). Desktop Linked hydration uses service-role Edge + desk conference scope instead. Do not broaden anon further; tighten in a dedicated security sprint.
 
 ---
 
@@ -371,7 +377,7 @@ Maps to **exactly one** FoxBridge Cloud Event (`conferences.id` today / FoxBridg
 | Capability | Principal | Linked | Scanner |
 |------------|:---------:|:------:|:-------:|
 | Prove RegFox / claim Event | ✓ | ✗ | ✗ |
-| Publish attendees / entitlements | ✓ | ✓ | ✗ |
+| Publish attendees / entitlements | ✓ | ✗ (Principal-only snapshot) | ✗ |
 | Create phone pairing tokens | ✓ | ✓ | ✗ |
 | Poll pairing status | ✓ | ✓ | ✗ |
 | Redeem pairing → scanner session | ✗ | ✗ | ✓ (via mobile RPC) |
@@ -381,8 +387,11 @@ Maps to **exactly one** FoxBridge Cloud Event (`conferences.id` today / FoxBridg
 | Transfer / replace Principal | ✓ (via re-verify) | ✗ | ✗ |
 | Call desk Edge Functions | ✓ | ✓ (while valid) | ✗ |
 | Read Cloud via anon RLS | ✓ | ✓ | ✓ (limited) |
+| Operational attendee snapshot (v1) | Publish | Pull / reconstruct | ✗ |
 
 \*Desktop meal validation remains a local/desktop product feature, not a Cloud desk privilege.
+
+**Sprint 23 FINAL — live-validated.** Linked Desktop = full **operational** workstation including Cloud-first check-in write. Upstream registration check-in reconciliation is Principal-only (never Linked). Principal never Cloud-replaces rich RegFox attendees. See [`CHECK_IN_ARCHITECTURE.md`](./CHECK_IN_ARCHITECTURE.md) + [`EVENT_SESSION_ARCHITECTURE.md`](./EVENT_SESSION_ARCHITECTURE.md).
 
 ---
 

@@ -44,6 +44,12 @@ After a successful RegFox connection, normal organizers choose **Join an existin
 **Extra desks join with a Principal connection code (Sprint 22.3).**  
 A second computer joins with a short code from the Principal Desktop — no RegFox API key and no Cloud console access required. Codes accept dashed or undashed entry. After revoke/expiry, the same FoxBridge installation rejoins as one logical Linked Desktop when it presents its opaque installation ID with a fresh code (Sprint 22.5).
 
+**Linked Desktop = full operational workstation (Sprint 23.4a / 23.5).**  
+Principal is the administrative owner (ownership, transfer, Connected Desktops) and registration-platform authority for upstream write-back. Linked Desktops reconstruct the approved operational Attendee model from a Principal-published Cloud snapshot and share the same FoxBridge Cloud check-in write path. Upstream reconciliation (e.g. RegFox) is Principal-only via a platform adapter — Linked never receives upstream API keys. Operational check-in is real-time authoritative; upstream sync is observable via lightweight Principal diagnostics. See [`CHECK_IN_ARCHITECTURE.md`](./CHECK_IN_ARCHITECTURE.md).
+
+**Event data persists; event access does not survive quit (Sprint 23.2).**  
+A new Electron process starts **locked** until the organizer unlocks via **Set up my event** (explicit RegFox API key + Event ID → Principal claim) or **Join an existing FoxBridge Event** (connection code). Sleep and same-process window close stay unlocked. Reopen Setup Wizard warns, then locks the process session without deleting local history. Same-install Principal relaunch reactivates the existing Principal desk after RegFox proof (no false transfer). Canonical design: [`EVENT_SESSION_ARCHITECTURE.md`](./EVENT_SESSION_ARCHITECTURE.md).
+
 **FoxBridge owns operational data.**  
 Meal redemption, badge printing history, check-in actions, and other on-site activity live in FoxBridge. That separation keeps registration data authoritative in RegFox while giving staff a clear record of what happened at the event.
 

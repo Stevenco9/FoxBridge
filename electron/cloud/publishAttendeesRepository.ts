@@ -1,6 +1,12 @@
 import type { Attendee } from '../../src/shared/models'
 import type { CloudStatus, PublishAttendeesResult } from '../../src/shared/models/CloudStatus'
-import { getAttendeeCache, isAttendeeCacheLoaded } from '../scannerServer/attendeeCache'
+import { resolvePublishAttendeeSnapshot } from '../../src/shared/attendees/publishAttendeeIdentity'
+import { getEventAttendees } from '../db/eventAttendeeRepository'
+import {
+  getAttendeeCache,
+  getAttendeeCacheEventId,
+  isAttendeeCacheLoaded,
+} from '../scannerServer/attendeeCache'
 import {
   buildAttendeePublishPayload,
   type PublishAttendeeRow,
@@ -15,6 +21,7 @@ import { ensureConferenceId, resolveConferenceId } from './conferenceRepository'
 import { resolveDesktopCloudOpsTransport } from './cloudOpsTransport'
 import { publishAttendeesViaDesk, resolveConferenceViaDesk } from './desktopCloudApi'
 import { readDeskCredentialSync } from './deskCredentialStore'
+import { getEventAccessSession } from '../session/eventAccessSession'
 import { getSupabaseServiceClient } from './supabaseClient'
 
 const UPSERT_BATCH_SIZE = 100
@@ -190,6 +197,30 @@ async function upsertAttendees(rows: PublishAttendeeRow[]): Promise<void> {
   }
 }
 
+async function replaceConferenceAttendees(
+  conferenceId: string,
+  rows: PublishAttendeeRow[],
+): Promise<void> {
+  const client = getSupabaseServiceClient()
+  if (!client) {
+    throw new Error('Legacy Cloud client is not configured.')
+  }
+
+  const { error: deleteError } = await client
+    .from('attendees')
+    .delete()
+    .eq('conference_id', conferenceId)
+  if (deleteError) {
+    throw new Error(`attendees delete failed: ${deleteError.message}`)
+  }
+
+  if (rows.length === 0) {
+    return
+  }
+
+  await upsertAttendees(rows)
+}
+
 async function replaceMealEntitlements(
   conferenceId: string,
   rows: PublishMealEntitlementRow[],
@@ -221,6 +252,11 @@ async function replaceMealEntitlements(
   }
 }
 
+/**
+ * Publish Principal-authoritative attendees to FoxBridge Cloud.
+ * Optional `attendees` override is only accepted when every row matches the
+ * active EventAccessSession event identity (tests / explicit callers).
+ */
 export async function publishAttendees(attendees?: Attendee[]): Promise<PublishAttendeesResult> {
   const transport = resolveDesktopCloudOpsTransport()
   if (transport === 'none') {
@@ -235,15 +271,66 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
     }
   }
 
-  const sourceAttendees = attendees ?? getAttendeeCache()
-  if (sourceAttendees.length === 0 || !isAttendeeCacheLoaded()) {
-    const message = 'No attendees loaded. Wait for RegFox sync before publishing.'
+  const session = getEventAccessSession()
+  if (!session?.eventId?.trim()) {
+    const message = 'Unlock the FoxBridge Event before publishing attendees.'
     await setCloudPublishError(message)
     return {
       success: false,
       attendeeCount: 0,
       publishedAt: null,
       error: message,
+    }
+  }
+
+  const desk = readDeskCredentialSync()
+  // Sprint 23.4a — Linked / non-Principal must never replace Cloud snapshot.
+  // Edge also enforces assertPrincipalRole; this is fail-fast client defense.
+  if (desk && desk.role !== 'principal') {
+    const message =
+      'Only the Principal Desktop can publish the event attendee snapshot to FoxBridge Cloud.'
+    await setCloudPublishError(message)
+    return {
+      success: false,
+      attendeeCount: 0,
+      publishedAt: null,
+      error: message,
+    }
+  }
+
+  const storeAttendees = getEventAttendees(session.eventId)
+
+  // Never publish the process-global cache. Optional override must still pass identity.
+  const identity = resolvePublishAttendeeSnapshot({
+    sessionEventId: session.eventId,
+    sessionConferenceId: session.conferenceId,
+    deskConferenceId: desk?.conferenceId ?? null,
+    storeAttendees: attendees ?? storeAttendees,
+  })
+
+  if (!identity.ok) {
+    if (
+      isAttendeeCacheLoaded() &&
+      getAttendeeCacheEventId() &&
+      getAttendeeCacheEventId() !== session.eventId &&
+      getAttendeeCache().length > 0
+    ) {
+      console.warn(
+        '[cloud-publish] aborted cross-event cache',
+        JSON.stringify({
+          sessionEventId: session.eventId,
+          cacheEventId: getAttendeeCacheEventId(),
+          cacheCount: getAttendeeCache().length,
+          reason: identity.reason,
+        }),
+      )
+    }
+    await setCloudPublishError(identity.reason)
+    return {
+      success: false,
+      attendeeCount: 0,
+      publishedAt: null,
+      error: identity.reason,
     }
   }
 
@@ -264,11 +351,23 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
     }
   }
 
+  if (conferenceId !== identity.conferenceId) {
+    const message =
+      'Cloud conference from desk credential does not match the publish identity conference.'
+    await setCloudPublishError(message)
+    return {
+      success: false,
+      attendeeCount: 0,
+      publishedAt: null,
+      error: message,
+    }
+  }
+
   const publishedAt = new Date().toISOString()
   const attendeeRows: PublishAttendeeRow[] = []
   const entitlementRows: PublishMealEntitlementRow[] = []
 
-  for (const attendee of sourceAttendees) {
+  for (const attendee of identity.attendees) {
     const payload = buildAttendeePublishPayload(attendee, conferenceId, publishedAt)
     attendeeRows.push(payload.attendee)
     entitlementRows.push(...payload.mealEntitlements)
@@ -288,7 +387,7 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
         throw new Error('Unable to create legacy Cloud client.')
       }
 
-      await upsertAttendees(attendeeRows)
+      await replaceConferenceAttendees(conferenceId, attendeeRows)
       await replaceMealEntitlements(conferenceId, entitlementRows)
       await client
         .from('conferences')
@@ -301,14 +400,14 @@ export async function publishAttendees(attendees?: Attendee[]): Promise<PublishA
         })
     }
 
-    await setCloudPublishSuccess(sourceAttendees.length, publishedAt)
+    await setCloudPublishSuccess(identity.attendees.length, publishedAt)
 
     const { requestDesktopSyncBestEffort } = await import('../sync/syncManager')
     void requestDesktopSyncBestEffort()
 
     return {
       success: true,
-      attendeeCount: sourceAttendees.length,
+      attendeeCount: identity.attendees.length,
       publishedAt,
       error: null,
     }

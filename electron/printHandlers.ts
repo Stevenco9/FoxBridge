@@ -7,6 +7,7 @@ import {
   setPreferredPrinterName,
 } from './printing/preferredPrinterStore'
 import type { PrinterInfoSummary } from '../src/shared/models/AppSettings'
+import { assertEventAccessUnlocked } from './session/eventAccessSession'
 
 async function listPrinters(webContents: WebContents): Promise<PrinterInfoSummary[]> {
   const printers = await webContents.getPrintersAsync()
@@ -19,6 +20,7 @@ async function listPrinters(webContents: WebContents): Promise<PrinterInfoSummar
 export function registerPrintHandlers(): void {
   ipcMain.removeHandler('print:badgePreview')
   ipcMain.handle('print:badgePreview', async (event, attendeeId: string) => {
+    assertEventAccessUnlocked()
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) {
       throw new Error('Print is only available in the desktop app window.')

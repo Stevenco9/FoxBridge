@@ -92,7 +92,13 @@ export async function readSecrets(): Promise<StoredSecrets> {
   return readFallbackSecrets()
 }
 
-export async function writeSecrets(secrets: StoredSecrets): Promise<void> {
+/**
+ * Serialize all secret file writes so concurrent callers (claim token rotation,
+ * resolve role patch, connectRegFox key save) cannot lose updates.
+ */
+let secretsWriteChain: Promise<unknown> = Promise.resolve()
+
+async function writeSecretsUnlocked(secrets: StoredSecrets): Promise<void> {
   const payload = JSON.stringify(normalizeSecrets(secrets))
 
   if (safeStorage.isEncryptionAvailable()) {
@@ -109,11 +115,27 @@ export async function writeSecrets(secrets: StoredSecrets): Promise<void> {
   await writeFallbackSecrets(normalizeSecrets(secrets))
 }
 
+export async function writeSecrets(secrets: StoredSecrets): Promise<void> {
+  const run = secretsWriteChain.then(() => writeSecretsUnlocked(secrets))
+  secretsWriteChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
 export async function patchSecrets(
   patch: Partial<StoredSecrets>,
 ): Promise<StoredSecrets> {
-  const current = await readSecrets()
-  const next = normalizeSecrets({ ...current, ...patch })
-  await writeSecrets(next)
-  return next
+  const run = secretsWriteChain.then(async () => {
+    const current = await readSecrets()
+    const next = normalizeSecrets({ ...current, ...patch })
+    await writeSecretsUnlocked(next)
+    return next
+  })
+  secretsWriteChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
 }

@@ -4,10 +4,12 @@ import {
   validateMeal,
 } from './db/mealValidationRepository'
 import type { ValidateMealRequest } from '../src/shared/models/MealValidation'
+import { assertEventAccessUnlocked } from './session/eventAccessSession'
 
 export function registerMealValidationHandlers(): void {
   ipcMain.removeHandler('meals:getValidationsForAttendee')
   ipcMain.handle('meals:getValidationsForAttendee', (_event, attendeeId: string) => {
+    assertEventAccessUnlocked()
     if (!attendeeId?.trim()) {
       return []
     }
@@ -17,6 +19,7 @@ export function registerMealValidationHandlers(): void {
 
   ipcMain.removeHandler('meals:validateMeal')
   ipcMain.handle('meals:validateMeal', (_event, request: ValidateMealRequest) => {
+    assertEventAccessUnlocked()
     if (!request?.attendeeId?.trim() || !request.mealKey?.trim() || !request.mealLabel?.trim()) {
       throw new Error('Attendee id, meal key, and meal label are required.')
     }
