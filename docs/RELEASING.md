@@ -126,7 +126,7 @@ Production Mac builds run on **`macos-latest`** via [`.github/workflows/release-
 1. Bump `package.json` **and** `package-lock.json` to the new version (for example `0.1.3`).
 2. Commit on `main`.
 3. Tag **exactly** `v` + that version (`v0.1.3`) and push the tag.
-4. The workflow signs with **Developer ID Application**, notarizes with Apple **notarytool** (not deprecated `altool`), verifies, and publishes GitHub Release assets.
+4. GitHub Actions signs with **Developer ID Application**, then notarizes with Apple **notarytool** (`--wait`, not deprecated `altool`) via `scripts/notarize-mac-retry.sh`. Transient Apple/network failures (for example `NSURLErrorDomain -1009`) are retried up to **3** times with increasing waits **without** rebuilding or re-signing. Deterministic rejections (invalid signature, entitlements, credentials) are not retried. After acceptance the ticket is stapled to the `.app`, then the universal DMG, ZIP, and `latest-mac.yml` are generated from that stapled app. Tag publishes GitHub Release assets.
 
 GitHub Release `v<version>` assets include at least:
 

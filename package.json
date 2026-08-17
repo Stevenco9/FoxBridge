@@ -106,6 +106,7 @@
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"
     ],
+    "afterSign": "scripts/notarize-mac.cjs",
     "mac": {
       "target": [
         {
@@ -127,7 +128,7 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
-      "notarize": true
+      "notarize": false
     },
     "dmg": {
       "title": "FoxBridge ${version}",

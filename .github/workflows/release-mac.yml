@@ -124,6 +124,9 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # electron-builder signs the universal app, then afterSign runs
+        # scripts/notarize-mac.cjs (notarytool --wait, 3 attempts on transient
+        # network/service errors). DMG/ZIP/latest-mac.yml are built after staple.
         run: npx electron-builder --mac --publish ${{ steps.publish.outputs.mode }} -c.forceCodeSigning=true
 
       - name: Verify signed Mac artifacts

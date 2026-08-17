@@ -24,6 +24,7 @@ const pkg = JSON.parse(read('package.json')) as {
     appId: string
     productName: string
     artifactName: string
+    afterSign?: string
     mac: {
       target: Array<{ target: string; arch: string[] }>
       identity?: string | null
@@ -57,7 +58,8 @@ for (const target of macTargets) {
 
 assert.notEqual(pkg.build.mac.identity, null, 'production identity must not be explicitly null')
 assert.equal(pkg.build.mac.hardenedRuntime, true)
-assert.equal(pkg.build.mac.notarize, true)
+assert.equal(pkg.build.mac.notarize, false, 'electron-builder built-in notarize is a single attempt; afterSign owns retries')
+assert.equal(pkg.build.afterSign, 'scripts/notarize-mac.cjs')
 assert.equal(pkg.build.mac.entitlements, 'build/entitlements.mac.plist')
 assert.equal(pkg.build.mac.entitlementsInherit, 'build/entitlements.mac.inherit.plist')
 assert.equal(pkg.build.dmg?.writeUpdateInfo, true)
@@ -96,6 +98,29 @@ assert.ok(releaseScript.includes('-c.forceCodeSigning=true'))
 assert.ok(releaseScript.includes('--publish never'))
 assert.ok(releaseScript.includes('CSC_LINK'))
 
+const afterSign = read('scripts/notarize-mac.cjs')
+assert.ok(afterSign.includes('notarize-mac-retry.sh'))
+assert.ok(afterSign.includes('CSC_IDENTITY_AUTO_DISCOVERY'))
+assert.ok(!afterSign.includes('altool'))
+
+const notarizeRetry = read('scripts/notarize-mac-retry.sh')
+assert.ok(notarizeRetry.includes('xcrun notarytool submit'))
+assert.ok(notarizeRetry.includes('--wait'))
+assert.ok(notarizeRetry.includes('NOTARIZE_MAX_ATTEMPTS:-3'))
+assert.ok(notarizeRetry.includes('BACKOFF_SECONDS=(60 180)'))
+assert.ok(notarizeRetry.includes('NOTARIZATION SUBMITTED'))
+assert.ok(notarizeRetry.includes('NOTARIZATION RETRY'))
+assert.ok(notarizeRetry.includes('NOTARIZATION ACCEPTED'))
+assert.ok(notarizeRetry.includes('SIGNING SUCCESS'))
+assert.ok(notarizeRetry.includes('STAPLE VERIFIED'))
+assert.ok(notarizeRetry.includes('NSURLErrorDomain'))
+assert.ok(notarizeRetry.includes('is_deterministic_failure'))
+assert.ok(notarizeRetry.includes('status:[[:space:]]*Invalid'))
+assert.ok(notarizeRetry.includes('xcrun stapler staple'))
+assert.ok(!notarizeRetry.includes('altool'))
+assert.ok(existsSync(join(root, 'scripts/notarize-mac-retry.sh')))
+assert.ok(existsSync(join(root, 'scripts/notarize-mac.cjs')))
+
 const workflow = read('.github/workflows/release-mac.yml')
 assert.ok(workflow.includes('workflow_dispatch'))
 assert.ok(workflow.includes("tags:"))
@@ -131,6 +156,7 @@ assert.ok(workflow.includes('mode=always'))
 assert.ok(workflow.includes('does not match package.json version'))
 assert.ok(workflow.includes('npx electron-builder --mac --publish'))
 assert.ok(workflow.includes('-c.forceCodeSigning=true'))
+assert.ok(workflow.includes('scripts/notarize-mac.cjs'))
 assert.ok(workflow.includes('scripts/verify-mac-release.sh'))
 assert.ok(workflow.includes('latest-mac.yml'))
 assert.ok(!workflow.includes('altool'))
