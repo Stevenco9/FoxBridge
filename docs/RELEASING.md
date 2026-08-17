@@ -126,7 +126,7 @@ Production Mac builds run on **`macos-latest`** via [`.github/workflows/release-
 1. Bump `package.json` **and** `package-lock.json` to the new version (for example `0.1.3`).
 2. Commit on `main`.
 3. Tag **exactly** `v` + that version (`v0.1.3`) and push the tag.
-4. GitHub Actions signs with **Developer ID Application**, then notarizes with Apple **notarytool** (not deprecated `altool`) via `scripts/notarize-mac-retry.sh`. The signed app is submitted **once**. The script captures the Apple submission id and polls `notarytool info` until **Accepted** or **Invalid** (about 60 minutes overall, 60-second poll interval). Transient network errors retry the current submit/info call without creating a new submission after an id is known. **Invalid** fetches `notarytool log` and fails without resubmitting. After **Accepted** the ticket is stapled to the `.app`, then the universal DMG, ZIP, and `latest-mac.yml` are generated from that stapled app. Tag publishes GitHub Release assets.
+4. GitHub Actions signs with **Developer ID Application**, then notarizes with Apple **notarytool** (not deprecated `altool`) via `scripts/notarize-mac-retry.sh`. The signed app is submitted **once**. The script captures the Apple submission id and polls `notarytool info` until **Accepted** or **Invalid** (about **3 hours** overall, 60-second poll interval). Transient network errors retry the current submit/info call without creating a new submission after an id is known. **Invalid** fetches `notarytool log` and fails without resubmitting. After **Accepted** the ticket is stapled to the `.app`, then the universal DMG, ZIP, and `latest-mac.yml` are generated from that stapled app. Tag publishes GitHub Release assets.
 
 GitHub Release `v<version>` assets include at least:
 
