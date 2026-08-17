@@ -5,8 +5,8 @@ const path = require('node:path')
 
 /**
  * electron-builder afterSign hook.
- * Signing already succeeded. Notarize the .app with bounded notarytool retries
- * before DMG/ZIP/latest-mac.yml are generated from the stapled app.
+ * Signing already succeeded. Submit the .app to Apple notarytool once, poll
+ * that submission id until Accepted/Invalid, then staple before DMG/ZIP.
  */
 module.exports = async function notarizeMac(context) {
   if (context.electronPlatformName !== 'darwin') {
