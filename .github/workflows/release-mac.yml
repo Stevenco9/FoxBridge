@@ -1,0 +1,127 @@
+name: Release macOS
+
+# Production path: push a matching version tag (v0.1.3 with package.json 0.1.3).
+# Smoke path: workflow_dispatch builds, signs, notarizes, and uploads Actions
+# artifacts only — it never creates a GitHub Release.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-mac-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript check and app build
+        run: npm run build
+
+      - name: Run Mac release configuration tests
+        run: npm run test:mac-release-config
+
+      - name: Run meal order tests
+        run: npm run test:meal-order
+
+      - name: Run payment tests
+        run: npm run test:payment
+
+      - name: Run badge name tests
+        run: npm run test:badge-name
+
+      - name: Run agriculture book tests
+        run: npm run test:agriculture-book
+
+      - name: Read package version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve publish mode
+        id: publish
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            if [[ "$TAG" != "v${VERSION}" ]]; then
+              echo "Tag ${TAG} does not match package.json version ${VERSION} (expected v${VERSION})."
+              exit 1
+            fi
+            echo "mode=always" >> "$GITHUB_OUTPUT"
+            echo "Tag ${TAG} matches package version. Will publish GitHub Release assets."
+          else
+            echo "mode=never" >> "$GITHUB_OUTPUT"
+            echo "workflow_dispatch / non-tag run: signed smoke only — will not publish a GitHub Release."
+          fi
+
+      - name: Require Apple signing and notarization secrets
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          if [ -z "$MAC_CSC_LINK" ]; then echo "Missing required GitHub Actions secret: MAC_CSC_LINK"; missing=1; fi
+          if [ -z "$MAC_CSC_KEY_PASSWORD" ]; then echo "Missing required GitHub Actions secret: MAC_CSC_KEY_PASSWORD"; missing=1; fi
+          if [ -z "$APPLE_ID" ]; then echo "Missing required GitHub Actions secret: APPLE_ID"; missing=1; fi
+          if [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ]; then echo "Missing required GitHub Actions secret: APPLE_APP_SPECIFIC_PASSWORD"; missing=1; fi
+          if [ -z "$APPLE_TEAM_ID" ]; then echo "Missing required GitHub Actions secret: APPLE_TEAM_ID"; missing=1; fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Required signing and notarization secrets are present (values not logged)."
+
+      - name: Build, sign, and notarize universal Mac
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --publish ${{ steps.publish.outputs.mode }} -c.forceCodeSigning=true
+
+      - name: Verify signed Mac artifacts
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          REQUIRE_SIGNED: '1'
+        run: bash scripts/verify-mac-release.sh
+
+      - name: Upload Mac release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoxBridge-${{ steps.version.outputs.version }}-mac-universal
+          path: |
+            release/FoxBridge-*-mac-universal.dmg
+            release/FoxBridge-*-mac-universal.zip
+            release/FoxBridge-*-mac-universal*.blockmap
+            release/latest-mac.yml
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Clean temporary signing files
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP"/mac-csc.p12 "$RUNNER_TEMP"/build_certificate.p12
+          rm -f "$RUNNER_TEMP"/*.p12 "$RUNNER_TEMP"/*.p8
+          echo "Temporary certificate files removed from runner temp (if any existed)."

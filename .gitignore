@@ -30,5 +30,11 @@ coverage/
 # Editor
 .vscode/
 
+# Signing material — never commit certificates or keychains
+*.p12
+*.p8
+*.keychain-db
+AuthKey_*.p8
+
 # Misc
 *.tmp

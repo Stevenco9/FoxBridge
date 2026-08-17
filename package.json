@@ -10,11 +10,14 @@
     "dev:mobile": "npm run dev --prefix apps/mobile",
     "build": "tsc --noEmit && vite build",
     "build:mobile": "npm run build --prefix apps/mobile",
-    "dist": "npm run build && electron-builder",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win nsis --x64",
-    "pack:mac": "npm run build && electron-builder --mac dir",
-    "pack:win": "npm run build && electron-builder --win dir --x64",
+    "dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --publish never -c.mac.notarize=false",
+    "dist:mac": "bash scripts/dist-mac-unsigned.sh",
+    "dist:mac:release": "bash scripts/dist-mac-release.sh",
+    "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "pack:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --publish never -c.mac.notarize=false",
+    "pack:win": "npm run build && electron-builder --win dir --x64 --publish never",
+    "test:mac-release-config": "tsx scripts/test-mac-release-config.ts",
+    "verify:mac-release": "bash scripts/verify-mac-release.sh",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
@@ -110,16 +113,35 @@
           "arch": [
             "universal"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
         }
       ],
       "category": "public.app-category.business",
       "icon": "build/icon.icns",
-      "identity": null
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": true
     },
     "dmg": {
       "title": "FoxBridge ${version}",
-      "writeUpdateInfo": false
+      "writeUpdateInfo": true
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Stevenco9",
+        "repo": "FoxBridge",
+        "private": false,
+        "releaseType": "release"
+      }
+    ],
     "win": {
       "target": [
         {

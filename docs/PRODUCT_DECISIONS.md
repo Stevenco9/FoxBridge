@@ -156,6 +156,13 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **HTTPS scanner web address required for production QR** — packaged default or Settings → Advanced override (“Scanner web address”).
 - **Desktop meal validation hidden by default** — mobile is the primary meal-line tool; desktop column available via Advanced toggle.
 
+### Sprint 24.1 — Signed Mac releases
+
+- **Production Mac installers are signed and notarized** — Developer ID Application, Hardened Runtime, Apple notarytool. Local `npm run dist:mac` stays unsigned so ordinary development does not need Apple credentials.
+- **One universal Mac channel** — GitHub Releases host `FoxBridge-<version>-mac-universal.dmg` (humans) plus ZIP + `latest-mac.yml` (future electron-updater). Never publish host-arch `pack:mac` artifacts to that channel.
+- **Public GitHub Releases as the update provider** — metadata is readable without embedding a GitHub token in the Desktop app. Signing/notarization secrets stay in GitHub Actions (names: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`).
+- **Updates must not interrupt an event** — in-app download/install is a later sprint; when added, install remains operator-initiated. Replacing the `.app` does not move `~/Library/Application Support/foxbridge`.
+
 ### Sprint 13A — Guided setup decisions
 
 - **In-app settings over `.env` for organizers** — RegFox and phone scanning service credentials are saved in Electron `userData` with encrypted secrets. `.env` remains a developer fallback.

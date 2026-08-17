@@ -14,7 +14,7 @@ This guide explains how maintainers build and distribute FoxBridge installers. I
 |-------------|--------|
 | **Node.js** | **v20.x** is currently used in this project (e.g. v20.19.2). Use a current Node 20 LTS release. GitHub Actions Windows builds also use Node 20. |
 | **npm** | Comes with Node.js. Run `npm install` from the repository root after cloning or pulling changes. |
-| **macOS (for Mac DMGs)** | Build on a Mac. The current Mac target is a **universal** DMG (Apple Silicon + Intel). |
+| **macOS (for Mac DMGs)** | **Production** Mac releases are built on GitHub Actions (`macos-latest`): universal DMG + ZIP, Developer ID signed, notarized. **Local** `npm run dist:mac` remains an unsigned smoke build and does not require Apple credentials. |
 | **Windows builds** | Prefer GitHub Actions (`windows-latest`) or a Windows PC. Cross-compiling NSIS from macOS requires Wine and is **not** set up on typical Macs. |
 | **Xcode Command Line Tools** | Required on macOS for native module rebuilds (`better-sqlite3`) and for `iconutil` when regenerating icons. |
 
@@ -64,40 +64,51 @@ FoxBridge follows [semantic versioning](https://semver.org/) in `package.json`:
 | **0.2.0** | New backward-compatible feature |
 | **1.0.0** | Stable release |
 
-**Before building a new public release**, update the `"version"` field in **both** `package.json` and `package-lock.json`. The installer filename and in-app version both come from this value.
+**Before building a new public release**, update the `"version"` field in **both** `package.json` and `package-lock.json`. The installer filename, in-app version, Git tag, and GitHub Release name all come from this value.
 
-Do not change the version for internal test builds unless you intend to distribute that build outside the team.
+The production Mac workflow **fails** if you push tag `v0.1.3` while `package.json` still says `0.1.2`.
+
+Do not change the version for internal test builds unless you intend to distribute that build outside the team. Do not tag `v0.1.2` as a GitHub Release after already distributing unsigned 0.1.2 installers — the next production update channel release should be a new version (for example `0.1.3`).
 
 ---
 
 ## Building the Mac installer
 
+There are two Mac packaging paths. They must not be mixed up.
+
+| Path | Command / trigger | Signing | GitHub Release | Use |
+|------|-------------------|---------|----------------|-----|
+| **Local unsigned smoke** | `npm run dist:mac` | No | No | Maintainer laptop checks without Apple credentials |
+| **CI signed smoke** | Actions → **Release macOS** → Run workflow | Developer ID + notarize | **No** | Prove certificates before a public tag |
+| **Production release** | Git tag `v<version>` matching `package.json` | Developer ID + notarize | **Yes** | Volunteer installers + future auto-update assets |
+
+### Local unsigned smoke (no Apple credentials)
+
 From the repository root on a Mac:
 
 ```bash
 npm install
-npm run build
 npm run dist:mac
 ```
 
-### What each step does
+This packages a **universal** DMG and ZIP with **signing and notarization disabled**. The script prints a warning. Do **not** give this build to volunteers as a production installer.
 
-1. **`npm install`** — Installs dependencies and rebuilds native modules for Electron.
-2. **`npm run build`** — Type-checks TypeScript and builds the renderer (`dist/`) and Electron bundles (`dist-electron/`).
-3. **`npm run dist:mac`** — Runs the build again, then packages with **electron-builder** into a signed-ready but currently **unsigned** universal `.dmg`.
-
-### Expected output
+### Expected local output
 
 Installers are written to `release/` (this folder is gitignored).
 
 ```text
+release/mac-universal/FoxBridge.app
 release/FoxBridge-<version>-mac-universal.dmg
+release/FoxBridge-<version>-mac-universal.zip
+release/latest-mac.yml
 ```
 
 Example:
 
 ```text
 release/FoxBridge-0.1.2-mac-universal.dmg
+release/FoxBridge-0.1.2-mac-universal.zip
 ```
 
 An unpacked `.app` for local smoke testing can be produced with:
@@ -106,7 +117,57 @@ An unpacked `.app` for local smoke testing can be produced with:
 npm run pack:mac
 ```
 
-**Important:** `pack:mac` builds for the **host architecture only**. On Apple Silicon that yields an **ARM64-only** app that Intel Macs reject. For multi-Mac validation and production-style packages, always use **`npm run dist:mac`** (universal: `x86_64` + `arm64`).
+**Important:** `pack:mac` builds for the **host architecture only**. On Apple Silicon that yields an **ARM64-only** app that Intel Macs reject. Never publish `pack:mac` / `mac-arm64` output to the update channel. Production and multi-Mac packages must stay **universal** (`x86_64` + `arm64`).
+
+### Production signed + notarized Mac release (GitHub Actions)
+
+Production Mac builds run on **`macos-latest`** via [`.github/workflows/release-mac.yml`](../.github/workflows/release-mac.yml).
+
+1. Bump `package.json` **and** `package-lock.json` to the new version (for example `0.1.3`).
+2. Commit on `main`.
+3. Tag **exactly** `v` + that version (`v0.1.3`) and push the tag.
+4. The workflow signs with **Developer ID Application**, notarizes with Apple **notarytool** (not deprecated `altool`), verifies, and publishes GitHub Release assets.
+
+GitHub Release `v<version>` assets include at least:
+
+```text
+FoxBridge-<version>-mac-universal.dmg
+FoxBridge-<version>-mac-universal.zip
+latest-mac.yml
+FoxBridge-<version>-mac-universal.zip.blockmap   # if electron-builder emits it
+```
+
+The public GitHub repo is the initial update **provider** (`provider: github`, owner `Stevenco9`, repo `FoxBridge`). Installed apps will later read release metadata over HTTPS **without** a GitHub token in the client. **Do not** put `GH_TOKEN` or signing secrets in the packaged app.
+
+### First signed smoke (no production Release)
+
+Before the first public tag, run a signed dry run:
+
+1. Open the repository on GitHub → **Actions** → **Release macOS**.
+2. Choose **Run workflow** (`workflow_dispatch`) on the branch that contains this pipeline.
+3. Wait for the job to finish (signing + Apple notarization can take several minutes).
+4. Download the Actions artifact `FoxBridge-<version>-mac-universal`.
+5. Confirm there is **no** new GitHub Release.
+
+`workflow_dispatch` **never** publishes a GitHub Release. A GitHub Release is created only when a matching `v*` tag is pushed. That limitation is intentional.
+
+### Required GitHub Actions secrets (names only)
+
+Never commit these values. Never paste them into `package.json`, `.env`, or the Desktop app.
+
+| Secret name | Purpose |
+|-------------|---------|
+| `MAC_CSC_LINK` | Base64-encoded Developer ID Application `.p12` |
+| `MAC_CSC_KEY_PASSWORD` | Password for that `.p12` |
+| `APPLE_ID` | Apple ID used for notarization |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password (not the Apple ID password) |
+| `APPLE_TEAM_ID` | 10-character Apple Team ID |
+
+The workflow maps `MAC_CSC_*` to electron-builder’s `CSC_LINK` / `CSC_KEY_PASSWORD` for the build step only. Release upload uses the Actions `GITHUB_TOKEN` (`GH_TOKEN` in that step) — not a packaged credential.
+
+### Signed local packaging (optional)
+
+`npm run dist:mac:release` signs and notarizes on a Mac that already has the same environment variables set. It still uses `--publish never`. Ordinary development should keep using `npm run dist:mac` / `npm run dev` without Apple credentials.
 
 ---
 
@@ -129,7 +190,9 @@ FoxBridge-<version>-win-x64
 FoxBridge-<version>-win-x64.exe
 ```
 
-The workflow runs `npm ci`, the desktop build, meal/payment/badge/book tests, then `npm run dist:win`. It uploads the `.exe` as an **artifact only** — it does **not** create a GitHub Release or require code-signing secrets.
+The workflow runs `npm ci`, the desktop build, meal/payment/badge/book tests, then `npm run dist:win` (**`--publish never`**). It uploads the `.exe` as an **artifact only** — it does **not** create a GitHub Release or require code-signing secrets.
+
+Pushing a `v*` tag also starts **Release macOS**. Windows stays artifact-only so it does not compete with Mac GitHub Release publishing. Do not redesign Windows auto-update yet.
 
 ### Option B — Local Windows machine
 
@@ -184,7 +247,8 @@ macOS-only CUPS helpers (`lpstat` for remembering the last queue) are **not** ru
 
 | Platform | Local output folder | Typical filename |
 |----------|---------------------|------------------|
-| macOS | `release/` | `FoxBridge-<version>-mac-universal.dmg` |
+| macOS | `release/` | `FoxBridge-<version>-mac-universal.dmg` (human install) |
+| macOS | `release/` | `FoxBridge-<version>-mac-universal.zip` + `latest-mac.yml` (updater feed) |
 | Windows | `release/` | `FoxBridge-<version>-win-x64.exe` |
 
 `release/` is gitignored. **Never commit** `.dmg`, `.exe`, `.app`, SQLite databases, `.env`, or attendee dumps.
@@ -271,9 +335,11 @@ To uninstall: Windows **Settings → Apps** → FoxBridge → Uninstall (or the 
 
 ## macOS Gatekeeper
 
-The current FoxBridge build is **unsigned** and **not notarized**. macOS may block or warn on first launch. This is expected until Apple Developer signing is configured.
+**Production** Mac releases (GitHub Actions **Release macOS**, including tag publishes) are signed with **Developer ID Application**, use **Hardened Runtime**, and are **notarized** with Apple notarytool. Volunteers installing a production DMG should get a normal first-launch experience without Right-click → Open workarounds.
 
-### Safe first launch
+**Local `npm run dist:mac` builds remain unsigned.** macOS may block or warn on first launch of those smoke builds. That is expected.
+
+### Safe first launch (unsigned local smoke only)
 
 1. **Right-click** (or Control-click) **FoxBridge** in Applications.
 2. Choose **Open**.
@@ -317,6 +383,8 @@ Typical contents (no secret values listed here):
 
 **Maintainers:** Do not delete this folder when installing or testing an update. Deleting it forces a full re-setup and loses local validation history.
 
+Signing and notarization do **not** change this path. The Electron `name` remains `foxbridge` (`appId` `com.foxbridge.desktop` is the bundle id, not the userData folder).
+
 To back up before an event, copy the entire `foxbridge` folder to safe storage.
 
 ---
@@ -339,10 +407,11 @@ User data under `userData` is left in place unless you delete it manually.
 
 Planned but **not implemented** yet:
 
-- Apple code signing and notarization
 - Windows Authenticode signing
-- GitHub Releases publishing (workflow currently uploads artifacts only)
-- Automatic in-app updates
+- Windows GitHub Release / auto-update publishing
+- In-app `electron-updater` + Settings Software Update UI (Sprint 24.2–24.3)
+
+Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, and tag-driven GitHub Release publishing are implemented (Sprint 24.1). The in-app updater is **not** wired yet — do not expect installed 0.1.2 clients to auto-detect a new release until Sprint 24.2+.
 
 ---
 
@@ -351,10 +420,13 @@ Planned but **not implemented** yet:
 | Script | Purpose |
 |--------|---------|
 | `npm run build` | Type-check and compile app assets (no installer) |
-| `npm run pack:mac` | Unpacked macOS app for quick Mac smoke tests |
+| `npm run pack:mac` | Unpacked macOS app for quick Mac smoke tests (**host arch only**) |
 | `npm run pack:win` | Unpacked Windows `dir` target (local Windows / CI tooling) |
-| `npm run dist` | Build installers for all configured platforms |
-| `npm run dist:mac` | Build the macOS universal `.dmg` |
-| `npm run dist:win` | Build the Windows x64 NSIS `.exe` |
+| `npm run dist` | Unsigned local installers; never publishes |
+| `npm run dist:mac` | Unsigned universal Mac DMG + ZIP smoke (no Apple credentials) |
+| `npm run dist:mac:release` | Signed + notarized universal Mac; does not publish a Release |
+| `npm run dist:win` | Windows x64 NSIS `.exe` (`--publish never`) |
+| `npm run test:mac-release-config` | Assert Mac release pipeline configuration |
+| `npm run verify:mac-release` | After a pack: check ZIP/DMG/`latest-mac.yml`/universal arch (CI also checks signing) |
 
 See also [`PROJECT_STATE.md`](./PROJECT_STATE.md) for overall product status.

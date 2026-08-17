@@ -43,8 +43,10 @@ jobs:
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Build Windows NSIS installer
-        # dist:win runs build again, then packages x64 NSIS.
+        # dist:win runs build again, then packages x64 NSIS with --publish never.
         # No code-signing secrets are configured; produce an unsigned installer.
+        # v* tags also run release-mac.yml, which owns GitHub Release publishing.
+        # This job must remain artifact-only so the two workflows do not compete.
         run: npm run dist:win
 
       - name: Upload Windows installer

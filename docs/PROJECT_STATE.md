@@ -1,7 +1,7 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (**Sprint 23 CLOSED — live-validated**)  
-Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`)
+Last updated: August 2026 (**Sprint 24.1 — Mac signed/notarized release pipeline**)  
+Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`, **public**)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
 
@@ -44,7 +44,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 
 **Follow-up (non-blocking / backlog — not Sprint 23 blockers):** additional registration-platform adapters; offline Cloud check-in queue; check-out / undo check-in; mobile registration check-in; tighter historical anon RLS; richer admin diagnostics; multi-event UI; Brother silent printing; join-code rate limits; Pre-22.5 Linked rows without `installation_id` may duplicate once on first upgrade rejoin.
 
-**Not yet built:** Sprint 24 (await explicit scope).
+**Not yet built:** Sprint 24.2 electron-updater main-process infrastructure; 24.3 Settings Software Update UI; 24.4 live 0.1.2 → 0.1.3 two-Mac update validation. Do not tag a production GitHub Release until the signed `workflow_dispatch` smoke is approved.
 
 ---
 
@@ -53,16 +53,18 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | Item | Status |
 |------|--------|
 | **electron-builder** | Configured in `package.json` (`appId`: `com.foxbridge.desktop`, output: `release/`) |
-| **macOS universal DMG** | `npm run dist:mac` → `release/FoxBridge-<version>-mac-universal.dmg` (**required** for Intel + Apple Silicon validation) |
-| **macOS pack (host arch only)** | `npm run pack:mac` → ARM64-only on Apple Silicon — **do not** use for multi-Mac live validation |
-| **Windows NSIS x64** | `npm run dist:win` → `release/FoxBridge-<version>-win-x64.exe` (build on Windows or via Actions) |
-| **Windows CI** | `.github/workflows/build-windows.yml` — tests + NSIS artifact upload (no auto Release) |
+| **macOS universal DMG + ZIP** | Production: GitHub Actions `release-mac.yml`. Local unsigned smoke: `npm run dist:mac` |
+| **macOS pack (host arch only)** | `npm run pack:mac` → ARM64-only on Apple Silicon — **do not** use for multi-Mac live validation or the update channel |
+| **Mac signing / notarization** | CI: Developer ID Application + Hardened Runtime + notarytool. Local `dist:mac`: unsigned by design |
+| **GitHub Releases (Mac)** | Tag `v*` matching `package.json` version publishes DMG, ZIP, `latest-mac.yml`. `workflow_dispatch` does **not** publish |
+| **Windows NSIS x64** | `npm run dist:win` → `release/FoxBridge-<version>-win-x64.exe` (`--publish never`) |
+| **Windows CI** | `.github/workflows/build-windows.yml` — tests + NSIS artifact upload (no GitHub Release) |
 | **better-sqlite3** | Rebuilt via `postinstall`; unpacked from ASAR (`asarUnpack`) in packaged app |
-| **User data** | Electron `userData` (macOS `~/Library/Application Support/foxbridge`; Windows `%APPDATA%\foxbridge`) |
+| **User data** | Electron `userData` (macOS `~/Library/Application Support/foxbridge`; Windows `%APPDATA%\foxbridge`) — unchanged by signing |
 | **Icons** | `build/icon.icns`, `build/icon.ico`, `build/icon.png` from `apps/mobile/public/icon.svg` |
 | **Release docs** | [`RELEASING.md`](./RELEASING.md) — Mac + Windows build and install |
 
-**Current limitations:** Mac and Windows builds are **unsigned** (Gatekeeper / SmartScreen warnings on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** No auto-update or automatic GitHub Releases publishing yet.
+**Current limitations:** **Windows** installers remain **unsigned** (SmartScreen on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** In-app auto-update is **not** wired yet (Sprint 24.2+). Local `npm run dist:mac` is still unsigned. Production Mac CI is signed + notarized once the first `workflow_dispatch` smoke is confirmed.
 
 ---
 
@@ -956,7 +958,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: **Sprint 23 CLOSED — live-validated.** Await explicit Sprint 24 scope. Do not start Sprint 24 unprompted.
+Next task: **Sprint 24.1 pipeline is in repo.** Run GitHub Actions **Release macOS** `workflow_dispatch` (no GitHub Release). After signed/notarized smoke passes, await approval before tagging a production version. Sprint 24.2 is electron-updater (not started).
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```
