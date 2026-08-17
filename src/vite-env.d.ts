@@ -30,6 +30,7 @@ import type {
   EventSettingsPatch,
 } from './shared/models/EventSettings'
 import type { EventAccessStatus } from './shared/models/EventAccessSession'
+import type { UpdateStatus } from './shared/models/UpdateStatus'
 
 interface ElectronAPI {
   getAttendees: () => Promise<Attendee[]>
@@ -149,6 +150,11 @@ interface ElectronAPI {
     eventId: string,
     patch: EventSettingsPatch,
   ) => Promise<EventSettingsEntry>
+  getUpdateStatus: () => Promise<UpdateStatus>
+  checkForUpdates: () => Promise<UpdateStatus>
+  downloadUpdate: () => Promise<UpdateStatus>
+  restartAndInstallUpdate: () => Promise<UpdateStatus>
+  onUpdateStatusChanged: (callback: (status: UpdateStatus) => void) => () => void
 }
 
 declare global {

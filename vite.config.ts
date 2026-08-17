@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
             define: foxbridgeCloudDefines,
             build: {
               rollupOptions: {
-                external: ['better-sqlite3'],
+                external: ['better-sqlite3', 'electron-updater'],
               },
             },
           },

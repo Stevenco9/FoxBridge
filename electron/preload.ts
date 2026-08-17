@@ -31,6 +31,7 @@ import type {
   EventSettingsPatch,
 } from '../src/shared/models/EventSettings'
 import type { EventAccessStatus } from '../src/shared/models/EventAccessSession'
+import type { UpdateStatus } from '../src/shared/models/UpdateStatus'
 
 const electronAPI = {
   getAttendees: (): Promise<Attendee[]> => ipcRenderer.invoke('regfox:getAttendees'),
@@ -184,6 +185,20 @@ const electronAPI = {
     eventId: string,
     patch: EventSettingsPatch,
   ): Promise<EventSettingsEntry> => ipcRenderer.invoke('eventSettings:patch', eventId, patch),
+  getUpdateStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('update:getStatus'),
+  checkForUpdates: (): Promise<UpdateStatus> => ipcRenderer.invoke('update:checkForUpdates'),
+  downloadUpdate: (): Promise<UpdateStatus> => ipcRenderer.invoke('update:downloadUpdate'),
+  restartAndInstallUpdate: (): Promise<UpdateStatus> =>
+    ipcRenderer.invoke('update:restartAndInstallUpdate'),
+  onUpdateStatusChanged: (callback: (status: UpdateStatus) => void): (() => void) => {
+    const listener = (_event: unknown, nextStatus: UpdateStatus): void => {
+      callback(nextStatus)
+    }
+    ipcRenderer.on('update:statusChanged', listener)
+    return () => {
+      ipcRenderer.removeListener('update:statusChanged', listener)
+    }
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

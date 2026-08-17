@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (**Sprint 24.1 — Mac signed/notarized release pipeline**)  
+Last updated: August 2026 (**Sprint 24.2 — electron-updater main-process infrastructure**)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`, **public**)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -44,7 +44,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 
 **Follow-up (non-blocking / backlog — not Sprint 23 blockers):** additional registration-platform adapters; offline Cloud check-in queue; check-out / undo check-in; mobile registration check-in; tighter historical anon RLS; richer admin diagnostics; multi-event UI; Brother silent printing; join-code rate limits; Pre-22.5 Linked rows without `installation_id` may duplicate once on first upgrade rejoin.
 
-**Not yet built:** Sprint 24.2 electron-updater main-process infrastructure; 24.3 Settings Software Update UI; 24.4 live 0.1.2 → 0.1.3 two-Mac update validation. Do not tag a production GitHub Release until the signed `workflow_dispatch` smoke is approved.
+**Not yet built:** Sprint 24.3 Settings Software Update UI; Sprint 24.4 live 0.1.2 → 0.1.3 two-Mac update validation. Do not tag a production GitHub Release for update testing until 24.3 UI is ready.
 
 ---
 
@@ -64,7 +64,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | **Icons** | `build/icon.icns`, `build/icon.ico`, `build/icon.png` from `apps/mobile/public/icon.svg` |
 | **Release docs** | [`RELEASING.md`](./RELEASING.md) — Mac + Windows build and install |
 
-**Current limitations:** **Windows** installers remain **unsigned** (SmartScreen on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** In-app auto-update is **not** wired yet (Sprint 24.2+). Local `npm run dist:mac` is still unsigned. Production Mac CI is signed + notarized once the first `workflow_dispatch` smoke is confirmed.
+**Current limitations:** **Windows** installers remain **unsigned** (SmartScreen on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** In-app auto-update **engine is wired** (Sprint 24.2); Settings Software Update UI and live 0.1.2 → 0.1.3 validation remain pending (24.3–24.4). Local `npm run dist:mac` is still unsigned.
 
 ---
 
@@ -152,7 +152,7 @@ FoxBridge/
 
 **Stack:** Electron 36, React 19, Vite 6, TypeScript, **better-sqlite3**, **@supabase/supabase-js**  
 **RegFox API:** `https://api.webconnex.com/v2/public` with `apiKey` header (main process only)  
-**IPC:** `settings:*`, `regfox:getAttendees|connect|updateRegistrations`, `print:*`, `meals:*`, `scannerServer:*`, `cloud:*`  
+**IPC:** `settings:*`, `regfox:getAttendees|connect|updateRegistrations`, `print:*`, `meals:*`, `scannerServer:*`, `cloud:*`, `update:getStatus|checkForUpdates|downloadUpdate|restartAndInstallUpdate`  
 **Dev note:** Run with `env -u ELECTRON_RUN_AS_NODE` (Cursor sets this var and breaks Electron).  
 **Native modules:** `better-sqlite3` must be rebuilt for Electron after a fresh `npm install`. This runs automatically via `postinstall`; if desktop fails with `NODE_MODULE_VERSION` errors, run `npm run rebuild:native`.
 
@@ -931,6 +931,29 @@ Organizers who want book status on details configure the matching purchase field
 
 ---
 
+## Sprint 24.2 — electron-updater main-process infrastructure
+
+**Status:** Implemented in repo. **No Settings UI yet** (Sprint 24.3). **No production update release yet.**
+
+| Item | Detail |
+|------|--------|
+| **Dependency** | `electron-updater` ^6.8.9 (uses packaged `app-update.yml` from electron-builder GitHub provider) |
+| **UpdateManager** | Main-process only (`electron/update/updateManager.ts`); renderer never imports electron-updater |
+| **Policy** | `autoDownload = false`, `autoInstallOnAppQuit = false` — download/install only on explicit user action (24.3 UI) |
+| **Packaged only** | Real checks run when `app.isPackaged`; `npm run dev` exposes `updaterEnabled: false` and performs no network calls |
+| **Startup check** | Quiet check ~45s after app ready (does not block startup) |
+| **Periodic check** | Every ~5 hours while app remains open |
+| **IPC** | `update:getStatus`, `update:checkForUpdates`, `update:downloadUpdate`, `update:restartAndInstallUpdate` — no feed URL or token parameters |
+| **Push events** | `update:statusChanged` broadcast via preload `onUpdateStatusChanged` (listener cleanup supported) |
+| **Safe status** | `state`, `updaterEnabled`, `currentVersion`, `availableVersion`, `downloadPercent`, `errorSafeMessage`, `lastCheckedAt` |
+| **userData** | Binary replacement only — `~/Library/Application Support/foxbridge` paths unchanged |
+| **Principal/Linked** | Identical application-level behavior; no EventAccessSession coupling |
+| **Tests** | `npm run test:update-manager` |
+
+**Pending:** Settings Software Update badge/UI (24.3); live 0.1.2 → 0.1.3 validation after first tagged release with newer version (24.4).
+
+---
+
 ## Sprint 20.5 — UX polish and validation
 
 No new features. Polish + validation of Sprint 20 Event Settings / Quick Info:
@@ -958,7 +981,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: **Sprint 24.1 pipeline is in repo.** Run GitHub Actions **Release macOS** `workflow_dispatch` (no GitHub Release). After signed/notarized smoke passes, await approval before tagging a production version. Sprint 24.2 is electron-updater (not started).
+Next task: **Sprint 24.3 — Settings Software Update UI** (badge, manual check/download/restart). Sprint 24.2 updater engine is wired in main/preload; do not tag `v0.1.3` until 24.3 UI is ready for live validation.
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

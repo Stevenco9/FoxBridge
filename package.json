@@ -17,6 +17,7 @@
     "pack:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --publish never -c.mac.notarize=false",
     "pack:win": "npm run build && electron-builder --win dir --x64 --publish never",
     "test:mac-release-config": "tsx scripts/test-mac-release-config.ts",
+    "test:update-manager": "tsx scripts/test-update-manager.ts",
     "verify:mac-release": "bash scripts/verify-mac-release.sh",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
@@ -70,6 +71,7 @@
     "@fontsource/inter": "^5.2.8",
     "@supabase/supabase-js": "^2.109.0",
     "better-sqlite3": "^12.11.1",
+    "electron-updater": "^6.8.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-qr-code": "^2.2.0"

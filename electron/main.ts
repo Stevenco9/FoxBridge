@@ -22,6 +22,8 @@ import {
   stopScannerServer,
 } from './scannerServerHandlers'
 import { stopDesktopSyncManager } from './sync/syncManager'
+import { registerUpdateHandlers } from './update/updateHandlers'
+import { initializeUpdateManager, stopUpdateManager } from './update/updateManager'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -76,6 +78,8 @@ app.whenReady().then(async () => {
   registerMealValidationHandlers()
   registerScannerServerHandlers()
   registerCloudHandlers()
+  registerUpdateHandlers()
+  initializeUpdateManager()
   createWindow()
   // Sprint 23.1: do NOT start Sync Manager or scanner until EventAccessSession unlocks.
 })
@@ -98,11 +102,13 @@ app.on('activate', () => {
     registerMealValidationHandlers()
     registerScannerServerHandlers()
     registerCloudHandlers()
+    registerUpdateHandlers()
     createWindow()
   }
 })
 
 app.on('will-quit', () => {
+  stopUpdateManager()
   stopDesktopSyncManager()
   void stopScannerServer()
   closeDatabase()

@@ -161,7 +161,16 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Production Mac installers are signed and notarized** — Developer ID Application, Hardened Runtime, Apple notarytool. Local `npm run dist:mac` stays unsigned so ordinary development does not need Apple credentials.
 - **One universal Mac channel** — GitHub Releases host `FoxBridge-<version>-mac-universal.dmg` (humans) plus ZIP + `latest-mac.yml` (future electron-updater). Never publish host-arch `pack:mac` artifacts to that channel.
 - **Public GitHub Releases as the update provider** — metadata is readable without embedding a GitHub token in the Desktop app. Signing/notarization secrets stay in GitHub Actions (names: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`).
-- **Updates must not interrupt an event** — in-app download/install is a later sprint; when added, install remains operator-initiated. Replacing the `.app` does not move `~/Library/Application Support/foxbridge`.
+- **Updates must not interrupt an event** — download/install remains operator-initiated via Settings (Sprint 24.3 UI). Replacing the `.app` does not move `~/Library/Application Support/foxbridge`.
+
+### Sprint 24.2 — electron-updater engine (no UI yet)
+
+- **Main-process UpdateManager only** — renderer calls safe IPC; never imports `electron-updater` or supplies feed URLs/tokens.
+- **Public GitHub Releases feed** — packaged `app-update.yml` from electron-builder (`provider: github`, `Stevenco9/FoxBridge`, `private: false`). Installed FoxBridge needs no GitHub token, Apple credential, or signing secret.
+- **No forced downloads or restarts** — `autoDownload = false`, `autoInstallOnAppQuit = false`. Startup/periodic checks are quiet; download and `quitAndInstall` require explicit user action (24.3 UI).
+- **Packaged-only real activity** — `npm run dev` disables updater network activity and reports `updaterEnabled: false`.
+- **Application-level updates** — identical for Principal and Linked desks; not coupled to EventAccessSession (post-update relaunch starts locked, as desired).
+- **Live validation pending** — infrastructure only in 24.2; first real 0.1.2 → 0.1.3 test after 24.3 UI + tagged release.
 
 ### Sprint 13A — Guided setup decisions
 

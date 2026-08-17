@@ -403,15 +403,35 @@ User data under `userData` is left in place unless you delete it manually.
 
 ---
 
+## Auto-update (Sprint 24.2+)
+
+FoxBridge uses **electron-updater** with the **public GitHub Releases** provider configured in `package.json` (`Stevenco9/FoxBridge`, `private: false`). Packaged apps read `app-update.yml` from `Resources/` — no GitHub token in the client.
+
+| Policy | Value |
+|--------|-------|
+| `autoDownload` | `false` — user must explicitly download (24.3 Settings UI) |
+| `autoInstallOnAppQuit` | `false` — never force-restart |
+| Startup check | ~45s after app ready (packaged only) |
+| Periodic check | ~5 hours while app is open |
+| Dev mode | Disabled when `!app.isPackaged` |
+
+**Safe IPC:** `getUpdateStatus`, `checkForUpdates`, `downloadUpdate`, `restartAndInstallUpdate`, plus `update:statusChanged` push events. No arbitrary feed URL or credential parameters.
+
+**Status states:** `idle`, `checking`, `available`, `downloading`, `downloaded`, `upToDate`, `error`.
+
+**Not yet:** Settings Software Update UI (Sprint 24.3). Live 0.1.2 → 0.1.3 validation (Sprint 24.4) after first tagged release with a newer version.
+
+---
+
 ## Future release improvements
 
 Planned but **not implemented** yet:
 
 - Windows Authenticode signing
 - Windows GitHub Release / auto-update publishing
-- In-app `electron-updater` + Settings Software Update UI (Sprint 24.2–24.3)
+- Settings Software Update UI (Sprint 24.3)
 
-Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, and tag-driven GitHub Release publishing are implemented (Sprint 24.1). The in-app updater is **not** wired yet — do not expect installed 0.1.2 clients to auto-detect a new release until Sprint 24.2+.
+Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), and main-process electron-updater infrastructure (Sprint 24.2) are implemented. Installed clients will not show in-app update UI until Sprint 24.3; do not expect live update validation until after 24.3 + a tagged release newer than 0.1.2.
 
 ---
 
@@ -427,6 +447,7 @@ Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, and ta
 | `npm run dist:mac:release` | Signed + notarized universal Mac; does not publish a Release |
 | `npm run dist:win` | Windows x64 NSIS `.exe` (`--publish never`) |
 | `npm run test:mac-release-config` | Assert Mac release pipeline configuration |
+| `npm run test:update-manager` | Assert electron-updater UpdateManager policy and IPC wiring |
 | `npm run verify:mac-release` | After a pack: check ZIP/DMG/`latest-mac.yml`/universal arch (CI also checks signing) |
 
 See also [`PROJECT_STATE.md`](./PROJECT_STATE.md) for overall product status.
