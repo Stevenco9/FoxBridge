@@ -6,6 +6,7 @@ import './OperationsHome.css'
 
 interface OperationsHomeProps {
   language: AppLanguage
+  showSettingsUpdateBadge?: boolean
   onConnectPhone: () => void
   onOpenMealDashboard: () => void
   onOpenEventSettings: () => void
@@ -25,6 +26,7 @@ function formatTimestamp(value: string | null): string {
 
 export default function OperationsHome({
   language,
+  showSettingsUpdateBadge = false,
   onConnectPhone,
   onOpenMealDashboard,
   onOpenEventSettings,
@@ -119,9 +121,23 @@ export default function OperationsHome({
           <p className="operations-home__label">{t('home.conference')}</p>
           <h2 className="operations-home__title">{conferenceName}</h2>
         </div>
-        <button type="button" className="operations-home__settings" onClick={onOpenSettings}>
-          ⚙
-        </button>
+        <div className="operations-home__settings-wrap">
+          <button
+            type="button"
+            className="operations-home__settings"
+            onClick={onOpenSettings}
+            aria-label={
+              showSettingsUpdateBadge
+                ? t('settings.update.badgeLabel')
+                : t('settings.title')
+            }
+          >
+            ⚙
+          </button>
+          {showSettingsUpdateBadge && (
+            <span className="operations-home__settings-badge" aria-hidden="true" />
+          )}
+        </div>
       </div>
 
       <ul className="operations-home__status">

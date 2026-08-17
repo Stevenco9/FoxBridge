@@ -163,3 +163,44 @@
   color: #92400e;
   line-height: 1.4;
 }
+
+.settings-modal__update-section {
+  margin-bottom: 1rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.settings-modal__update-message {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #111827;
+}
+
+.settings-modal__update-version {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.settings-modal__update-error {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #92400e;
+}
+
+.settings-modal__progress {
+  height: 0.5rem;
+  margin: 0 0 0.35rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.settings-modal__progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: #15803d;
+  transition: width 0.2s ease;
+}

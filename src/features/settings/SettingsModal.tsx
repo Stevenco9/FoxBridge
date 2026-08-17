@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react'
 import type { AppLanguage, SetupStatus } from '../../shared/models/AppSettings'
+import type { UpdateStatus } from '../../shared/models/UpdateStatus'
 import { translate } from '../../i18n/messages'
 import CloudStatusPanel from '../cloud/CloudStatusPanel'
 import ScannerServerControls from '../scanner/ScannerServerControls'
+import SoftwareUpdateSection from './SoftwareUpdateSection'
 import './SettingsModal.css'
 
 interface SettingsModalProps {
   language: AppLanguage
   setupStatus: SetupStatus | null
   open: boolean
+  updateStatus: UpdateStatus
+  onCheckForUpdates: () => Promise<void>
+  onDownloadUpdate: () => Promise<void>
+  onRestartAndInstallUpdate: () => Promise<void>
+  onRefreshUpdateStatus: () => Promise<void>
   onClose: () => void
   onReopenSetup: () => void
   onLanguageChange: (language: AppLanguage) => void
@@ -20,6 +27,11 @@ export default function SettingsModal({
   language,
   setupStatus,
   open,
+  updateStatus,
+  onCheckForUpdates,
+  onDownloadUpdate,
+  onRestartAndInstallUpdate,
+  onRefreshUpdateStatus,
   onClose,
   onReopenSetup,
   onLanguageChange,
@@ -191,6 +203,16 @@ export default function SettingsModal({
             <option value="es">Español</option>
           </select>
         </label>
+
+        <SoftwareUpdateSection
+          language={language}
+          active={open}
+          status={updateStatus}
+          onCheckForUpdates={onCheckForUpdates}
+          onDownloadUpdate={onDownloadUpdate}
+          onRestartAndInstallUpdate={onRestartAndInstallUpdate}
+          onRefreshUpdateStatus={onRefreshUpdateStatus}
+        />
 
         <button
           type="button"

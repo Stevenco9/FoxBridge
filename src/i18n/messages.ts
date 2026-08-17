@@ -205,6 +205,27 @@ export type MessageKey =
   | 'settings.reopenSetup'
   | 'settings.advanced'
   | 'settings.language'
+  | 'settings.update.title'
+  | 'settings.update.upToDate'
+  | 'settings.update.version'
+  | 'settings.update.checkForUpdates'
+  | 'settings.update.checkAgain'
+  | 'settings.update.devDisabled'
+  | 'settings.update.checking'
+  | 'settings.update.available'
+  | 'settings.update.usingVersion'
+  | 'settings.update.updateNow'
+  | 'settings.update.downloading'
+  | 'settings.update.downloadProgress'
+  | 'settings.update.readyToInstall'
+  | 'settings.update.restartAndUpdate'
+  | 'settings.update.restartTitle'
+  | 'settings.update.restartBody'
+  | 'settings.update.restartCancel'
+  | 'settings.update.restartConfirm'
+  | 'settings.update.tryAgain'
+  | 'settings.update.errorFallback'
+  | 'settings.update.badgeLabel'
   | 'common.back'
   | 'common.next'
 
@@ -434,6 +455,28 @@ const en: Record<MessageKey, string> = {
   'settings.cloudEnrollButton': 'Connect',
   'settings.cloudEnrolled': 'This computer is connected to FoxBridge Sync.',
   'settings.saveAdvanced': 'Save advanced settings',
+  'settings.update.title': 'Software Update',
+  'settings.update.upToDate': 'FoxBridge is up to date',
+  'settings.update.version': 'Version {version}',
+  'settings.update.checkForUpdates': 'Check for Updates',
+  'settings.update.checkAgain': 'Check Again',
+  'settings.update.devDisabled': 'Software updates are available in packaged builds.',
+  'settings.update.checking': 'Checking for updates…',
+  'settings.update.available': 'FoxBridge {version} is available',
+  'settings.update.usingVersion': 'You are using {version}',
+  'settings.update.updateNow': 'Update Now',
+  'settings.update.downloading': 'Downloading update…',
+  'settings.update.downloadProgress': '{percent}%',
+  'settings.update.readyToInstall': 'FoxBridge {version} is ready to install',
+  'settings.update.restartAndUpdate': 'Restart & Update',
+  'settings.update.restartTitle': 'Restart FoxBridge to install update?',
+  'settings.update.restartBody':
+    'FoxBridge will close and restart to install the update.\nYour saved event data and settings will remain on this computer.',
+  'settings.update.restartCancel': 'Cancel',
+  'settings.update.restartConfirm': 'Restart & Update',
+  'settings.update.tryAgain': 'Try Again',
+  'settings.update.errorFallback': 'Unable to check for updates right now.',
+  'settings.update.badgeLabel': 'Settings — update available',
   'common.back': 'Back',
   'common.next': 'Next',
 }
@@ -670,6 +713,29 @@ const es: Record<MessageKey, string> = {
   'settings.cloudEnrollButton': 'Conectar',
   'settings.cloudEnrolled': 'Esta computadora está conectada a FoxBridge Sync.',
   'settings.saveAdvanced': 'Guardar configuración avanzada',
+  'settings.update.title': 'Actualización de software',
+  'settings.update.upToDate': 'FoxBridge está actualizado',
+  'settings.update.version': 'Versión {version}',
+  'settings.update.checkForUpdates': 'Buscar actualizaciones',
+  'settings.update.checkAgain': 'Buscar de nuevo',
+  'settings.update.devDisabled':
+    'Las actualizaciones de software están disponibles en las versiones empaquetadas.',
+  'settings.update.checking': 'Buscando actualizaciones…',
+  'settings.update.available': 'FoxBridge {version} está disponible',
+  'settings.update.usingVersion': 'Está usando la versión {version}',
+  'settings.update.updateNow': 'Actualizar ahora',
+  'settings.update.downloading': 'Descargando actualización…',
+  'settings.update.downloadProgress': '{percent}%',
+  'settings.update.readyToInstall': 'FoxBridge {version} está listo para instalar',
+  'settings.update.restartAndUpdate': 'Reiniciar y actualizar',
+  'settings.update.restartTitle': '¿Reiniciar FoxBridge para instalar la actualización?',
+  'settings.update.restartBody':
+    'FoxBridge se cerrará y reiniciará para instalar la actualización.\nSus datos del evento y la configuración guardados permanecerán en esta computadora.',
+  'settings.update.restartCancel': 'Cancelar',
+  'settings.update.restartConfirm': 'Reiniciar y actualizar',
+  'settings.update.tryAgain': 'Intentar de nuevo',
+  'settings.update.errorFallback': 'No se pueden buscar actualizaciones en este momento.',
+  'settings.update.badgeLabel': 'Configuración — actualización disponible',
   'common.back': 'Atrás',
   'common.next': 'Siguiente',
 }

@@ -16,6 +16,8 @@ import EventSettingsPanel from '../eventSettings/EventSettingsPanel'
 import MealDashboardPanel from '../meals/MealDashboardPanel'
 import MealValidationPanel from '../meals/MealValidationPanel'
 import SettingsModal from '../settings/SettingsModal'
+import { useUpdateStatus } from '../../hooks/useUpdateStatus'
+import { shouldShowSettingsUpdateBadge } from '../../shared/update/updateUiHelpers'
 import { getAttendeeFullName, searchAttendees } from './searchAttendees'
 import { buildOperationsHomeRefreshToken } from '../../shared/sync/foxbridgeSyncStatus'
 import './AttendeeSearchScreen.css'
@@ -41,6 +43,14 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
   const [eventSettingsOpen, setEventSettingsOpen] = useState(false)
   const [connectRefreshToken, setConnectRefreshToken] = useState(0)
   const [quickInfoRefreshToken, setQuickInfoRefreshToken] = useState(0)
+  const {
+    status: updateStatus,
+    checkForUpdates,
+    downloadUpdate,
+    restartAndInstallUpdate,
+    refreshUpdateStatus,
+  } = useUpdateStatus()
+  const showSettingsUpdateBadge = shouldShowSettingsUpdateBadge(updateStatus.state)
   const [showDesktopMealValidation, setShowDesktopMealValidation] = useState(false)
 
   const searchRef = useRef<HTMLElement | null>(null)
@@ -132,6 +142,7 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
 
       <OperationsHome
         language={language}
+        showSettingsUpdateBadge={showSettingsUpdateBadge}
         refreshToken={buildOperationsHomeRefreshToken({
           attendeeCount: attendees.length,
           syncCredentialEpoch: connectRefreshToken,
@@ -300,6 +311,11 @@ export default function AttendeeSearchScreen({ onReopenSetup }: AttendeeSearchSc
         language={language}
         setupStatus={setupStatus}
         open={settingsOpen}
+        updateStatus={updateStatus}
+        onCheckForUpdates={checkForUpdates}
+        onDownloadUpdate={downloadUpdate}
+        onRestartAndInstallUpdate={restartAndInstallUpdate}
+        onRefreshUpdateStatus={refreshUpdateStatus}
         onClose={() => setSettingsOpen(false)}
         onReopenSetup={() => void handleReopenSetup()}
         onLanguageChange={(nextLanguage) => void handleLanguageChange(nextLanguage)}

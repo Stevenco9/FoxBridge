@@ -172,6 +172,14 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Application-level updates** — identical for Principal and Linked desks; not coupled to EventAccessSession (post-update relaunch starts locked, as desired).
 - **Live validation pending** — infrastructure only in 24.2; first real 0.1.2 → 0.1.3 test after 24.3 UI + tagged release.
 
+### Sprint 24.3 — Settings Software Update UI
+
+- **Passive notification** — green dot on Settings when an update is available or ready to install; not shown for generic errors.
+- **Manual operator flow** — Check for Updates → Update Now → Restart & Update; no auto-download or auto-restart.
+- **Restart confirmation** — inline dialog warns FoxBridge will quit; saved event data stays on the computer.
+- **Single app-level subscription** — `useUpdateStatus` keeps the badge current even when Settings is closed.
+- **Volunteer-safe copy** — all strings in i18n (`settings.update.*`); no technical updater jargon in the UI.
+
 ### Sprint 13A — Guided setup decisions
 
 - **In-app settings over `.env` for organizers** — RegFox and phone scanning service credentials are saved in Electron `userData` with encrypted secrets. `.env` remains a developer fallback.

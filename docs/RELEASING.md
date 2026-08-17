@@ -417,9 +417,11 @@ FoxBridge uses **electron-updater** with the **public GitHub Releases** provider
 
 **Safe IPC:** `getUpdateStatus`, `checkForUpdates`, `downloadUpdate`, `restartAndInstallUpdate`, plus `update:statusChanged` push events. No arbitrary feed URL or credential parameters.
 
+**Settings UI (Sprint 24.3):** Operations Home ⚙ shows a green badge when an update is available or ready to install. Settings → **Software Update** provides Check for Updates, Update Now, download progress, and Restart & Update (with confirmation). Dev mode shows a quiet packaged-build message instead of updater errors.
+
 **Status states:** `idle`, `checking`, `available`, `downloading`, `downloaded`, `upToDate`, `error`.
 
-**Not yet:** Settings Software Update UI (Sprint 24.3). Live 0.1.2 → 0.1.3 validation (Sprint 24.4) after first tagged release with a newer version.
+**Not yet:** Live 0.1.2 → 0.1.3 validation (Sprint 24.4) after first tagged release with a newer version.
 
 ---
 
@@ -429,9 +431,10 @@ Planned but **not implemented** yet:
 
 - Windows Authenticode signing
 - Windows GitHub Release / auto-update publishing
-- Settings Software Update UI (Sprint 24.3)
+- Settings Software Update UI (Sprint 24.3) — **implemented**
+- Live 0.1.2 → 0.1.3 update validation (Sprint 24.4)
 
-Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), and main-process electron-updater infrastructure (Sprint 24.2) are implemented. Installed clients will not show in-app update UI until Sprint 24.3; do not expect live update validation until after 24.3 + a tagged release newer than 0.1.2.
+Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), main-process electron-updater infrastructure (Sprint 24.2), and Settings Software Update UI (Sprint 24.3) are implemented. Live update validation waits for Sprint 24.4 + a tagged release newer than 0.1.2.
 
 ---
 
@@ -448,6 +451,7 @@ Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-dr
 | `npm run dist:win` | Windows x64 NSIS `.exe` (`--publish never`) |
 | `npm run test:mac-release-config` | Assert Mac release pipeline configuration |
 | `npm run test:update-manager` | Assert electron-updater UpdateManager policy and IPC wiring |
+| `npm run test:software-update-ui` | Assert Settings update UI wiring, badge rules, and i18n |
 | `npm run verify:mac-release` | After a pack: check ZIP/DMG/`latest-mac.yml`/universal arch (CI also checks signing) |
 
 See also [`PROJECT_STATE.md`](./PROJECT_STATE.md) for overall product status.
