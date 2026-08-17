@@ -30,28 +30,30 @@ jobs:
           node-version: '20'
           cache: npm
 
-      # node-gyp 9 (via electron-rebuild / better-sqlite3) imports distutils.
-      # Pin Python 3.11 and restore distutils via setuptools before npm ci.
+      # node-gyp 9 prefers Homebrew Python 3.14 on macos-latest unless forced.
+      # Pin Python 3.11, restore distutils via setuptools, then force node-gyp.
       - name: Set up Python 3.11
         id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Restore distutils for node-gyp
+      - name: Restore distutils and force Python 3.11 for node-gyp
         run: |
-          python --version
-          which python
-          python -m pip install --upgrade setuptools
-          python -c "import distutils; print(distutils.__file__)"
-          PYTHON="$(which python)"
-          echo "PYTHON=${PYTHON}" >> "$GITHUB_ENV"
-          echo "npm_config_python=${PYTHON}" >> "$GITHUB_ENV"
+          PYTHON_311="$(which python)"
+          "$PYTHON_311" --version
+          "$PYTHON_311" -m pip install --upgrade setuptools
+          "$PYTHON_311" -c "import distutils; print(distutils.__file__)"
+          echo "PYTHON=${PYTHON_311}" >> "$GITHUB_ENV"
+          echo "npm_config_python=${PYTHON_311}" >> "$GITHUB_ENV"
+          echo "NODE_GYP_FORCE_PYTHON=${PYTHON_311}" >> "$GITHUB_ENV"
 
       - name: Show Python used for native builds
         run: |
-          echo "PYTHON=${PYTHON}"
-          echo "npm_config_python=${npm_config_python}"
+          echo "PYTHON=$PYTHON"
+          echo "npm_config_python=$npm_config_python"
+          echo "NODE_GYP_FORCE_PYTHON=$NODE_GYP_FORCE_PYTHON"
+          "$NODE_GYP_FORCE_PYTHON" --version
 
       - name: Install dependencies
         run: npm ci
