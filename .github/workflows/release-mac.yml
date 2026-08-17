@@ -30,6 +30,20 @@ jobs:
           node-version: '20'
           cache: npm
 
+      # node-gyp 9 (via electron-rebuild / better-sqlite3) imports distutils,
+      # which is missing on the runner's default Python 3.12+. Pin 3.11 only
+      # for this CI job; do not change app dependencies.
+      - name: Set up Python 3.11
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Use Python 3.11 for native module builds
+        run: |
+          echo "PYTHON=${{ steps.setup-python.outputs.python-path }}" >> "$GITHUB_ENV"
+          echo "npm_config_python=${{ steps.setup-python.outputs.python-path }}" >> "$GITHUB_ENV"
+
       - name: Install dependencies
         run: npm ci
 
