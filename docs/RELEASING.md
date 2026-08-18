@@ -126,15 +126,18 @@ Production Mac builds run on **`macos-latest`** via [`.github/workflows/release-
 1. Bump `package.json` **and** `package-lock.json` to the new version (for example `0.1.3`).
 2. Commit on `main`.
 3. Tag **exactly** `v` + that version (`v0.1.3`) and push the tag.
-4. GitHub Actions signs with **Developer ID Application**, then notarizes with Apple **notarytool** (not deprecated `altool`) via `scripts/notarize-mac-retry.sh`. The signed app is submitted **once**. The script captures the Apple submission id and polls `notarytool info` until **Accepted** or **Invalid** (about **3 hours** overall, 60-second poll interval). Transient network errors retry the current submit/info call without creating a new submission after an id is known. **Invalid** fetches `notarytool log` and fails without resubmitting. After **Accepted** the ticket is stapled to the `.app`, then the universal DMG, ZIP, and `latest-mac.yml` are generated from that stapled app. Tag publishes GitHub Release assets.
+4. GitHub Actions signs with **Developer ID Application**, then notarizes with Apple **notarytool** (not deprecated `altool`) via `scripts/notarize-mac-retry.sh`. The signed app is submitted **once**. The script captures the Apple submission id and polls `notarytool info` until **Accepted** or **Invalid** (about **3 hours** overall, 60-second poll interval). Transient network errors retry the current submit/info call without creating a new submission after an id is known. **Invalid** fetches `notarytool log` and fails without resubmitting. After **Accepted** the ticket is stapled to the `.app`, then the universal DMG, ZIP, and `latest-mac.yml` are generated from that stapled app.
 
-GitHub Release `v<version>` assets include at least:
+electron-builder packages with **`--publish never`**. A GitHub Release is created or updated only on a matching `v*` tag, **after** local verification of the complete five-file asset set, via `scripts/publish-github-mac-release.sh`. The job then checks that the GitHub Release contains every required name (`scripts/verify-github-mac-release.sh`) and fails if any file is missing.
+
+GitHub Release `v<version>` **must** contain exactly these names:
 
 ```text
 FoxBridge-<version>-mac-universal.dmg
+FoxBridge-<version>-mac-universal.dmg.blockmap
 FoxBridge-<version>-mac-universal.zip
+FoxBridge-<version>-mac-universal.zip.blockmap
 latest-mac.yml
-FoxBridge-<version>-mac-universal.zip.blockmap   # if electron-builder emits it
 ```
 
 The public GitHub repo is the initial update **provider** (`provider: github`, owner `Stevenco9`, repo `FoxBridge`). Installed apps will later read release metadata over HTTPS **without** a GitHub token in the client. **Do not** put `GH_TOKEN` or signing secrets in the packaged app.
@@ -453,5 +456,6 @@ Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-dr
 | `npm run test:update-manager` | Assert electron-updater UpdateManager policy and IPC wiring |
 | `npm run test:software-update-ui` | Assert Settings update UI wiring, badge rules, and i18n |
 | `npm run verify:mac-release` | After a pack: check ZIP/DMG/`latest-mac.yml`/universal arch (CI also checks signing) |
+| `npm run verify:github-mac-release` | Fail if GitHub Release `v<version>` is missing any of the five Mac assets |
 
 See also [`PROJECT_STATE.md`](./PROJECT_STATE.md) for overall product status.

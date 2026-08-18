@@ -19,6 +19,9 @@ fail() {
   exit 1
 }
 
+BLOCKMAP_DMG="release/FoxBridge-${VERSION}-mac-universal.dmg.blockmap"
+BLOCKMAP_ZIP="release/FoxBridge-${VERSION}-mac-universal.zip.blockmap"
+
 [ -d "$APP" ] || fail "missing $APP"
 [ -f "$DMG" ] || fail "missing $DMG"
 [ -f "$ZIP" ] || fail "missing $ZIP"
@@ -34,9 +37,10 @@ echo "Universal architectures: $(lipo -info "$BINARY")"
 
 YML_BODY="$(cat "$YML")"
 echo "$YML_BODY" | grep -q "version: ${VERSION}" || fail "latest-mac.yml version is not ${VERSION}"
-echo "$YML_BODY" | grep -q "FoxBridge-${VERSION}-mac-universal.zip" || fail "latest-mac.yml does not reference the universal ZIP"
+echo "$YML_BODY" | grep -q "path: FoxBridge-${VERSION}-mac-universal.zip" || fail "latest-mac.yml primary path is not the universal ZIP"
 echo "$YML_BODY" | grep -q 'sha512:' || fail "latest-mac.yml missing sha512"
 echo "$YML_BODY" | grep -q 'size:' || fail "latest-mac.yml missing size"
+echo "$YML_BODY" | grep -q 'releaseDate:' || fail "latest-mac.yml missing releaseDate"
 if echo "$YML_BODY" | grep -Eq 'mac-arm64|mac-x64'; then
   fail "latest-mac.yml references a host-arch artifact (arm64/x64) instead of universal"
 fi
@@ -58,15 +62,18 @@ else
   fi
 fi
 
-BLOCKMAPS="$(find release -maxdepth 1 -name "FoxBridge-${VERSION}-mac-universal*.blockmap" -print)"
-if [ -z "$BLOCKMAPS" ]; then
-  echo "warning: no universal blockmap next to the ZIP/DMG (electron-builder may omit it for unsigned local smoke)"
-  if [ "$REQUIRE_SIGNED" = "1" ]; then
-    fail "CI release is missing blockmap metadata for the universal artifact"
-  fi
+if [ "$REQUIRE_SIGNED" = "1" ]; then
+  [ -f "$BLOCKMAP_DMG" ] || fail "missing $BLOCKMAP_DMG"
+  [ -f "$BLOCKMAP_ZIP" ] || fail "missing $BLOCKMAP_ZIP"
+  bash "$(dirname "$0")/verify-local-mac-release-assets.sh" release
 else
-  echo "blockmap files:"
-  echo "$BLOCKMAPS"
+  BLOCKMAPS="$(find release -maxdepth 1 -name "FoxBridge-${VERSION}-mac-universal*.blockmap" -print)"
+  if [ -z "$BLOCKMAPS" ]; then
+    echo "warning: no universal blockmap next to the ZIP/DMG (electron-builder may omit it for unsigned local smoke)"
+  else
+    echo "blockmap files:"
+    echo "$BLOCKMAPS"
+  fi
 fi
 
 # Do not ship signing material or env files inside release artifacts.

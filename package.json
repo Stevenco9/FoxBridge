@@ -20,6 +20,7 @@
     "test:update-manager": "tsx scripts/test-update-manager.ts",
     "test:software-update-ui": "tsx scripts/test-software-update-ui.ts",
     "verify:mac-release": "bash scripts/verify-mac-release.sh",
+    "verify:github-mac-release": "bash scripts/verify-github-mac-release.sh",
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",

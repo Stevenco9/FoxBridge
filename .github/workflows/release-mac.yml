@@ -80,22 +80,16 @@ jobs:
         id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve publish mode
-        id: publish
+      - name: Confirm tag matches package version
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
-            TAG="${GITHUB_REF_NAME}"
-            if [[ "$TAG" != "v${VERSION}" ]]; then
-              echo "Tag ${TAG} does not match package.json version ${VERSION} (expected v${VERSION})."
-              exit 1
-            fi
-            echo "mode=always" >> "$GITHUB_OUTPUT"
-            echo "Tag ${TAG} matches package version. Will publish GitHub Release assets."
-          else
-            echo "mode=never" >> "$GITHUB_OUTPUT"
-            echo "workflow_dispatch / non-tag run: signed smoke only — will not publish a GitHub Release."
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" != "v${VERSION}" ]]; then
+            echo "Tag ${TAG} does not match package.json version ${VERSION} (expected v${VERSION})."
+            exit 1
           fi
+          echo "Tag ${TAG} matches package version. GitHub Release publish will run after local verification."
 
       - name: Require Apple signing and notarization secrets
         env:
@@ -123,11 +117,10 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # electron-builder signs the universal app, then afterSign runs
-        # scripts/notarize-mac.cjs: one notarytool submit, then poll that
-        # submission id (no resubmit on wait timeout) until Accepted/Invalid.
-        run: npx electron-builder --mac --publish ${{ steps.publish.outputs.mode }} -c.forceCodeSigning=true
+        # electron-builder must not publish. GitHub Release upload happens only
+        # after local verification of the complete five-file asset set.
+        # afterSign runs scripts/notarize-mac.cjs (submit once, then poll).
+        run: npx electron-builder --mac --publish never -c.forceCodeSigning=true
 
       - name: Verify signed Mac artifacts
         env:
@@ -135,14 +128,21 @@ jobs:
           REQUIRE_SIGNED: '1'
         run: bash scripts/verify-mac-release.sh
 
+      - name: Publish complete Mac asset set to GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/publish-github-mac-release.sh
+
       - name: Upload Mac release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: FoxBridge-${{ steps.version.outputs.version }}-mac-universal
           path: |
-            release/FoxBridge-*-mac-universal.dmg
-            release/FoxBridge-*-mac-universal.zip
-            release/FoxBridge-*-mac-universal*.blockmap
+            release/FoxBridge-${{ steps.version.outputs.version }}-mac-universal.dmg
+            release/FoxBridge-${{ steps.version.outputs.version }}-mac-universal.dmg.blockmap
+            release/FoxBridge-${{ steps.version.outputs.version }}-mac-universal.zip
+            release/FoxBridge-${{ steps.version.outputs.version }}-mac-universal.zip.blockmap
             release/latest-mac.yml
           retention-days: 14
           if-no-files-found: error
