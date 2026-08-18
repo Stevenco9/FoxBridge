@@ -22,8 +22,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate packaged FoxBridge Cloud public configuration
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
+        run: npm run validate:packaged-cloud-env
+
       - name: Run TypeScript check and app build
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
         run: npm run build
+
+      - name: Verify compiled packaged Cloud defaults
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
+        run: npm run verify:packaged-cloud-bundle
 
       - name: Run meal order tests
         run: npm run test:meal-order
@@ -43,11 +61,23 @@ jobs:
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Build Windows NSIS installer
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
         # dist:win runs build again, then packages x64 NSIS with --publish never.
+        # Public Cloud vars must be present on this rebuild so Vite inlines them.
         # No code-signing secrets are configured; produce an unsigned installer.
         # v* tags also run release-mac.yml, which owns GitHub Release publishing.
         # This job must remain artifact-only so the two workflows do not compete.
         run: npm run dist:win
+
+      - name: Verify compiled packaged Cloud defaults after Windows rebuild
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
+        run: npm run verify:packaged-cloud-bundle
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4

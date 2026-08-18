@@ -191,7 +191,7 @@ export FOXBRIDGE_SCANNER_URL='https://scanner.your-conference.example.com'
 npm run dist:mac   # or dist:win / pack:mac
 ```
 
-GitHub Actions `build-windows.yml` currently builds **without** injecting `FOXBRIDGE_CLOUD_*`. For a production Windows artifact that works offline-of-Advanced, add repository secrets/vars and pass them into the `dist:win` step before relying on that workflow for Sync-ready installers.
+GitHub Actions `release-mac.yml` and `build-windows.yml` inject these as repository **Variables** (`vars.FOXBRIDGE_CLOUD_*`) into `npm run build`. The jobs fail closed if a variable is missing, a placeholder, or a privileged secret key, and again if the compiled `dist-electron` bundle does not contain the public defaults. Privileged/service-role credentials stay local-only and are never passed to Vite.
 
 ### 2.2 Mobile / Scanner PWA (non-secret)
 
@@ -293,7 +293,7 @@ Everything in §3 and §4 against a real Cloud project + packaged Desktop + host
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Packaged Desktop public Cloud config | **NEEDS MANUAL VALIDATION** | Code path PASS; requires non-empty `FOXBRIDGE_CLOUD_*` at build |
+| Packaged Desktop public Cloud config | **CI FAIL-CLOSED** (Sprint 24.4A) / **NEEDS MANUAL VALIDATION** (live) | Production Mac/Windows builds require GitHub Actions Variables `FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY`, `FOXBRIDGE_SCANNER_URL`; compiled `dist-electron` is checked before packaging |
 | Organizer desk enrollment UX | **PASS** (code) / **NEEDS MANUAL VALIDATION** (live) | Wizard + Operations Home share enroll logic |
 | Migration 009+010 enrollment issuance | **PASS** (repo) / **NEEDS MANUAL VALIDATION** (apply 010 remotely) | 010 fixes hosted `digest` resolution |
 | Edge Functions (`desktop-*`) | **PASS** (repo) / **NEEDS MANUAL VALIDATION** (deploy) | Must be deployed after 009 |
@@ -330,4 +330,4 @@ Keep as separate backlog (not Sync enablement blockers):
 
 - Tighten anon RLS (conference-scoped SELECT policies)
 - Phone offline cache + validation outbox
-- Optional CI injection of `FOXBRIDGE_CLOUD_*` for Windows packaging artifacts
+- (Done in Sprint 24.4A) CI injection of `FOXBRIDGE_CLOUD_*` for Mac and Windows packaging artifacts

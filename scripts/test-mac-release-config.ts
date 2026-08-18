@@ -175,9 +175,66 @@ assert.ok(workflow.includes('FoxBridge-${{ steps.version.outputs.version }}-mac-
 assert.ok(workflow.includes('FoxBridge-${{ steps.version.outputs.version }}-mac-universal.zip.blockmap'))
 assert.ok(!workflow.includes('altool'))
 assert.ok(workflow.includes('notary') || workflow.includes('APPLE_APP_SPECIFIC_PASSWORD'))
-assert.ok(workflow.includes("github.event_name == 'push'"))
+
+{
+  const validateIdx = workflow.indexOf('npm run validate:packaged-cloud-env')
+  const buildIdx = workflow.indexOf('run: npm run build')
+  const verifyIdx = workflow.indexOf('npm run verify:packaged-cloud-bundle')
+  const builderIdx = workflow.indexOf('npx electron-builder --mac --publish never')
+  assert.ok(validateIdx >= 0, 'Mac workflow must validate public Cloud env before build')
+  assert.ok(buildIdx >= 0)
+  assert.ok(verifyIdx >= 0, 'Mac workflow must verify compiled Cloud defaults')
+  assert.ok(builderIdx >= 0)
+  assert.ok(validateIdx < buildIdx, 'Cloud env validation must run before npm run build')
+  assert.ok(buildIdx < verifyIdx, 'compiled Cloud bundle guard must run after npm run build')
+  assert.ok(verifyIdx < builderIdx, 'compiled Cloud bundle guard must run before electron-builder')
+}
+
+assert.ok(workflow.includes('vars.FOXBRIDGE_CLOUD_URL'))
+assert.ok(workflow.includes('vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY'))
+assert.ok(workflow.includes('vars.FOXBRIDGE_SCANNER_URL'))
+assert.ok(workflow.includes('test:packaged-cloud-config'))
+
+function workflowStep(source: string, name: string): string {
+  const start = source.indexOf(`- name: ${name}`)
+  assert.ok(start >= 0, `missing workflow step: ${name}`)
+  const next = source.indexOf('\n      - name:', start + 1)
+  return next >= 0 ? source.slice(start, next) : source.slice(start)
+}
+
+const validateStep = workflowStep(workflow, 'Validate packaged FoxBridge Cloud public configuration')
+const buildStep = workflowStep(workflow, 'Run TypeScript check and app build')
+const verifyStep = workflowStep(workflow, 'Verify compiled packaged Cloud defaults')
+const signStep = workflowStep(workflow, 'Build, sign, and notarize universal Mac')
+const publishStep = workflowStep(workflow, 'Publish complete Mac asset set to GitHub Release')
+
+for (const step of [validateStep, buildStep, verifyStep]) {
+  assert.ok(step.includes('vars.FOXBRIDGE_CLOUD_URL'))
+  assert.ok(step.includes('vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY'))
+  assert.ok(step.includes('vars.FOXBRIDGE_SCANNER_URL'))
+  assert.ok(!step.includes('SUPABASE_SERVICE_ROLE_KEY'))
+  assert.ok(!step.includes('SERVICE_ROLE'))
+  assert.ok(!step.includes('REGFOX_API_KEY'))
+  assert.ok(!step.includes('secrets.GITHUB_TOKEN'))
+  assert.ok(!step.includes('MAC_CSC_LINK'))
+  assert.ok(!step.includes('APPLE_APP_SPECIFIC_PASSWORD'))
+}
+
+assert.ok(signStep.includes('secrets.MAC_CSC_LINK'))
+assert.ok(signStep.includes('secrets.APPLE_APP_SPECIFIC_PASSWORD'))
+assert.ok(!signStep.includes('FOXBRIDGE_CLOUD_PUBLISHABLE_KEY'), 'signing step must not receive Cloud packaging vars')
+assert.ok(publishStep.includes("github.event_name == 'push'"))
+assert.ok(publishStep.includes('scripts/publish-github-mac-release.sh'))
 assert.ok(!workflow.includes('electron-builder --mac --publish always'))
-assert.ok(!workflow.includes('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}') || workflow.includes('scripts/publish-github-mac-release.sh'))
+
+const validateScript = read('scripts/validate-packaged-cloud-env.ts')
+assert.ok(validateScript.includes('validatePackagedCloudEnv'))
+assert.ok(!validateScript.includes('console.log(process.env'))
+const verifyScript = read('scripts/verify-packaged-cloud-bundle.ts')
+assert.ok(verifyScript.includes('dist-electron'))
+assert.ok(verifyScript.includes('verifyCompiledPackagedCloudBundle'))
+assert.ok(existsSync(join(root, 'scripts/packagedCloudConfig.ts')))
+assert.ok(existsSync(join(root, 'scripts/test-packaged-cloud-config.ts')))
 
 const requiredAssets = read('scripts/mac-release-assets.sh')
 assert.ok(requiredAssets.includes('FoxBridge-${version}-mac-universal.dmg'))
@@ -214,6 +271,27 @@ assert.ok(verifyMac.includes('path: FoxBridge-${VERSION}-mac-universal.zip'))
 const windowsWorkflow = read('.github/workflows/build-windows.yml')
 assert.ok(windowsWorkflow.includes('npm run dist:win'))
 assert.ok(windowsWorkflow.includes('artifact-only') || windowsWorkflow.includes('--publish never'))
+assert.ok(windowsWorkflow.includes('vars.FOXBRIDGE_CLOUD_URL'))
+assert.ok(windowsWorkflow.includes('vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY'))
+assert.ok(windowsWorkflow.includes('vars.FOXBRIDGE_SCANNER_URL'))
+assert.ok(windowsWorkflow.includes('npm run validate:packaged-cloud-env'))
+assert.ok(windowsWorkflow.includes('npm run verify:packaged-cloud-bundle'))
+{
+  const winValidateIdx = windowsWorkflow.indexOf('npm run validate:packaged-cloud-env')
+  const winBuildIdx = windowsWorkflow.indexOf('run: npm run build')
+  const winVerifyIdx = windowsWorkflow.indexOf('npm run verify:packaged-cloud-bundle')
+  const winDistIdx = windowsWorkflow.indexOf('npm run dist:win')
+  assert.ok(winValidateIdx >= 0 && winValidateIdx < winBuildIdx)
+  assert.ok(winVerifyIdx >= 0 && winBuildIdx < winVerifyIdx && winVerifyIdx < winDistIdx)
+  const distStepStart = windowsWorkflow.indexOf('- name: Build Windows NSIS installer')
+  const distStepEnd = windowsWorkflow.indexOf('- name: Verify compiled packaged Cloud defaults after Windows rebuild')
+  const distStep = windowsWorkflow.slice(distStepStart, distStepEnd)
+  assert.ok(distStep.includes('vars.FOXBRIDGE_CLOUD_URL'))
+  assert.ok(distStep.includes('vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY'))
+  assert.ok(distStep.includes('vars.FOXBRIDGE_SCANNER_URL'))
+  assert.ok(!distStep.includes('SUPABASE_SERVICE_ROLE_KEY'))
+  assert.ok(!windowsWorkflow.includes('SUPABASE_SERVICE_ROLE_KEY'))
+}
 
 const pkgText = read('package.json')
 for (const forbidden of ['MAC_CSC_LINK', 'MAC_CSC_KEY_PASSWORD', 'APPLE_APP_SPECIFIC_PASSWORD', 'BEGIN CERTIFICATE']) {

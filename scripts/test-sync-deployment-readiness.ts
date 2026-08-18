@@ -90,6 +90,22 @@ assert.ok(viteConfig.includes('FOXBRIDGE_SCANNER_URL'))
 assert.equal(viteConfig.includes('SERVICE_ROLE'), false)
 assert.equal(viteConfig.includes('SUPABASE_SERVICE_ROLE_KEY'), false)
 
+const macReleaseWorkflow = read('.github/workflows/release-mac.yml')
+assert.ok(macReleaseWorkflow.includes('vars.FOXBRIDGE_CLOUD_URL'))
+assert.ok(macReleaseWorkflow.includes('npm run validate:packaged-cloud-env'))
+assert.ok(macReleaseWorkflow.includes('npm run verify:packaged-cloud-bundle'))
+assert.ok(!macReleaseWorkflow.includes('SUPABASE_SERVICE_ROLE_KEY'))
+
+const windowsReleaseWorkflow = read('.github/workflows/build-windows.yml')
+assert.ok(windowsReleaseWorkflow.includes('vars.FOXBRIDGE_CLOUD_URL'))
+assert.ok(windowsReleaseWorkflow.includes('npm run validate:packaged-cloud-env'))
+assert.ok(windowsReleaseWorkflow.includes('npm run verify:packaged-cloud-bundle'))
+assert.ok(!windowsReleaseWorkflow.includes('SUPABASE_SERVICE_ROLE_KEY'))
+
+assert.ok(existsSync(join(root, 'scripts/validate-packaged-cloud-env.ts')))
+assert.ok(existsSync(join(root, 'scripts/verify-packaged-cloud-bundle.ts')))
+assert.ok(existsSync(join(root, 'scripts/packagedCloudConfig.ts')))
+
 const appDefaults = read('electron/config/appDefaults.ts')
 assert.ok(appDefaults.includes('FOXBRIDGE_CLOUD_URL'))
 assert.ok(appDefaults.toLowerCase().includes('never put a service-role'))

@@ -150,7 +150,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 
 - **Volunteer pairs by scanning one temporary QR code** with the phone’s normal Camera app. No volunteer account, scanner code, conference selection, or technical setup is required.
 - **Organizer-facing UI is non-technical** — no `.env`, Supabase, RPC, anon key, service role, localhost, or scanner codes in Conference Mode. Technical configuration lives under Settings → Advanced only.
-- **FoxBridge Cloud public defaults are packaging-time (Sprint 21.5)** — Cloud endpoint URL + publishable client key may be injected via `FOXBRIDGE_CLOUD_*` at build/CI. Privileged desktop keys are never shipped in installers.
+- **FoxBridge Cloud public defaults are packaging-time (Sprint 21.5 / 24.4A)** — Cloud endpoint URL + publishable client key + scanner HTTPS origin are injected via GitHub Actions repository Variables (`FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY`, `FOXBRIDGE_SCANNER_URL`) at `npm run build`. Production Mac/Windows jobs fail closed if those values are missing from env or from the compiled `dist-electron` bundle. Privileged desktop/service-role keys are never shipped in installers. Signed CI 0.1.2 and published v0.1.3 omitted these Variables; v0.1.3 remains untouched. The next corrected release must be a new version.
 - **Production desks enroll with a one-time event code (Sprint 21.6–21.9)** — Desktop exchanges the code for a revocable event-scoped desk credential; privileged Cloud writes run in FoxBridge Cloud Edge Functions. Legacy local service-role remains development/migration only. Organizers enroll from Setup Wizard (after RegFox) or Operations Home; Advanced remains a fallback. No Supabase/URLs/keys/desk-token jargon in those surfaces. Operator deploy/validation: [`FOXBRIDGE_SYNC_DEPLOYMENT.md`](./FOXBRIDGE_SYNC_DEPLOYMENT.md) (requires migrations through **010**).
 - **Pairing tokens are short-lived and single-use** — desktop creates token via desk Edge Function (or legacy service role); mobile exchanges via `exchange_scanner_pairing_token`; hash stored in `scanner_pairing_tokens`. QR is HTTPS `/pair?token=…` only (Sprint 21.7).
 - **HTTPS scanner web address required for production QR** — packaged default or Settings → Advanced override (“Scanner web address”).
@@ -170,7 +170,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **No forced downloads or restarts** — `autoDownload = false`, `autoInstallOnAppQuit = false`. Startup/periodic checks are quiet; download and `quitAndInstall` require explicit user action (24.3 UI).
 - **Packaged-only real activity** — `npm run dev` disables updater network activity and reports `updaterEnabled: false`.
 - **Application-level updates** — identical for Principal and Linked desks; not coupled to EventAccessSession (post-update relaunch starts locked, as desired).
-- **Live validation pending** — infrastructure only in 24.2; first real 0.1.2 → 0.1.3 test after 24.3 UI + tagged release.
+- **Live validation pending** — first Cloud-complete updater test after 24.4A packaging fix + a new version (do not reuse empty-config 0.1.2 / 0.1.3 as the production pair).
 
 ### Sprint 24.3 — Settings Software Update UI
 
@@ -179,6 +179,14 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Restart confirmation** — inline dialog warns FoxBridge will quit; saved event data stays on the computer.
 - **Single app-level subscription** — `useUpdateStatus` keeps the badge current even when Settings is closed.
 - **Volunteer-safe copy** — all strings in i18n (`settings.update.*`); no technical updater jargon in the UI.
+
+### Sprint 24.4A — Packaged public Cloud configuration
+
+- **Repository Variables, not secrets** — production builds receive `FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY`, and `FOXBRIDGE_SCANNER_URL` from GitHub Actions `vars.*` at `npm run build`.
+- **Fail closed** — missing, HTTP, placeholder, or privileged-looking values fail before compile; compiled `dist-electron` is checked before signing/packaging.
+- **Privileged credentials stay local** — service-role, RegFox API keys, Apple signing material, and GitHub tokens are never Vite `define` inputs.
+- **v0.1.3 untouched** — signed 0.1.2 smoke and published v0.1.3 lacked these Variables. Do not replace v0.1.3 Release assets. Next corrected installer is a new version.
+- **Live auto-update not validated** — 24.4 live 0.1.2 → 0.1.3 testing is not passed.
 
 ### Sprint 13A — Guided setup decisions
 

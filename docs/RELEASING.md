@@ -166,7 +166,23 @@ Never commit these values. Never paste them into `package.json`, `.env`, or the 
 | `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password (not the Apple ID password) |
 | `APPLE_TEAM_ID` | 10-character Apple Team ID |
 
-The workflow maps `MAC_CSC_*` to electron-builder’s `CSC_LINK` / `CSC_KEY_PASSWORD` for the build step only. Release upload uses the Actions `GITHUB_TOKEN` (`GH_TOKEN` in that step) — not a packaged credential.
+The workflow maps `MAC_CSC_*` to electron-builder’s `CSC_LINK` / `CSC_KEY_PASSWORD` for the **sign/notarize** step only. Release upload uses the Actions `GITHUB_TOKEN` (`GH_TOKEN` in that step) — not a packaged credential.
+
+### Required GitHub Actions Variables (public Cloud config)
+
+Production Mac and Windows builds fail closed unless these repository **Variables** are set. They are public client configuration (baked into the Desktop binary by Vite). They are **not** secrets.
+
+| Variable name | Purpose |
+|---------------|---------|
+| `FOXBRIDGE_CLOUD_URL` | HTTPS FoxBridge Cloud endpoint |
+| `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` | Publishable/anon client key (RLS). Never a service-role key. |
+| `FOXBRIDGE_SCANNER_URL` | HTTPS scanner PWA origin used in pairing QR codes |
+
+`release-mac.yml` and `build-windows.yml` pass these into `npm run build` only. A pre-build script (`npm run validate:packaged-cloud-env`) rejects missing, HTTP, placeholder, or privileged-looking values without printing the key. After compile, `npm run verify:packaged-cloud-bundle` requires the same values to be present in `dist-electron` **before** electron-builder signs or packages.
+
+Do **not** add `SUPABASE_SERVICE_ROLE_KEY`, RegFox API keys, Apple credentials, or `GITHUB_TOKEN` to Vite or these Variables.
+
+**Sprint 24.4A history:** signed CI `0.1.2` (workflow `32084525251`) and published **v0.1.3** were built without these Variables, so packaged Cloud defaults were empty. **v0.1.3 GitHub Release assets remain untouched.** The next corrected production build must be a **new version** after these Variables exist and a `workflow_dispatch` smoke build is confirmed. Live 0.1.2 → 0.1.3 auto-update validation is **not** passed.
 
 ### Signed local packaging (optional)
 
@@ -193,7 +209,7 @@ FoxBridge-<version>-win-x64
 FoxBridge-<version>-win-x64.exe
 ```
 
-The workflow runs `npm ci`, the desktop build, meal/payment/badge/book tests, then `npm run dist:win` (**`--publish never`**). It uploads the `.exe` as an **artifact only** — it does **not** create a GitHub Release or require code-signing secrets.
+The workflow validates public Cloud Variables, runs `npm ci`, the desktop build, a compiled-bundle Cloud guard, meal/payment/badge/book tests, then `npm run dist:win` (**`--publish never`**, with the same public Cloud Variables because that script rebuilds). It uploads the `.exe` as an **artifact only** — it does **not** create a GitHub Release or require code-signing secrets.
 
 Pushing a `v*` tag also starts **Release macOS**. Windows stays artifact-only so it does not compete with Mac GitHub Release publishing. Do not redesign Windows auto-update yet.
 
@@ -226,7 +242,7 @@ Still **smoke-test the installer on a real Windows computer** before distributin
 | Shortcuts | Desktop + Start Menu (“FoxBridge”) |
 | Uninstall | Available through Windows Apps & features / the NSIS uninstaller |
 | Signing | Currently **unsigned** |
-| Secrets | Same as Mac: RegFox credentials and any **local** privileged Cloud key live under Electron `userData` via `safeStorage` (or a local fallback). **Never** bake a service-role / privileged Cloud key into the installer. Optional non-secret FoxBridge Cloud public defaults (`FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` / `FOXBRIDGE_CLOUD_ANON_KEY`, `FOXBRIDGE_SCANNER_URL`) may be injected at packaging/CI time. |
+| Secrets | Same as Mac: RegFox credentials and any **local** privileged Cloud key live under Electron `userData` via `safeStorage` (or a local fallback). **Never** bake a service-role / privileged Cloud key into the installer. Public FoxBridge Cloud defaults (`FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY`, `FOXBRIDGE_SCANNER_URL`) are injected at packaging/CI from GitHub Actions repository Variables. |
 
 ### Microsoft Defender SmartScreen
 
@@ -302,7 +318,7 @@ Repo automated readiness (does **not** replace live Cloud E2E):
 npm run test:sync-deployment-readiness
 ```
 
-**Note:** `.github/workflows/build-windows.yml` does not currently inject `FOXBRIDGE_CLOUD_*`. Wire CI secrets/vars before treating that workflow artifact as Sync-ready for organizers.
+**Sprint 24.4A:** Mac and Windows production workflows inject GitHub Actions repository Variables `FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY`, and `FOXBRIDGE_SCANNER_URL` into `npm run build`, then verify `dist-electron`. Jobs fail closed if public Cloud config is missing. Privileged/service-role credentials remain local-only.
 
 Record any failures before sending the installer to volunteers.
 
@@ -424,7 +440,7 @@ FoxBridge uses **electron-updater** with the **public GitHub Releases** provider
 
 **Status states:** `idle`, `checking`, `available`, `downloading`, `downloaded`, `upToDate`, `error`.
 
-**Not yet:** Live 0.1.2 → 0.1.3 validation (Sprint 24.4) after first tagged release with a newer version.
+**Not yet:** Live auto-update validation. Signed 0.1.2 / v0.1.3 omitted packaged Cloud defaults (Sprint 24.4A). v0.1.3 remains published and unmodified. The next updater test needs a **new version** built after repository Variables are set.
 
 ---
 
@@ -435,9 +451,9 @@ Planned but **not implemented** yet:
 - Windows Authenticode signing
 - Windows GitHub Release / auto-update publishing
 - Settings Software Update UI (Sprint 24.3) — **implemented**
-- Live 0.1.2 → 0.1.3 update validation (Sprint 24.4)
+- Live auto-update validation (Sprint 24.4) — blocked until a Cloud-complete version newer than 0.1.3
 
-Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), main-process electron-updater infrastructure (Sprint 24.2), and Settings Software Update UI (Sprint 24.3) are implemented. Live update validation waits for Sprint 24.4 + a tagged release newer than 0.1.2.
+Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), main-process electron-updater infrastructure (Sprint 24.2), Settings Software Update UI (Sprint 24.3), and production public Cloud packaging guards (Sprint 24.4A) are implemented. Live update validation still requires a tagged release built with repository Cloud Variables. Do not replace v0.1.3 assets.
 
 ---
 
@@ -452,6 +468,9 @@ Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-dr
 | `npm run dist:mac` | Unsigned universal Mac DMG + ZIP smoke (no Apple credentials) |
 | `npm run dist:mac:release` | Signed + notarized universal Mac; does not publish a Release |
 | `npm run dist:win` | Windows x64 NSIS `.exe` (`--publish never`) |
+| `npm run validate:packaged-cloud-env` | Fail closed if public Cloud Variables are missing/invalid (no key logging) |
+| `npm run verify:packaged-cloud-bundle` | Fail closed if compiled `dist-electron` lacks public Cloud defaults |
+| `npm run test:packaged-cloud-config` | Assert Cloud env/bundle guard behavior |
 | `npm run test:mac-release-config` | Assert Mac release pipeline configuration |
 | `npm run test:update-manager` | Assert electron-updater UpdateManager policy and IPC wiring |
 | `npm run test:software-update-ui` | Assert Settings update UI wiring, badge rules, and i18n |

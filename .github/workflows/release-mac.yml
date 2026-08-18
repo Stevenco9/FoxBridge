@@ -58,11 +58,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate packaged FoxBridge Cloud public configuration
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
+        run: npm run validate:packaged-cloud-env
+
       - name: Run TypeScript check and app build
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
         run: npm run build
+
+      - name: Verify compiled packaged Cloud defaults
+        env:
+          FOXBRIDGE_CLOUD_URL: ${{ vars.FOXBRIDGE_CLOUD_URL }}
+          FOXBRIDGE_CLOUD_PUBLISHABLE_KEY: ${{ vars.FOXBRIDGE_CLOUD_PUBLISHABLE_KEY }}
+          FOXBRIDGE_SCANNER_URL: ${{ vars.FOXBRIDGE_SCANNER_URL }}
+        run: npm run verify:packaged-cloud-bundle
 
       - name: Run Mac release configuration tests
         run: npm run test:mac-release-config
+
+      - name: Run packaged Cloud configuration tests
+        run: npm run test:packaged-cloud-config
 
       - name: Run meal order tests
         run: npm run test:meal-order
