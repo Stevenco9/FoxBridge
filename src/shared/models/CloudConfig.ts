@@ -65,9 +65,136 @@ export interface ResolveCloudPrivilegedKeyInput {
   envPrivilegedKey: string | null | undefined
 }
 
+/** Safe shape of public Cloud resolution — never includes URL or key values. */
+export interface CloudPublicConfigDiagnostic {
+  source: CloudConfigSource
+  settingsUrlPresent: boolean
+  settingsKeyPresent: boolean
+  packagedUrlPresent: boolean
+  packagedKeyPresent: boolean
+  envUrlPresent: boolean
+  envKeyPresent: boolean
+  settingsUrlLength: number
+  settingsKeyLength: number
+  packagedUrlLength: number
+  packagedKeyLength: number
+  envUrlLength: number
+  envKeyLength: number
+  /** True when packaged URL+key are both present but source is still none. */
+  packagedPresentButUnresolved: boolean
+}
+
+export interface CloudPublicConfigInspection {
+  config: FoxBridgeCloudPublicConfig | null
+  diagnostic: CloudPublicConfigDiagnostic
+}
+
+export const MISSING_PUBLIC_CLOUD_CONFIG_MESSAGE =
+  'FoxBridge Cloud public configuration is missing.'
+
 function trimOrNull(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
+}
+
+function presence(value: string | null): { present: boolean; length: number } {
+  return {
+    present: Boolean(value),
+    length: value?.length ?? 0,
+  }
+}
+
+/**
+ * Resolve public Cloud config and a secret-free diagnostic from the same trimmed
+ * inputs. Precedence is unchanged: complete settings → packaged defaults → env.
+ */
+export function inspectCloudPublicConfig(
+  input: ResolveCloudPublicConfigInput,
+): CloudPublicConfigInspection {
+  const settingsUrl = trimOrNull(input.settingsUrl)
+  const settingsKey = trimOrNull(input.settingsPublishableKey)
+  const packagedUrl = trimOrNull(input.packagedUrl)
+  const packagedKey = trimOrNull(input.packagedPublishableKey)
+  const envUrl = trimOrNull(input.envUrl)
+  const envKey = trimOrNull(input.envPublishableKey)
+
+  let config: FoxBridgeCloudPublicConfig | null = null
+  if (settingsUrl && settingsKey) {
+    config = {
+      cloudUrl: settingsUrl,
+      publishableKey: settingsKey,
+      source: 'settings',
+    }
+  } else if (packagedUrl && packagedKey) {
+    config = {
+      cloudUrl: packagedUrl,
+      publishableKey: packagedKey,
+      source: 'packaged_default',
+    }
+  } else if (envUrl && envKey) {
+    config = {
+      cloudUrl: envUrl,
+      publishableKey: envKey,
+      source: 'env',
+    }
+  }
+
+  const settingsUrlShape = presence(settingsUrl)
+  const settingsKeyShape = presence(settingsKey)
+  const packagedUrlShape = presence(packagedUrl)
+  const packagedKeyShape = presence(packagedKey)
+  const envUrlShape = presence(envUrl)
+  const envKeyShape = presence(envKey)
+  const source: CloudConfigSource = config?.source ?? 'none'
+
+  return {
+    config,
+    diagnostic: {
+      source,
+      settingsUrlPresent: settingsUrlShape.present,
+      settingsKeyPresent: settingsKeyShape.present,
+      packagedUrlPresent: packagedUrlShape.present,
+      packagedKeyPresent: packagedKeyShape.present,
+      envUrlPresent: envUrlShape.present,
+      envKeyPresent: envKeyShape.present,
+      settingsUrlLength: settingsUrlShape.length,
+      settingsKeyLength: settingsKeyShape.length,
+      packagedUrlLength: packagedUrlShape.length,
+      packagedKeyLength: packagedKeyShape.length,
+      envUrlLength: envUrlShape.length,
+      envKeyLength: envKeyShape.length,
+      packagedPresentButUnresolved:
+        source === 'none' && packagedUrlShape.present && packagedKeyShape.present,
+    },
+  }
+}
+
+const DIAGNOSTIC_LOG_KEYS = [
+  'source',
+  'settingsUrlPresent',
+  'settingsKeyPresent',
+  'packagedUrlPresent',
+  'packagedKeyPresent',
+  'envUrlPresent',
+  'envKeyPresent',
+  'settingsUrlLength',
+  'settingsKeyLength',
+  'packagedUrlLength',
+  'packagedKeyLength',
+  'envUrlLength',
+  'envKeyLength',
+  'packagedPresentButUnresolved',
+] as const
+
+/** One-line main-process log. Whitelists diagnostic fields only — never URL/key values. */
+export function formatCloudPublicConfigDiagnosticLog(
+  diagnostic: CloudPublicConfigDiagnostic,
+): string {
+  const safe: Record<string, string | boolean | number> = {}
+  for (const key of DIAGNOSTIC_LOG_KEYS) {
+    safe[key] = diagnostic[key]
+  }
+  return `[cloud-config] resolve ${JSON.stringify(safe)}`
 }
 
 /**
@@ -77,37 +204,20 @@ function trimOrNull(value: string | null | undefined): string | null {
 export function resolveCloudPublicConfig(
   input: ResolveCloudPublicConfigInput,
 ): FoxBridgeCloudPublicConfig | null {
-  const settingsUrl = trimOrNull(input.settingsUrl)
-  const settingsKey = trimOrNull(input.settingsPublishableKey)
-  if (settingsUrl && settingsKey) {
+  return inspectCloudPublicConfig(input).config
+}
+
+/** Returns the resolved public pair, or throws the production missing-config error. */
+export function takeResolvedPublicConfig(
+  inspection: CloudPublicConfigInspection,
+): { cloudUrl: string; publishableKey: string } {
+  if (inspection.config && inspection.diagnostic.source !== 'none') {
     return {
-      cloudUrl: settingsUrl,
-      publishableKey: settingsKey,
-      source: 'settings',
+      cloudUrl: inspection.config.cloudUrl.replace(/\/+$/, ''),
+      publishableKey: inspection.config.publishableKey,
     }
   }
-
-  const packagedUrl = trimOrNull(input.packagedUrl)
-  const packagedKey = trimOrNull(input.packagedPublishableKey)
-  if (packagedUrl && packagedKey) {
-    return {
-      cloudUrl: packagedUrl,
-      publishableKey: packagedKey,
-      source: 'packaged_default',
-    }
-  }
-
-  const envUrl = trimOrNull(input.envUrl)
-  const envKey = trimOrNull(input.envPublishableKey)
-  if (envUrl && envKey) {
-    return {
-      cloudUrl: envUrl,
-      publishableKey: envKey,
-      source: 'env',
-    }
-  }
-
-  return null
+  throw new Error(MISSING_PUBLIC_CLOUD_CONFIG_MESSAGE)
 }
 
 /**

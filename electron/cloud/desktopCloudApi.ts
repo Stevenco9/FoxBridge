@@ -5,8 +5,10 @@ import {
   principalCredentialPersistedMatches,
   selectReactivateDeskToken,
 } from '../../src/shared/cloud/principalReactivation'
+import { takeResolvedPublicConfig } from '../../src/shared/models/CloudConfig'
 import { readOrCreateInstallationIdSync } from './installationIdStore'
-import { resolveFoxBridgeCloudPublicConfig } from './cloudConfig'
+import { inspectFoxBridgeCloudPublicConfig, resolveFoxBridgeCloudPublicConfig } from './cloudConfig'
+import { logSafeCloudPublicConfigDiagnostic } from './cloudConfigProbe'
 import { readDeskCredentialSync, type StoredDeskCredential } from './deskCredentialStore'
 import { patchSecrets } from '../settings/secretStore'
 import { patchPublicSettings } from '../settings/settingsStore'
@@ -19,14 +21,9 @@ export interface DesktopEnrollResult {
 }
 
 function requirePublicConfig(): { cloudUrl: string; publishableKey: string } {
-  const publicConfig = resolveFoxBridgeCloudPublicConfig()
-  if (!publicConfig) {
-    throw new Error('FoxBridge Cloud public configuration is missing.')
-  }
-  return {
-    cloudUrl: publicConfig.cloudUrl.replace(/\/+$/, ''),
-    publishableKey: publicConfig.publishableKey,
-  }
+  const inspection = inspectFoxBridgeCloudPublicConfig()
+  logSafeCloudPublicConfigDiagnostic(inspection.diagnostic)
+  return takeResolvedPublicConfig(inspection)
 }
 
 function requireDeskCredential(): StoredDeskCredential {

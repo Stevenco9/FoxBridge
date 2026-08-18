@@ -1,12 +1,13 @@
 import type {
+  CloudPublicConfigInspection,
   FoxBridgeCloudConfigInfo,
   FoxBridgeCloudConnectionConfig,
   FoxBridgeCloudPublicConfig,
 } from '../../src/shared/models/CloudConfig'
 import {
+  inspectCloudPublicConfig,
   resolveCloudConnectionConfig,
   resolveCloudPrivilegedCredentials,
-  resolveCloudPublicConfig,
 } from '../../src/shared/models/CloudConfig'
 import { resolveCloudOpsTransport } from '../../src/shared/cloud/deskCredentialPolicy'
 import { getPackagedCloudPublicDefaults } from '../config/appDefaults'
@@ -42,18 +43,26 @@ function envCloudUrl(): string | null {
   )
 }
 
-export function resolveFoxBridgeCloudPublicConfig(): FoxBridgeCloudPublicConfig | null {
+function readPublicConfigResolutionInput() {
   const settings = readPublicCloudSettingsSync()
   const packaged = getPackagedCloudPublicDefaults()
-
-  return resolveCloudPublicConfig({
+  return {
     settingsUrl: settings.mobileServiceUrl,
     settingsPublishableKey: settings.mobilePublicKey,
     packagedUrl: packaged.cloudUrl,
     packagedPublishableKey: packaged.publishableKey,
     envUrl: envCloudUrl(),
     envPublishableKey: envPublishableKey(),
-  })
+  }
+}
+
+/** Same inputs as resolveFoxBridgeCloudPublicConfig, plus secret-free diagnostic shape. */
+export function inspectFoxBridgeCloudPublicConfig(): CloudPublicConfigInspection {
+  return inspectCloudPublicConfig(readPublicConfigResolutionInput())
+}
+
+export function resolveFoxBridgeCloudPublicConfig(): FoxBridgeCloudPublicConfig | null {
+  return inspectFoxBridgeCloudPublicConfig().config
 }
 
 /** Legacy service-role connection only (dev/migration). Prefer desk credential path. */
