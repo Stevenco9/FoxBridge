@@ -182,7 +182,7 @@ Production Mac and Windows builds fail closed unless these repository **Variable
 
 Do **not** add `SUPABASE_SERVICE_ROLE_KEY`, RegFox API keys, Apple credentials, or `GITHUB_TOKEN` to Vite or these Variables.
 
-**Sprint 24.4A history:** signed CI `0.1.2` (workflow `32084525251`) and published **v0.1.3** were built without these Variables, so packaged Cloud defaults were empty. **v0.1.3 GitHub Release assets remain untouched.** The next corrected production build must be a **new version** after these Variables exist and a `workflow_dispatch` smoke build is confirmed. Live 0.1.2 → 0.1.3 auto-update validation is **not** passed.
+**Sprint 24.4A / 24.4B history:** signed CI `0.1.2` (workflow `32084525251`) and published **v0.1.3** were built without these Variables, so packaged Cloud defaults were empty. **v0.1.3 GitHub Release assets remain untouched.** **0.1.4** is the corrected Cloud-complete production baseline. Live auto-update validation is **not** started by publishing 0.1.4.
 
 ### Signed local packaging (optional)
 
@@ -440,7 +440,7 @@ FoxBridge uses **electron-updater** with the **public GitHub Releases** provider
 
 **Status states:** `idle`, `checking`, `available`, `downloading`, `downloaded`, `upToDate`, `error`.
 
-**Not yet:** Live auto-update validation. Signed 0.1.2 / v0.1.3 omitted packaged Cloud defaults (Sprint 24.4A). v0.1.3 remains published and unmodified. The next updater test needs a **new version** built after repository Variables are set.
+**Not yet:** Live auto-update validation. Signed 0.1.2 / v0.1.3 omitted packaged Cloud defaults (Sprint 24.4A). **v0.1.3 remains published and unmodified.** **0.1.4** is the Cloud-complete production baseline; the updater test starts only after 0.1.4 is installed.
 
 ---
 
@@ -451,9 +451,9 @@ Planned but **not implemented** yet:
 - Windows Authenticode signing
 - Windows GitHub Release / auto-update publishing
 - Settings Software Update UI (Sprint 24.3) — **implemented**
-- Live auto-update validation (Sprint 24.4) — blocked until a Cloud-complete version newer than 0.1.3
+- Live auto-update validation (Sprint 24.4) — after **0.1.4** is the installed production baseline; do not modify v0.1.3
 
-Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), main-process electron-updater infrastructure (Sprint 24.2), Settings Software Update UI (Sprint 24.3), and production public Cloud packaging guards (Sprint 24.4A) are implemented. Live update validation still requires a tagged release built with repository Cloud Variables. Do not replace v0.1.3 assets.
+Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), main-process electron-updater infrastructure (Sprint 24.2), Settings Software Update UI (Sprint 24.3), and production public Cloud packaging guards (Sprint 24.4A) are implemented. **0.1.4** is the first Cloud-complete tagged Mac production baseline. Live update validation is not started by this release. Do not replace v0.1.3 assets.
 
 ---
 

@@ -184,6 +184,6 @@ assert.match(viteConfig, /'electron-updater'/)
 const packageJson = readSource('package.json')
 assert.match(packageJson, /"electron-updater"/)
 assert.match(packageJson, /"name":\s*"foxbridge"/)
-assert.match(packageJson, /"version":\s*"0\.1\.3"/)
+assert.match(packageJson, /"version":\s*"\d+\.\d+\.\d+"/)
 
 console.log('test-update-manager: ok')

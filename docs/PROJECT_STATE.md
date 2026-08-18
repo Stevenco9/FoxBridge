@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (**Sprint 24.4A — packaged public Cloud configuration**)  
+Last updated: August 2026 (**Sprint 24.4B — FoxBridge 0.1.4 corrected production baseline**)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`, **public**)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -44,7 +44,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 
 **Follow-up (non-blocking / backlog — not Sprint 23 blockers):** additional registration-platform adapters; offline Cloud check-in queue; check-out / undo check-in; mobile registration check-in; tighter historical anon RLS; richer admin diagnostics; multi-event UI; Brother silent printing; join-code rate limits; Pre-22.5 Linked rows without `installation_id` may duplicate once on first upgrade rejoin.
 
-**Not yet built:** Sprint 24.4 live auto-update validation on two Macs. Signed 0.1.2 and published v0.1.3 omitted packaged Cloud defaults. **Do not modify v0.1.3.** The next corrected release is a new version after GitHub Actions Cloud Variables exist.
+**Not yet built:** Sprint 24.4 live auto-update validation on two Macs (do not start until 0.1.4 is installed as the production baseline). **v0.1.3 remains unmodified.** **0.1.4** is the first Cloud-complete signed production release.
 
 ---
 
@@ -64,7 +64,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | **Icons** | `build/icon.icns`, `build/icon.ico`, `build/icon.png` from `apps/mobile/public/icon.svg` |
 | **Release docs** | [`RELEASING.md`](./RELEASING.md) — Mac + Windows build and install |
 
-**Current limitations:** **Windows** installers remain **unsigned** (SmartScreen on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** In-app auto-update engine + Settings Software Update UI are wired (Sprint 24.2–24.3); live auto-update validation remains pending (24.4) until a Cloud-complete version newer than 0.1.3. Local `npm run dist:mac` is still unsigned.
+**Current limitations:** **Windows** installers remain **unsigned** (SmartScreen on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** In-app auto-update engine + Settings Software Update UI are wired (Sprint 24.2–24.3); live auto-update validation remains pending (24.4) after **0.1.4** is the installed baseline. **v0.1.3 is unmodified.** Local `npm run dist:mac` is still unsigned.
 
 ---
 
@@ -643,7 +643,7 @@ Infrastructure / configuration layer. No registration, meal-validation, or pairi
 |------|--------|
 | **Product config** | `cloudConfig.ts` — FoxBridge Cloud public + privileged resolution |
 | **Shared model** | `src/shared/models/CloudConfig.ts` |
-| **Packaged public defaults** | GitHub Actions repository Variables `FOXBRIDGE_CLOUD_URL` + `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` + `FOXBRIDGE_SCANNER_URL` (Sprint 24.4A fail-closed CI). Repo source stays empty. Signed 0.1.2 / v0.1.3 omitted these Variables. |
+| **Packaged public defaults** | GitHub Actions repository Variables `FOXBRIDGE_CLOUD_URL` + `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY` + `FOXBRIDGE_SCANNER_URL` (Sprint 24.4A fail-closed CI). Repo source stays empty. Signed 0.1.2 / v0.1.3 omitted these Variables. **0.1.4** ships them. |
 | **Never packaged** | Service-role / privileged desktop key |
 | **Migration** | Existing Settings/secrets and local `.env` still win / remain supported |
 | **Advanced UI** | Labeled as development / migration override |
@@ -966,13 +966,13 @@ Organizers who want book status on details configure the matching purchase field
 | **i18n** | `settings.update.*` keys in English + Mexican Spanish |
 | **Tests** | `npm run test:software-update-ui` |
 
-**Pending:** Live two-Mac auto-update validation after a Cloud-complete version newer than 0.1.3. Do not modify v0.1.3.
+**Pending:** Live two-Mac auto-update validation using **0.1.4** as the Cloud-complete baseline. Do not modify v0.1.3.
 
 ---
 
 ## Sprint 24.4A — Packaged public Cloud configuration
 
-**Status:** Implemented in repo. **No new version / tag / Release.** Live auto-update validation is **not** passed.
+**Status:** Implemented in repo and live-validated on signed 0.1.4 smoke (Principal setup from `packaged_default`). **v0.1.3 remains unmodified.**
 
 | Item | Detail |
 |------|--------|
@@ -980,11 +980,24 @@ Organizers who want book status on details configure the matching purchase field
 | **Build inject** | `release-mac.yml` and `build-windows.yml` pass `vars.*` into `npm run build` (Windows also into `dist:win` rebuild) |
 | **Pre-build** | `npm run validate:packaged-cloud-env` — HTTPS, no placeholders, reject `sb_secret_` / service-role; does not print the key |
 | **Post-build** | `npm run verify:packaged-cloud-bundle` — compiled `dist-electron` must contain the three values before signing/packaging |
+| **Runtime probe** | Principal claim logs secret-free `[cloud-config] resolve` source/presence (userData `logs/cloud-config-resolve.log`) |
 | **Never packaged** | `SUPABASE_SERVICE_ROLE_KEY`, Apple credentials, `GITHUB_TOKEN`, RegFox API keys |
 | **0.1.2 / 0.1.3** | Signed CI 0.1.2 and published v0.1.3 omitted these Variables. **v0.1.3 remains untouched.** |
-| **Tests** | `npm run test:packaged-cloud-config` plus extended `test:mac-release-config` / `test:sync-deployment-readiness` |
+| **0.1.4** | Corrected production baseline with packaged Cloud defaults + Software Update UI + deterministic Release publish |
+| **Tests** | `npm run test:packaged-cloud-config` plus extended `test:mac-release-config` / `test:sync-deployment-readiness` / `test:cloud-config` |
 
-**Next:** Create the three repository Variables, then `workflow_dispatch` smoke (no tag). After that smoke is good, bump to a **new version** for the corrected production/updater sequence.
+---
+
+## Sprint 24.4B — FoxBridge 0.1.4 production baseline
+
+**Status:** Tagged production Mac release **0.1.4**. Live two-Mac auto-update validation is **not** started by this slice.
+
+| Item | Detail |
+|------|--------|
+| **Version** | `0.1.4` (`package.json` + `package-lock.json`) |
+| **Tag / Release** | `v0.1.4` — do not modify `v0.1.3` |
+| **Includes** | Packaged public Cloud config, Principal setup, stale-error UX fix, Software Update UI, deterministic five-file GitHub Release publish |
+| **Not this slice** | Installing 0.1.4, creating 0.1.5, or starting the updater test |
 
 ---
 
@@ -1015,7 +1028,7 @@ Current state:
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: After GitHub Actions Cloud Variables exist, run a signed `workflow_dispatch` smoke. Do not bump/tag until that smoke is confirmed. Do not modify v0.1.3. Live auto-update validation is not passed.
+Next task: 0.1.4 is the corrected Cloud-complete production baseline. Do not modify v0.1.3. Do not create 0.1.5. Live auto-update validation is not started until 0.1.4 is installed on both Macs.
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

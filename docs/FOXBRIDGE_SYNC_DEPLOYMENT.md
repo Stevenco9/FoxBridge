@@ -293,7 +293,7 @@ Everything in §3 and §4 against a real Cloud project + packaged Desktop + host
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Packaged Desktop public Cloud config | **CI FAIL-CLOSED** (Sprint 24.4A) / **NEEDS MANUAL VALIDATION** (live) | Production Mac/Windows builds require GitHub Actions Variables `FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY`, `FOXBRIDGE_SCANNER_URL`; compiled `dist-electron` is checked before packaging |
+| Packaged Desktop public Cloud config | **CI FAIL-CLOSED** (Sprint 24.4A) / **LIVE-VALIDATED** (signed 0.1.4 smoke Principal setup) | Production Mac/Windows builds require GitHub Actions Variables `FOXBRIDGE_CLOUD_URL`, `FOXBRIDGE_CLOUD_PUBLISHABLE_KEY`, `FOXBRIDGE_SCANNER_URL`; compiled `dist-electron` is checked before packaging |
 | Organizer desk enrollment UX | **PASS** (code) / **NEEDS MANUAL VALIDATION** (live) | Wizard + Operations Home share enroll logic |
 | Migration 009+010 enrollment issuance | **PASS** (repo) / **NEEDS MANUAL VALIDATION** (apply 010 remotely) | 010 fixes hosted `digest` resolution |
 | Edge Functions (`desktop-*`) | **PASS** (repo) / **NEEDS MANUAL VALIDATION** (deploy) | Must be deployed after 009 |
