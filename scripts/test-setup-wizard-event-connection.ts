@@ -67,6 +67,84 @@ assert.equal(joinBlock.includes('apiKey'), false, 'no apiKey on join step')
 assert.equal(joinBlock.includes('regfox.apiKey'), false, 'no RegFox key on join step')
 assert.equal(wizard.includes("continueAfterUnlock('linked')"), true, 'linked unlock')
 
+// --- Stale connection error is cleared on retry / success ---
+const principalFn = wizard.slice(
+  wizard.indexOf('const handlePrincipalUnlock'),
+  wizard.indexOf('const handleLinkedJoin'),
+)
+const linkedFn = wizard.slice(
+  wizard.indexOf('const handleLinkedJoin'),
+  wizard.indexOf('const handlePrinterContinue'),
+)
+const setupMyEventUi = wizard.slice(
+  wizard.indexOf("{step === 'setupMyEvent' &&"),
+  wizard.indexOf("{step === 'joinExisting' &&"),
+)
+
+assert.ok(
+  principalFn.indexOf('setError(null)') <
+    principalFn.indexOf('window.electronAPI.connectRegFox({'),
+  'principal clears prior error before Connect starts',
+)
+assert.ok(
+  principalFn.indexOf('setError(null)') < principalFn.indexOf('setIsBusy(true)'),
+  'principal clears error before busy/retry work',
+)
+assert.ok(
+  setupMyEventUi.includes('setError(null)') &&
+    setupMyEventUi.includes('void handlePrincipalUnlock(false)'),
+  'Connect click clears visible error immediately',
+)
+assert.ok(
+  principalFn.indexOf('setError(null)') <
+    principalFn.indexOf("continueAfterUnlock('principal')") &&
+    principalFn.lastIndexOf('setError(null)') >
+      principalFn.indexOf('claimFoxBridgeCloudPrincipal({'),
+  'principal clears error after successful claim',
+)
+assert.ok(
+  /if \(!connectResult\.success\)[\s\S]*setError\(connectResult\.message/.test(principalFn),
+  'new RegFox failure still displays its error',
+)
+assert.ok(
+  /if \(!claimResult\.success\)[\s\S]*setError\(claimResult\.message/.test(principalFn),
+  'new Cloud claim failure still displays its error',
+)
+assert.equal(
+  setupMyEventUi.includes('{error && !isBusy && ('),
+  true,
+  'principal error hidden while retry is in progress',
+)
+assert.ok(
+  principalFn.indexOf('setAttendeeCount') > principalFn.indexOf('setError(null)') &&
+    principalFn.includes('connectResult.attendeeCount'),
+  'successful RegFox connection clears error before claim',
+)
+
+assert.ok(
+  linkedFn.indexOf('setError(null)') <
+    linkedFn.indexOf('window.electronAPI.redeemFoxBridgeLinkedJoin({'),
+  'linked clears prior error before join starts',
+)
+assert.ok(
+  joinBlock.includes('setError(null)') && joinBlock.includes('void handleLinkedJoin()'),
+  'Join click clears visible error immediately',
+)
+assert.ok(
+  linkedFn.lastIndexOf('setError(null)') < linkedFn.indexOf("continueAfterUnlock('linked')") &&
+    linkedFn.lastIndexOf('setError(null)') > linkedFn.indexOf('if (!result.success)'),
+  'linked clears error on successful join',
+)
+assert.ok(
+  /if \(!result\.success\)[\s\S]*setError\(result\.message/.test(linkedFn),
+  'new Linked failure still displays its error',
+)
+assert.equal(
+  joinBlock.includes('{error && !isBusy && ('),
+  true,
+  'linked error hidden while retry is in progress',
+)
+
 assert.equal(wizard.includes("unlockPath === 'linked'"), true, 'linked printer branch')
 assert.equal(wizard.includes("setStep('mobile')"), true, 'principal can reach mobile')
 assert.equal(wizard.includes('returningUser'), true, 'returningUser support')

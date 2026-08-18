@@ -139,6 +139,8 @@ export default function SetupWizard({
       return
     }
 
+    setError(null)
+
     const trimmedKey = apiKey.trim()
     const trimmedEventId = eventId.trim()
     if (!trimmedKey || !trimmedEventId) {
@@ -147,7 +149,6 @@ export default function SetupWizard({
     }
 
     setIsBusy(true)
-    setError(null)
 
     try {
       const connectResult = await window.electronAPI.connectRegFox({
@@ -160,6 +161,7 @@ export default function SetupWizard({
         return
       }
 
+      setError(null)
       setAttendeeCount(connectResult.attendeeCount)
 
       const claimResult = await window.electronAPI.claimFoxBridgeCloudPrincipal({
@@ -181,6 +183,7 @@ export default function SetupWizard({
         return
       }
 
+      setError(null)
       setNeedsTransferConfirmation(false)
       setApiKey('')
       await refreshStatus()
@@ -200,6 +203,8 @@ export default function SetupWizard({
       return
     }
 
+    setError(null)
+
     const code = joinCode.trim()
     if (!code) {
       setError(t('eventConnect.joinCodeRequired'))
@@ -207,7 +212,6 @@ export default function SetupWizard({
     }
 
     setIsBusy(true)
-    setError(null)
 
     try {
       const result = await window.electronAPI.redeemFoxBridgeLinkedJoin({ joinCode: code })
@@ -216,6 +220,7 @@ export default function SetupWizard({
         return
       }
 
+      setError(null)
       setJoinCode('')
       await refreshStatus()
       continueAfterUnlock('linked')
@@ -424,14 +429,17 @@ export default function SetupWizard({
                     type="button"
                     className="setup-wizard__button setup-wizard__button--primary"
                     disabled={isBusy || !principalFieldsReady}
-                    onClick={() => void handlePrincipalUnlock(true)}
+                    onClick={() => {
+                      setError(null)
+                      void handlePrincipalUnlock(true)
+                    }}
                   >
                     {isBusy ? '…' : t('sync.transfer.confirm')}
                   </button>
                 </div>
               </div>
             )}
-            {error && (
+            {error && !isBusy && (
               <p className="setup-wizard__error" role="alert">
                 {error}
               </p>
@@ -454,7 +462,10 @@ export default function SetupWizard({
                   type="button"
                   className="setup-wizard__button setup-wizard__button--primary"
                   disabled={isBusy || !principalFieldsReady}
-                  onClick={() => void handlePrincipalUnlock(false)}
+                  onClick={() => {
+                    setError(null)
+                    void handlePrincipalUnlock(false)
+                  }}
                 >
                   {isBusy ? '…' : t('regfox.connect')}
                 </button>
@@ -479,7 +490,7 @@ export default function SetupWizard({
                 placeholder="XXXX-XXXX-XXXX"
               />
             </label>
-            {error && (
+            {error && !isBusy && (
               <p className="setup-wizard__error" role="alert">
                 {error}
               </p>
@@ -500,7 +511,10 @@ export default function SetupWizard({
                 type="button"
                 className="setup-wizard__button setup-wizard__button--primary"
                 disabled={isBusy || !joinCode.trim()}
-                onClick={() => void handleLinkedJoin()}
+                onClick={() => {
+                  setError(null)
+                  void handleLinkedJoin()
+                }}
               >
                 {isBusy ? '…' : t('sync.joinConnect')}
               </button>
