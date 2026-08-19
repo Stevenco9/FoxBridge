@@ -186,7 +186,7 @@ const DIAGNOSTIC_LOG_KEYS = [
   'packagedPresentButUnresolved',
 ] as const
 
-/** One-line main-process log. Whitelists diagnostic fields only — never URL/key values. */
+/** Secret-free diagnostic line. Whitelists diagnostic fields only — never URL/key values. */
 export function formatCloudPublicConfigDiagnosticLog(
   diagnostic: CloudPublicConfigDiagnostic,
 ): string {

@@ -1,6 +1,6 @@
 # FoxBridge — Project State
 
-Last updated: August 2026 (**Sprint 24.4C — FoxBridge 0.1.5 updater target**)  
+Last updated: August 2026 (**Sprint 24 CLOSED — macOS auto-update live-validated**)  
 Repo: `https://github.com/Stevenco9/FoxBridge` (branch `main`, **public**)
 
 Use this file to onboard a new ChatGPT conversation quickly. Do **not** commit secrets from `.env`.
@@ -41,10 +41,11 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 - **Sprint 21.0–21.10 Sync** — architecture through live clean-install validation (desk enroll, pair, meal validate, Cloud→SQLite)
 - **Sprint 22 FINAL — live-validated** — Principal self-service, Connected Desktops, Linked join/revoke/rejoin, secure Principal claim. See [`DEVICE_TRUST_ARCHITECTURE.md`](./DEVICE_TRUST_ARCHITECTURE.md).
 - **Sprint 23 FINAL — live-validated** — EventAccessSession lock/unlock; Principal/Linked operational parity; event isolation (A→B→A); operational attendee snapshot; Cloud-first multi-desk check-in; Principal upstream reconciliation (RegFox adapter #1); durable retry; audit + Principal health. See [`EVENT_SESSION_ARCHITECTURE.md`](./EVENT_SESSION_ARCHITECTURE.md) + [`CHECK_IN_ARCHITECTURE.md`](./CHECK_IN_ARCHITECTURE.md).
+- **Sprint 24 FINAL — live-validated (macOS)** — signed/notarized universal Mac releases; packaged public Cloud config; Settings → Software Update; both test Macs updated **0.1.4 → 0.1.5** in-app. See [`RELEASING.md`](./RELEASING.md).
 
 **Follow-up (non-blocking / backlog — not Sprint 23 blockers):** additional registration-platform adapters; offline Cloud check-in queue; check-out / undo check-in; mobile registration check-in; tighter historical anon RLS; richer admin diagnostics; multi-event UI; Brother silent printing; join-code rate limits; Pre-22.5 Linked rows without `installation_id` may duplicate once on first upgrade rejoin.
 
-**Not yet built:** Sprint 24.4 live in-app auto-update validation on two Macs (**0.1.4 → 0.1.5**). Both test Macs stay installed on **0.1.4**. **v0.1.3 and v0.1.4 remain unmodified.**
+**Not yet built:** Windows Authenticode signing and Windows GitHub Release / auto-update. **Sprint 24 macOS auto-update is complete.** Do not begin Sprint 25 from this closure.
 
 ---
 
@@ -56,7 +57,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | **macOS universal DMG + ZIP** | Production: GitHub Actions `release-mac.yml`. Local unsigned smoke: `npm run dist:mac` |
 | **macOS pack (host arch only)** | `npm run pack:mac` → ARM64-only on Apple Silicon — **do not** use for multi-Mac live validation or the update channel |
 | **Mac signing / notarization** | CI: Developer ID Application + Hardened Runtime + notarytool. Local `dist:mac`: unsigned by design |
-| **GitHub Releases (Mac)** | Tag `v*` matching `package.json` version publishes DMG, ZIP, `latest-mac.yml`. `workflow_dispatch` does **not** publish |
+| **GitHub Releases (Mac)** | Tag `v*` matching `package.json` version publishes the five-file set. `workflow_dispatch` does **not** publish. Installed apps update via Settings → Software Update |
 | **Windows NSIS x64** | `npm run dist:win` → `release/FoxBridge-<version>-win-x64.exe` (`--publish never`) |
 | **Windows CI** | `.github/workflows/build-windows.yml` — tests + NSIS artifact upload (no GitHub Release) |
 | **better-sqlite3** | Rebuilt via `postinstall`; unpacked from ASAR (`asarUnpack`) in packaged app |
@@ -64,7 +65,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | **Icons** | `build/icon.icns`, `build/icon.ico`, `build/icon.png` from `apps/mobile/public/icon.svg` |
 | **Release docs** | [`RELEASING.md`](./RELEASING.md) — Mac + Windows build and install |
 
-**Current limitations:** **Windows** installers remain **unsigned** (SmartScreen on first launch). **Brother badge printing is verified on macOS; not yet verified on Windows.** In-app auto-update engine + Settings Software Update UI are wired (Sprint 24.2–24.3); live auto-update validation is **0.1.4 → 0.1.5** (both Macs remain on installed **0.1.4** until the operator runs that test). **v0.1.3 and v0.1.4 are unmodified.** Local `npm run dist:mac` is still unsigned.
+**Current limitations:** **Windows** installers remain **unsigned** (SmartScreen on first launch) and are not on the GitHub auto-update channel. **Brother badge printing is verified on macOS; not yet verified on Windows.** Local `npm run dist:mac` is still unsigned. GitHub Actions may print public `FOXBRIDGE_CLOUD_*` Variable values in step `env:` log groups (CI-log hygiene; not a Sprint 24 blocker).
 
 ---
 
@@ -91,6 +92,7 @@ FoxBridge is a **desktop Electron app** (React + TypeScript + Vite) for RegFox e
 | **Desktop meal validation toggle (Sprint 13B)** | Hidden by default in Conference Mode; optional under Settings → Advanced |
 | **Mobile PWA (Sprint 11–13)** | QR scan, attendee lookup, online **meal validation** via Supabase `validate_meal` RPC |
 | Group registration names | Attendee name from `fieldData` (`name.first` / `name.last`), not purchaser billing name |
+| **Software Update (Sprint 24)** | Settings → Software Update; live-validated **0.1.4 → 0.1.5** on both test Macs via GitHub Releases |
 
 ---
 
@@ -933,7 +935,7 @@ Organizers who want book status on details configure the matching purchase field
 
 ## Sprint 24.2 — electron-updater main-process infrastructure
 
-**Status:** Implemented in repo. Settings UI added in Sprint 24.3. **No production update release yet.**
+**Status:** Implemented. Settings UI in Sprint 24.3. **Live-validated 0.1.4 → 0.1.5.**
 
 | Item | Detail |
 |------|--------|
@@ -954,7 +956,7 @@ Organizers who want book status on details configure the matching purchase field
 
 ## Sprint 24.3 — Settings Software Update UI
 
-**Status:** Implemented in repo. **Live auto-update validation still pending (Sprint 24.4).**
+**Status:** Implemented. **Live-validated 0.1.4 → 0.1.5** (both test Macs, in-app Software Update).
 
 | Item | Detail |
 |------|--------|
@@ -966,7 +968,7 @@ Organizers who want book status on details configure the matching purchase field
 | **i18n** | `settings.update.*` keys in English + Mexican Spanish |
 | **Tests** | `npm run test:software-update-ui` |
 
-**Pending:** Live two-Mac in-app auto-update **0.1.4 → 0.1.5**. Installed baseline is **0.1.4**. Do not modify v0.1.3 or v0.1.4.
+**Result:** Both test Macs updated **0.1.4 → 0.1.5** from Settings → Software Update. Manual DMG replacement was not used for that upgrade.
 
 ---
 
@@ -980,7 +982,7 @@ Organizers who want book status on details configure the matching purchase field
 | **Build inject** | `release-mac.yml` and `build-windows.yml` pass `vars.*` into `npm run build` (Windows also into `dist:win` rebuild) |
 | **Pre-build** | `npm run validate:packaged-cloud-env` — HTTPS, no placeholders, reject `sb_secret_` / service-role; does not print the key |
 | **Post-build** | `npm run verify:packaged-cloud-bundle` — compiled `dist-electron` must contain the three values before signing/packaging |
-| **Runtime probe** | Principal claim logs secret-free `[cloud-config] resolve` source/presence (userData `logs/cloud-config-resolve.log`) |
+| **Runtime inspect** | Resolver uses `inspectCloudPublicConfig` / `takeResolvedPublicConfig` (secret-free diagnostic shape for tests). Temporary `cloudConfigProbe.ts` / `cloud-config-resolve.log` removed after live validation |
 | **Never packaged** | `SUPABASE_SERVICE_ROLE_KEY`, Apple credentials, `GITHUB_TOKEN`, RegFox API keys |
 | **0.1.2 / 0.1.3** | Signed CI 0.1.2 and published v0.1.3 omitted these Variables. **v0.1.3 remains untouched.** |
 | **0.1.4** | Corrected production baseline with packaged Cloud defaults + Software Update UI + deterministic Release publish; **live-installed on both test Macs** |
@@ -1004,14 +1006,47 @@ Organizers who want book status on details configure the matching purchase field
 
 ## Sprint 24.4C — FoxBridge 0.1.5 updater target
 
-**Status:** Tagged production Mac release **0.1.5** as a minimal update from the live **0.1.4** baseline. The in-app updater test is **not** performed by this slice.
+**Status:** Tagged production Mac release **0.1.5**. Live in-app updater **0.1.4 → 0.1.5** later **PASSED** (Sprint 24 close).
 
 | Item | Detail |
 |------|--------|
 | **Version** | `0.1.5` (`package.json` + `package-lock.json`) |
 | **Tag / Release** | `v0.1.5` — do not modify `v0.1.3` or `v0.1.4` |
-| **Includes** | Version bump only (functionally equivalent to 0.1.4). GitHub Actions still prints repository Variable values in step `env:` log groups; left unchanged because hiding them requires GitHub Secrets, not a small workflow-only change |
-| **Not this slice** | Installing 0.1.5, replacing `/Applications/FoxBridge.app`, or running the in-app update. Both test Macs stay on **0.1.4** |
+| **Includes** | Version bump only (functionally equivalent to 0.1.4). GitHub Actions still prints repository Variable values in step `env:` log groups; left unchanged (future CI-log hygiene, not a Sprint 24 blocker) |
+| **Not this slice** | Installing 0.1.5, replacing `/Applications/FoxBridge.app`, or running the in-app update (operator-run; both Macs stayed on **0.1.4** until that test) |
+
+---
+
+## Sprint 24 FINAL — macOS auto-update validation
+
+**Status:** **PASSED.** Sprint 24 macOS updater validation is complete. Do not begin Sprint 25 from this closure.
+
+| Item | Detail |
+|------|--------|
+| **Baseline** | **0.1.4** — first corrected signed/notarized Cloud-complete production baseline |
+| **Updater target** | **0.1.5** — minimal version bump; same function as 0.1.4 |
+| **Mac #1** | **0.1.4 → 0.1.5** via Settings → Software Update — **PASS** |
+| **Mac #2** | **0.1.4 → 0.1.5** via Settings → Software Update — **PASS** |
+| **Feed** | Public GitHub Releases + `latest-mac.yml` (universal ZIP path, sha512, size) |
+| **Flow** | Check / Update Now downloaded successfully; Restart & Update relaunched at **0.1.5** |
+| **userData** | `~/Library/Application Support/foxbridge` preserved (normal event data kept) |
+| **DMG** | Manual DMG replacement was **not** required for the 0.1.4 → 0.1.5 upgrade |
+| **v0.1.3 / v0.1.4** | Published tags/assets left unmodified |
+
+**Normal future Mac release path**
+
+1. Bump `package.json` and `package-lock.json`.
+2. Run release tests (`test:packaged-cloud-config`, `test:mac-release-config`, updater/UI/Cloud tests, `npm run build`).
+3. Commit and push `main`.
+4. Tag and push `v<version>` (do not create the GitHub Release by hand).
+5. Tag-driven **Release macOS** workflow signs, notarizes, staples, and publishes the five-file set.
+6. Existing packaged installations discover the new GitHub Release.
+7. Operator chooses **Update Now**.
+8. Operator chooses **Restart & Update**.
+
+Manual DMG install remains for first install and recovery only.
+
+**Must preserve on every Mac release:** Developer ID signing, hardened runtime, notarization, stapling, universal `x86_64` + `arm64`, packaged public Cloud config, no privileged/service-role credentials in the packaged app, complete five-file GitHub Release, `latest-mac.yml` matching ZIP hash/size, public GitHub updater feed, user-confirmed restart/install, stable app name / `appId` / userData path.
 
 ---
 
@@ -1037,12 +1072,12 @@ Read docs/PROJECT_STATE.md, docs/EVENT_SESSION_ARCHITECTURE.md, docs/CHECK_IN_AR
 Current state:
 - Desktop: EventAccessSession lock/unlock; Principal + Linked operational parity; Cloud-first multi-desk check-in; Principal RegFox upstream reconciliation
 - Mobile PWA: sign-in, QR scan, online meal validation via Supabase validate_meal RPC
-- Sprint 22 + Sprint 23 CLOSED / live-validated
+- Sprint 22 + Sprint 23 + Sprint 24 (macOS auto-update) CLOSED / live-validated
 - Branch main is on GitHub
 
 Do not expose .env secrets. Do not hardcode printer names.
 
-Next task: 0.1.4 is the live-installed Cloud-complete baseline on both test Macs. 0.1.5 is the published updater target. Do not modify v0.1.3 or v0.1.4. Do not install 0.1.5 manually. The operator will run the in-app 0.1.4 → 0.1.5 updater test.
+Next task: Sprint 24 is closed. Current packaged version is 0.1.5. Do not bump version, tag, or publish a Release unless starting a new release. Do not begin Sprint 25 unless asked.
 
 Help me implement the next step with minimal scope, matching existing code conventions.
 ```

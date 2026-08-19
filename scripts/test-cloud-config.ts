@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -146,7 +146,7 @@ assert.deepEqual(
   },
 )
 
-// --- Sprint 24.4A runtime diagnostic (inspect uses the same trimmed inputs) ---
+// --- Public Cloud resolver inspection (same trimmed inputs as production resolve) ---
 
 const packagedOnly = inspectCloudPublicConfig({
   settingsUrl: null,
@@ -288,16 +288,11 @@ const requireFn = desktopApi.slice(
   desktopApi.indexOf('function requireDeskCredential()'),
 )
 assert.ok(requireFn.includes('inspectFoxBridgeCloudPublicConfig()'))
-assert.ok(requireFn.includes('logSafeCloudPublicConfigDiagnostic(inspection.diagnostic)'))
-assert.ok(requireFn.includes('takeResolvedPublicConfig(inspection)'))
-assert.equal(requireFn.includes('console.warn(inspection'), false)
-assert.equal(requireFn.includes('inspection.config'), false)
+assert.ok(requireFn.includes('takeResolvedPublicConfig'))
+assert.equal(requireFn.includes('logSafeCloudPublicConfigDiagnostic'), false)
+assert.equal(requireFn.includes('cloud-config-resolve.log'), false)
+assert.equal(requireFn.includes('console.warn'), false)
 
-const probe = readFileSync(join(root, 'electron/cloud/cloudConfigProbe.ts'), 'utf8')
-assert.ok(probe.includes('formatCloudPublicConfigDiagnosticLog'))
-assert.ok(probe.includes('console.warn(line)'))
-assert.ok(probe.includes('cloud-config-resolve.log'))
-assert.equal(probe.includes('diagnostic.cloudUrl'), false)
-assert.equal(probe.includes('diagnostic.publishableKey'), false)
+assert.equal(existsSync(join(root, 'electron/cloud/cloudConfigProbe.ts')), false)
 
 console.log('test-cloud-config: ok')

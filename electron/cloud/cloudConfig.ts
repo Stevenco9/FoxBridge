@@ -56,7 +56,7 @@ function readPublicConfigResolutionInput() {
   }
 }
 
-/** Same inputs as resolveFoxBridgeCloudPublicConfig, plus secret-free diagnostic shape. */
+/** Same inputs as resolveFoxBridgeCloudPublicConfig. Diagnostic shape is for tests, not a production log file. */
 export function inspectFoxBridgeCloudPublicConfig(): CloudPublicConfigInspection {
   return inspectCloudPublicConfig(readPublicConfigResolutionInput())
 }

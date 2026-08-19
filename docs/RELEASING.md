@@ -123,10 +123,20 @@ npm run pack:mac
 
 Production Mac builds run on **`macos-latest`** via [`.github/workflows/release-mac.yml`](../.github/workflows/release-mac.yml).
 
-1. Bump `package.json` **and** `package-lock.json` to the new version (for example `0.1.3`).
-2. Commit on `main`.
-3. Tag **exactly** `v` + that version (`v0.1.3`) and push the tag.
-4. GitHub Actions signs with **Developer ID Application**, then notarizes with Apple **notarytool** (not deprecated `altool`) via `scripts/notarize-mac-retry.sh`. The signed app is submitted **once**. The script captures the Apple submission id and polls `notarytool info` until **Accepted** or **Invalid** (about **3 hours** overall, 60-second poll interval). Transient network errors retry the current submit/info call without creating a new submission after an id is known. **Invalid** fetches `notarytool log` and fails without resubmitting. After **Accepted** the ticket is stapled to the `.app`, then the universal DMG, ZIP, and `latest-mac.yml` are generated from that stapled app.
+**Normal future Mac release path** (version-to-version upgrades):
+
+1. Bump `package.json` **and** `package-lock.json`.
+2. Run the Mac release tests (`test:packaged-cloud-config`, `test:mac-release-config`, Cloud/updater/UI tests, `npm run build`).
+3. Commit and push `main`.
+4. Tag **exactly** `v` + that version (`v0.1.5`) and push the tag. Do **not** create the GitHub Release by hand.
+5. The tag-driven **Release macOS** workflow builds, signs (Developer ID + Hardened Runtime), notarizes, staples, verifies, and publishes the five-file GitHub Release.
+6. Existing packaged FoxBridge installations discover the new GitHub Release (`latest-mac.yml`).
+7. The operator chooses **Update Now** in Settings → Software Update.
+8. The operator chooses **Restart & Update**.
+
+Manual DMG installation remains for **first install and recovery**. It should **not** be required for normal version-to-version upgrades. Live-validated: **0.1.4 → 0.1.5** on both test Macs via the in-app flow (**PASSED**).
+
+The signed app is submitted to Apple **once**. `scripts/notarize-mac-retry.sh` captures the Apple submission id and polls `notarytool info` until **Accepted** or **Invalid** (about **3 hours** overall, 60-second poll interval). Transient network errors retry the current submit/info call without creating a new submission after an id is known. **Invalid** fetches `notarytool log` and fails without resubmitting. After **Accepted** the ticket is stapled to the `.app`, then the universal DMG, ZIP, and `latest-mac.yml` are generated from that stapled app. Notarization uses Apple **notarytool** (not deprecated `altool`).
 
 electron-builder packages with **`--publish never`**. A GitHub Release is created or updated only on a matching `v*` tag, **after** local verification of the complete five-file asset set, via `scripts/publish-github-mac-release.sh`. The job then checks that the GitHub Release contains every required name (`scripts/verify-github-mac-release.sh`) and fails if any file is missing.
 
@@ -140,7 +150,28 @@ FoxBridge-<version>-mac-universal.zip.blockmap
 latest-mac.yml
 ```
 
-The public GitHub repo is the initial update **provider** (`provider: github`, owner `Stevenco9`, repo `FoxBridge`). Installed apps will later read release metadata over HTTPS **without** a GitHub token in the client. **Do not** put `GH_TOKEN` or signing secrets in the packaged app.
+The public GitHub repo is the update **provider** (`provider: github`, owner `Stevenco9`, repo `FoxBridge`). Installed apps read release metadata over HTTPS **without** a GitHub token in the client. **Do not** put `GH_TOKEN` or signing secrets in the packaged app.
+
+### Mac release requirements (do not regress)
+
+Every production Mac release must continue to preserve:
+
+| Requirement | Why |
+|-------------|-----|
+| Developer ID Application signing | Gatekeeper |
+| Hardened Runtime | Notarization / security |
+| Apple notarization (`notarytool`) | First-launch trust |
+| Stapling of the notarization ticket on the `.app` | Offline Gatekeeper |
+| Universal `x86_64` + `arm64` artifacts | Intel + Apple Silicon |
+| Packaged public Cloud configuration | Principal/Linked setup without local `.env` |
+| No privileged Cloud / service-role credentials in the packaged app | Secret-model boundary |
+| Complete five-file GitHub Release set | Humans (DMG) + updater (ZIP + yml + blockmaps) |
+| `latest-mac.yml` matching the ZIP `sha512` and `size` | electron-updater integrity |
+| Public GitHub updater feed (`private: false`, no client token) | In-app Software Update |
+| User-confirmed download and Restart & Update | Do not interrupt an event |
+| Stable app name, `appId` (`com.foxbridge.desktop`), and userData path | Preserve `~/Library/Application Support/foxbridge` |
+
+Do not redesign these systems for a routine version bump.
 
 ### First signed smoke (no production Release)
 
@@ -182,7 +213,7 @@ Production Mac and Windows builds fail closed unless these repository **Variable
 
 Do **not** add `SUPABASE_SERVICE_ROLE_KEY`, RegFox API keys, Apple credentials, or `GITHUB_TOKEN` to Vite or these Variables.
 
-**Sprint 24.4A / 24.4B / 24.4C history:** signed CI `0.1.2` (workflow `32084525251`) and published **v0.1.3** were built without these Variables, so packaged Cloud defaults were empty. **v0.1.3 and v0.1.4 GitHub Release assets remain untouched.** **0.1.4** is the live-installed Cloud-complete production baseline. **0.1.5** is the minimal updater target. GitHub Actions still prints Variable values in step `env:` log groups; that is platform behavior for `vars.*` and is left unchanged (hiding it requires GitHub Secrets).
+**Sprint 24.4 history:** signed CI `0.1.2` (workflow `32084525251`) and published **v0.1.3** were built without these Variables, so packaged Cloud defaults were empty. **v0.1.3 GitHub Release assets remain untouched.** **0.1.4** is the corrected Cloud-complete production baseline. **0.1.5** is the live-validated updater target. GitHub Actions may print Variable values in step `env:` log groups; that is platform behavior for `vars.*`. These values are public client configuration, not privileged credentials. Do **not** move them into the privileged secret model merely to hide that display. Future CI-log hygiene; **not a Sprint 24 blocker**.
 
 ### Signed local packaging (optional)
 
@@ -422,13 +453,13 @@ User data under `userData` is left in place unless you delete it manually.
 
 ---
 
-## Auto-update (Sprint 24.2+)
+## Auto-update (Sprint 24 — live-validated on macOS)
 
 FoxBridge uses **electron-updater** with the **public GitHub Releases** provider configured in `package.json` (`Stevenco9/FoxBridge`, `private: false`). Packaged apps read `app-update.yml` from `Resources/` — no GitHub token in the client.
 
 | Policy | Value |
 |--------|-------|
-| `autoDownload` | `false` — user must explicitly download (24.3 Settings UI) |
+| `autoDownload` | `false` — user must explicitly download (Settings → Software Update) |
 | `autoInstallOnAppQuit` | `false` — never force-restart |
 | Startup check | ~45s after app ready (packaged only) |
 | Periodic check | ~5 hours while app is open |
@@ -436,11 +467,11 @@ FoxBridge uses **electron-updater** with the **public GitHub Releases** provider
 
 **Safe IPC:** `getUpdateStatus`, `checkForUpdates`, `downloadUpdate`, `restartAndInstallUpdate`, plus `update:statusChanged` push events. No arbitrary feed URL or credential parameters.
 
-**Settings UI (Sprint 24.3):** Operations Home ⚙ shows a green badge when an update is available or ready to install. Settings → **Software Update** provides Check for Updates, Update Now, download progress, and Restart & Update (with confirmation). Dev mode shows a quiet packaged-build message instead of updater errors.
+**Settings UI:** Operations Home ⚙ shows a green badge when an update is available or ready to install. Settings → **Software Update** provides Check for Updates, Update Now, download progress, and Restart & Update (with confirmation). Dev mode shows a quiet packaged-build message instead of updater errors.
 
 **Status states:** `idle`, `checking`, `available`, `downloading`, `downloaded`, `upToDate`, `error`.
 
-**Not yet:** Live auto-update validation. Signed 0.1.2 / v0.1.3 omitted packaged Cloud defaults (Sprint 24.4A). **v0.1.3 remains published and unmodified.** **0.1.4** is the Cloud-complete production baseline; the updater test starts only after 0.1.4 is installed.
+**Live validation (PASSED):** Both test Macs updated **0.1.4 → 0.1.5** from inside FoxBridge (Settings → Software Update). The GitHub Releases + `latest-mac.yml` feed worked; the update downloaded; Restart & Update relaunched at **0.1.5**; normal userData was preserved. Neither Mac used the 0.1.5 DMG for that upgrade. **v0.1.3** remains published and unmodified. **0.1.4** remains the corrected production baseline tag.
 
 ---
 
@@ -450,10 +481,9 @@ Planned but **not implemented** yet:
 
 - Windows Authenticode signing
 - Windows GitHub Release / auto-update publishing
-- Settings Software Update UI (Sprint 24.3) — **implemented**
-- Live auto-update validation (Sprint 24.4) — after **0.1.4** is the installed production baseline; do not modify v0.1.3
+- GitHub Actions `env:` log hygiene for public `FOXBRIDGE_CLOUD_*` Variables (do not move them into the privileged secret model)
 
-Mac Developer ID signing, notarization, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), main-process electron-updater infrastructure (Sprint 24.2), Settings Software Update UI (Sprint 24.3), and production public Cloud packaging guards (Sprint 24.4A) are implemented. **0.1.4** is the first Cloud-complete tagged Mac production baseline. Live update validation is not started by this release. Do not replace v0.1.3 assets.
+Mac Developer ID signing, notarization, stapling, universal ZIP / `latest-mac.yml`, tag-driven GitHub Release publishing (Sprint 24.1), main-process electron-updater (Sprint 24.2), Settings Software Update UI (Sprint 24.3), production public Cloud packaging guards (Sprint 24.4A), and **live in-app 0.1.4 → 0.1.5 auto-update on both test Macs** are complete. Sprint 24 macOS auto-update validation **PASSED**. Do not replace v0.1.3 or v0.1.4 assets.
 
 ---
 

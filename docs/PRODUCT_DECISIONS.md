@@ -159,7 +159,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 ### Sprint 24.1 — Signed Mac releases
 
 - **Production Mac installers are signed and notarized** — Developer ID Application, Hardened Runtime, Apple notarytool. Local `npm run dist:mac` stays unsigned so ordinary development does not need Apple credentials.
-- **One universal Mac channel** — GitHub Releases host `FoxBridge-<version>-mac-universal.dmg` (humans) plus ZIP + `latest-mac.yml` (future electron-updater). Never publish host-arch `pack:mac` artifacts to that channel.
+- **One universal Mac channel** — GitHub Releases host `FoxBridge-<version>-mac-universal.dmg` (first install / recovery) plus ZIP + `latest-mac.yml` (in-app updater). Never publish host-arch `pack:mac` artifacts to that channel.
 - **Public GitHub Releases as the update provider** — metadata is readable without embedding a GitHub token in the Desktop app. Signing/notarization secrets stay in GitHub Actions (names: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`).
 - **Updates must not interrupt an event** — download/install remains operator-initiated via Settings (Sprint 24.3 UI). Replacing the `.app` does not move `~/Library/Application Support/foxbridge`.
 
@@ -170,7 +170,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **No forced downloads or restarts** — `autoDownload = false`, `autoInstallOnAppQuit = false`. Startup/periodic checks are quiet; download and `quitAndInstall` require explicit user action (24.3 UI).
 - **Packaged-only real activity** — `npm run dev` disables updater network activity and reports `updaterEnabled: false`.
 - **Application-level updates** — identical for Principal and Linked desks; not coupled to EventAccessSession (post-update relaunch starts locked, as desired).
-- **Live validation pending** — first Cloud-complete in-app updater test is **0.1.4 → 0.1.5**. **0.1.4** is the installed baseline on both test Macs. Do not reuse empty-config 0.1.2 / 0.1.3 as the production pair. Do not modify v0.1.3 or v0.1.4.
+- **Live validation PASSED** — both test Macs updated **0.1.4 → 0.1.5** from Settings → Software Update (download + Restart & Update). GitHub Releases + `latest-mac.yml` worked. userData was preserved. Manual DMG replacement was not required. Do not reuse empty-config 0.1.2 / 0.1.3 as the production pair. Do not modify v0.1.3 or v0.1.4.
 
 ### Sprint 24.3 — Settings Software Update UI
 
@@ -186,9 +186,15 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Fail closed** — missing, HTTP, placeholder, or privileged-looking values fail before compile; compiled `dist-electron` is checked before signing/packaging.
 - **Privileged credentials stay local** — service-role, RegFox API keys, Apple signing material, and GitHub tokens are never Vite `define` inputs.
 - **v0.1.3 untouched** — signed 0.1.2 smoke and published v0.1.3 lacked these Variables. Do not replace v0.1.3 Release assets.
-- **0.1.4 corrected baseline** — packaged public Cloud config, Software Update UI, and deterministic GitHub Release publishing. Live-installed on both test Macs.
-- **0.1.5 updater target** — functionally equivalent to 0.1.4 except version. Live in-app updater testing is operator-run from installed 0.1.4; publishing 0.1.5 does not install it.
-- **CI Variable log groups** — GitHub Actions prints `vars.*` values in each step’s `env:` log dump. Left as Variables (public client config). Hiding the dump requires GitHub Secrets, which would mix public packaging config into the privileged secret store.
+- **0.1.4 corrected baseline** — packaged public Cloud config, Software Update UI, and deterministic GitHub Release publishing. Live-installed as the updater baseline on both test Macs.
+- **0.1.5 updater target** — functionally equivalent to 0.1.4 except version. Both Macs then updated **0.1.4 → 0.1.5** in-app (**PASSED**).
+- **CI Variable log groups** — GitHub Actions may print `vars.*` values in each step’s `env:` log dump. These are public client configuration, not privileged credentials. Do not move them into the privileged secret model merely to hide that display. Future CI-log hygiene; not a Sprint 24 blocker.
+
+### Sprint 24 close — Mac release path
+
+- **Normal upgrades are in-app** — bump version → tests → commit/push → tag `v<version>` → tag-driven Release macOS workflow publishes → existing installs discover the feed → operator **Update Now** → operator **Restart & Update**.
+- **DMG remains for first install and recovery** — not required for normal version-to-version upgrades.
+- **Do not regress** — Developer ID signing, hardened runtime, notarization, stapling, universal `x86_64` + `arm64`, packaged public Cloud config, no service-role/privileged keys in the packaged app, complete five-file GitHub Release, `latest-mac.yml` matching ZIP hash/size, public GitHub updater feed, user-confirmed restart, stable app name / `appId` / userData path.
 
 ### Sprint 13A — Guided setup decisions
 
