@@ -170,7 +170,7 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **No forced downloads or restarts** — `autoDownload = false`, `autoInstallOnAppQuit = false`. Startup/periodic checks are quiet; download and `quitAndInstall` require explicit user action (24.3 UI).
 - **Packaged-only real activity** — `npm run dev` disables updater network activity and reports `updaterEnabled: false`.
 - **Application-level updates** — identical for Principal and Linked desks; not coupled to EventAccessSession (post-update relaunch starts locked, as desired).
-- **Live validation pending** — first Cloud-complete updater test after **0.1.4** is installed as the production baseline (do not reuse empty-config 0.1.2 / 0.1.3 as the production pair).
+- **Live validation pending** — first Cloud-complete in-app updater test is **0.1.4 → 0.1.5**. **0.1.4** is the installed baseline on both test Macs. Do not reuse empty-config 0.1.2 / 0.1.3 as the production pair. Do not modify v0.1.3 or v0.1.4.
 
 ### Sprint 24.3 — Settings Software Update UI
 
@@ -186,8 +186,9 @@ Summaries for organizers: badges printed, meals validated, check-in counts, and 
 - **Fail closed** — missing, HTTP, placeholder, or privileged-looking values fail before compile; compiled `dist-electron` is checked before signing/packaging.
 - **Privileged credentials stay local** — service-role, RegFox API keys, Apple signing material, and GitHub tokens are never Vite `define` inputs.
 - **v0.1.3 untouched** — signed 0.1.2 smoke and published v0.1.3 lacked these Variables. Do not replace v0.1.3 Release assets.
-- **0.1.4 corrected baseline** — packaged public Cloud config, Software Update UI, and deterministic GitHub Release publishing.
-- **Live auto-update not validated** — 24.4 live updater testing is not started by the 0.1.4 publish.
+- **0.1.4 corrected baseline** — packaged public Cloud config, Software Update UI, and deterministic GitHub Release publishing. Live-installed on both test Macs.
+- **0.1.5 updater target** — functionally equivalent to 0.1.4 except version. Live in-app updater testing is operator-run from installed 0.1.4; publishing 0.1.5 does not install it.
+- **CI Variable log groups** — GitHub Actions prints `vars.*` values in each step’s `env:` log dump. Left as Variables (public client config). Hiding the dump requires GitHub Secrets, which would mix public packaging config into the privileged secret store.
 
 ### Sprint 13A — Guided setup decisions
 

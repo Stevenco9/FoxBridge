@@ -182,7 +182,7 @@ Production Mac and Windows builds fail closed unless these repository **Variable
 
 Do **not** add `SUPABASE_SERVICE_ROLE_KEY`, RegFox API keys, Apple credentials, or `GITHUB_TOKEN` to Vite or these Variables.
 
-**Sprint 24.4A / 24.4B history:** signed CI `0.1.2` (workflow `32084525251`) and published **v0.1.3** were built without these Variables, so packaged Cloud defaults were empty. **v0.1.3 GitHub Release assets remain untouched.** **0.1.4** is the corrected Cloud-complete production baseline. Live auto-update validation is **not** started by publishing 0.1.4.
+**Sprint 24.4A / 24.4B / 24.4C history:** signed CI `0.1.2` (workflow `32084525251`) and published **v0.1.3** were built without these Variables, so packaged Cloud defaults were empty. **v0.1.3 and v0.1.4 GitHub Release assets remain untouched.** **0.1.4** is the live-installed Cloud-complete production baseline. **0.1.5** is the minimal updater target. GitHub Actions still prints Variable values in step `env:` log groups; that is platform behavior for `vars.*` and is left unchanged (hiding it requires GitHub Secrets).
 
 ### Signed local packaging (optional)
 

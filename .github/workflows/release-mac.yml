@@ -1,6 +1,6 @@
 name: Release macOS
 
-# Production path: push a matching version tag (v0.1.4 with package.json 0.1.4).
+# Production path: push a matching version tag (v0.1.5 with package.json 0.1.5).
 # Smoke path: workflow_dispatch builds, signs, notarizes, and uploads Actions
 # artifacts only — it never creates a GitHub Release.
 
